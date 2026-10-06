@@ -17,7 +17,7 @@ module.exports = async function handler(req, res) {
 
   try {
     // ✅ محليًا: يستخدم المفتاح مباشرة | عند النشر: يستخدم Environment Variable
-    const API_KEY = process.env.NOTRACK_API_KEY || 'sk-notrack-4df6fc06e7cd9de09d5c19c7c1510080543e39aa0f7fa9a1';
+    const API_KEY = process.env.NOTRACK_API_KEY;
 
     // ✅ تشخيص: أرجع تفاصيل واضحة إذا كان المفتاح مفقودًا
     if (!API_KEY) {
