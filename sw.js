@@ -44,6 +44,41 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// ═══════ Push Event ═══════
+self.addEventListener('push', (e) => {
+  let data = { title: '🏮 مِشكاة', body: 'لديك إشعار جديد' };
+  try { if (e.data) data = { ...data, ...e.data.json() }; } catch (err) {}
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      dir: 'rtl',
+      lang: 'ar',
+      vibrate: [100, 50, 100],
+      data: { url: data.url || '/' },
+      tag: 'mishkat-' + Date.now(),
+      renotify: true
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = e.notification.data?.url || '/';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+      for (const c of clients) {
+        if (c.url.includes(self.location.origin) && 'focus' in c) {
+          c.navigate(url);
+          return c.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    })
+  );
+});
+
 // ═══════ Message — اسمح للصفحة بتفعيل skipWaiting ═══════
 self.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SKIP_WAITING') {
