@@ -16,7 +16,12 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(() => {});
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          .then((reg) => {
+            console.log('✅ SW registered:', reg.scope);
+            reg.update().catch(() => {});
+          })
+          .catch((err) => console.warn('SW registration failed:', err));
       });
     }
   </script>
@@ -178,6 +183,7 @@
   <script src="js/syntax.js"></script>
 
   <script src="js/cursor.js"></script>
+  <script src="js/pwa.js"></script>
   <script src="js/icons.js"></script>
   <script src="js/particles.js"></script>
 </body>
