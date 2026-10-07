@@ -31,7 +31,10 @@
       'blue-night': { name: 'أزرق ليلي', icon: '🌌', preview: 'linear-gradient(135deg, #0a1424, #152744)' },
       pink: { name: 'وردي', icon: '🌸', preview: 'linear-gradient(135deg, #fff1f5, #fbcfe8)' },
       'royal-green': { name: 'أخضر ملكي', icon: '👑', preview: 'linear-gradient(135deg, #f0fdf4, #a7f3d0)' },
-      'warm-brown': { name: 'بني دافئ', icon: '☕', preview: 'linear-gradient(135deg, #fef6e7, #fde68a)' }
+      'warm-brown': { name: 'بني دافئ', icon: '☕', preview: 'linear-gradient(135deg, #fef6e7, #fde68a)' },
+      'midnight-purple': { name: 'بنفسجي منتصف الليل', icon: '💜', preview: 'linear-gradient(135deg, #0d0819, #a855f7)' },
+      'rose-gold': { name: 'ذهبي وردي', icon: '🌹', preview: 'linear-gradient(135deg, #fff8f5, #d4956b)' },
+      'ocean-deep': { name: 'محيط عميق', icon: '🌊', preview: 'linear-gradient(135deg, #031520, #22d3ee)' }
     };
     const ACCENTS = [
       { name: 'بنفسجي', value: '#6366f1', value2: '#8b5cf6' },
