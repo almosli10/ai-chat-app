@@ -874,6 +874,10 @@ async function streamResponse() {
       }
     }
 
+        // 🏷️ علّم هذه الرسالة كرد حقيقي (لنظام XP)
+    const realMsgEl = lb.closest('.msg');
+    if (realMsgEl) realMsgEl.dataset.evoReal = '1';
+
     addCopyButtons(lb);
     const ai = allChats[currentChatId].messages.length;
     allChats[currentChatId].messages.push({ role: "assistant", content: full });

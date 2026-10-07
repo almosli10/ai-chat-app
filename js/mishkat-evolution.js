@@ -442,24 +442,33 @@
   }
   hookFiles();
 
-  // 3) عند إنشاء محادثة جديدة
-  function hookCreateNewChat(retries = 30) {
-    if (typeof window.createNewChat !== 'function') {
-      if (retries > 0) return setTimeout(() => hookCreateNewChat(retries - 1), 250);
-      return;
-    }
-    if (window.createNewChat.__evoWrapped) return;
-    const orig = window.createNewChat;
-    window.createNewChat = function (...args) {
-      try {
-        state.stats.chats++;
-        addXP(XP_REWARDS.new_chat, 'new_chat');
-        checkAchievements();
-      } catch (e) {}
-      return orig.apply(this, args);
-    };
-    window.createNewChat.__evoWrapped = true;
+// 3) عند إنشاء محادثة جديدة (تجاهل الاستدعاء الأول من init)
+function hookCreateNewChat(retries = 30) {
+  if (typeof window.createNewChat !== 'function') {
+    if (retries > 0) return setTimeout(() => hookCreateNewChat(retries - 1), 250);
+    return;
   }
+  if (window.createNewChat.__evoWrapped) return;
+  // علم لتجاهل أول استدعاء (عند فتح التطبيق)
+  if (!window.__mishkatInitHandled) {
+    window.__mishkatInitHandled = false;
+  }
+  const orig = window.createNewChat;
+  window.createNewChat = function (...args) {
+    // تجاهل أول استدعاء (من init) — لا XP
+    if (!window.__mishkatInitHandled) {
+      window.__mishkatInitHandled = true;
+      return orig.apply(this, args);
+    }
+    try {
+      state.stats.chats++;
+      addXP(XP_REWARDS.new_chat, 'new_chat');
+      checkAchievements();
+    } catch (e) {}
+    return orig.apply(this, args);
+  };
+  window.createNewChat.__evoWrapped = true;
+}
   hookCreateNewChat();
 
   // 4) عند تبديل الثيمات
@@ -550,29 +559,57 @@
   }
   hookMemory();
 
-  // 8) كشف الردود (reply)
-  function hookReplies(retries = 30) {
-    const ci = document.getElementById('chatInner');
-    if (!ci) {
-      if (retries > 0) return setTimeout(() => hookReplies(retries - 1), 250);
-      return;
-    }
-    if (ci.__evoObserved) return;
-    ci.__evoObserved = true;
-    const obs = new MutationObserver((muts) => {
-      muts.forEach(m => m.addedNodes.forEach(n => {
-        if (n.nodeType === 1 && n.classList?.contains('msg') && n.classList?.contains('assistant')) {
-          setTimeout(() => {
-            if (n.isConnected) {
-              addXP(XP_REWARDS.reply, 'reply');
-            }
-          }, 1200);
-        }
-      }));
-    });
-    obs.observe(ci, { childList: true });
+// 8) كشف الردود (reply) — فقط الردود الجديدة الحقيقية
+function hookReplies(retries = 30) {
+  const ci = document.getElementById('chatInner');
+  if (!ci) {
+    if (retries > 0) return setTimeout(() => hookReplies(retries - 1), 250);
+    return;
   }
-  hookReplies();
+  if (ci.__evoObserved) return;
+  ci.__evoObserved = true;
+
+  const obs = new MutationObserver((muts) => {
+    // 🚫 تجاهل تماماً إذا كنا نستعيد محادثة قديمة
+    if (window.__restoringChat) return;
+
+    muts.forEach(m => m.addedNodes.forEach(n => {
+      if (n.nodeType !== 1) return;
+      if (!n.classList?.contains('msg')) return;
+      if (!n.classList?.contains('assistant')) return;
+      // 🚫 تجاهل الرسائل التي أُضيفت في وضع القراءة فقط
+      if (n.dataset.evoNoXp === '1') return;
+      // ✅ اسمح فقط للرسالة الأخيرة التي تأتي من streamResponse
+      // علامة: نضيف dataset في addMessage للردود الحقيقية فقط
+      if (n.dataset.evoReal !== '1') return;
+
+      setTimeout(() => {
+        if (n.isConnected) addXP(XP_REWARDS.reply, 'reply');
+      }, 1200);
+    }));
+  });
+  obs.observe(ci, { childList: true });
+}
+hookReplies();
+
+// 11) hook على switchChat لتفعيل علم "استعادة محادثة"
+function hookSwitchChatForEvo(retries = 30) {
+  if (typeof window.switchChat !== 'function') {
+    if (retries > 0) return setTimeout(() => hookSwitchChatForEvo(retries - 1), 250);
+    return;
+  }
+  if (window.switchChat.__evoWrapped) return;
+  const orig = window.switchChat;
+  window.switchChat = function (...args) {
+    window.__restoringChat = true;
+    const result = orig.apply(this, args);
+    // switchChat فيه setTimeout(100ms) داخلي — ننتظر أكثر
+    setTimeout(() => { window.__restoringChat = false; }, 900);
+    return result;
+  };
+  window.switchChat.__evoWrapped = true;
+}
+hookSwitchChatForEvo();
 
   // 9) التشفير
   function hookEncryption(retries = 30) {
