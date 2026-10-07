@@ -549,12 +549,26 @@ ${conversation}
         d.className = 'chat-item' + (c.id === currentChatId ? ' active' : '') + (c.pinned ? ' pinned' : '');
         const mc = c.messages.filter(m => m.role !== 'system').length;
         d.innerHTML = `${un ? '<div class="unread-dot"></div>' : ''}<div class="title">${c.pinned ? '<span class="pin-icon">📌</span>' : ''}${escapeHtml(c.title || 'محادثة جديدة')}</div><div class="meta">${mc} رسالة · ${formatTime(c.timestamp)}</div>`;
-        const p = document.createElement('button'); p.className = 'pin-chat'; p.textContent = c.pinned ? '📌' : '📍';
+        // إجراءات المحادثة (أزرار SVG أنيقة)
+        const actions = document.createElement('div');
+        actions.className = 'chat-item-actions';
+        actions.onclick = (e) => e.stopPropagation();
+
+        const p = document.createElement('button');
+        p.className = 'chat-action-btn pin-btn' + (c.pinned ? ' active' : '');
+        p.title = c.pinned ? 'إلغاء التثبيت' : 'تثبيت';
+        p.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>';
         p.onclick = (e) => { e.stopPropagation(); allChats[c.id].pinned = !allChats[c.id].pinned; saveAllChats(); renderSidebar(); pushChatToCloud(allChats[c.id]); playSound('click'); };
-        d.appendChild(p);
-        const del = document.createElement('button'); del.className = 'delete-chat'; del.textContent = '🗑️';
+        actions.appendChild(p);
+
+        const del = document.createElement('button');
+        del.className = 'chat-action-btn delete-btn';
+        del.title = 'حذف';
+        del.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>';
         del.onclick = (e) => { e.stopPropagation(); deleteChat(c.id); };
-        d.appendChild(del);
+        actions.appendChild(del);
+
+        d.appendChild(actions);
         d.onclick = () => { switchChat(c.id); playSound('click'); if (window.innerWidth <= 900) toggleSidebar(); };
         chatList.appendChild(d);
       });

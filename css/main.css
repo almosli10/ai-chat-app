@@ -1433,4 +1433,105 @@
       filter: drop-shadow(0 4px 12px rgba(245,158,11,0.5));
     }
 
+        /* ═══════════════════════════════════════════════════════
+       CHAT ITEM ACTIONS — أزرار أنيقة بدل الإيموجي
+       ═══════════════════════════════════════════════════════ */
+
+    /* احذف أيقونة المسح القديمة */
+    .chat-item .delete-chat,
+    .chat-item .pin-chat {
+      display: none !important;
+    }
+
+    /* الحاوية الجديدة */
+    .chat-item-actions {
+      position: absolute;
+      top: 50%;
+      left: 8px;
+      transform: translateY(-50%) translateX(10px);
+      display: flex;
+      gap: 3px;
+      padding: 3px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(14px) saturate(1.5);
+      -webkit-backdrop-filter: blur(14px) saturate(1.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      box-shadow: 0 8px 22px -8px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 5;
+    }
+    .chat-item:hover .chat-item-actions {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(-50%) translateX(0);
+    }
+
+    /* الزر الفردي */
+    .chat-action-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+      flex-shrink: 0;
+    }
+    .chat-action-btn svg { display: block; }
+    .chat-action-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: scale(1.08);
+    }
+    .chat-action-btn:active { transform: scale(0.92); }
+
+    /* زر التثبيت */
+    .chat-action-btn.pin-btn:hover {
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.14);
+      box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.3);
+    }
+    .chat-action-btn.pin-btn.active {
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.18);
+    }
+
+    /* زر الحذف */
+    .chat-action-btn.delete-btn:hover {
+      color: #f87171;
+      background: rgba(248, 113, 113, 0.14);
+      box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.3);
+    }
+
+    /* في الثيمات الفاتحة */
+    body[data-theme="light"] .chat-item-actions,
+    body[data-theme="pink"] .chat-item-actions,
+    body[data-theme="royal-green"] .chat-item-actions,
+    body[data-theme="warm-brown"] .chat-item-actions,
+    body[data-theme="rose-gold"] .chat-item-actions {
+      background: rgba(15, 23, 42, 0.92);
+    }
+
+    /* يظهرون دائمًا على الجوال */
+    @media (hover: none) {
+      .chat-item-actions {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(-50%) translateX(0);
+      }
+    }
+
+    /* شريط تثبيت أفضل */
+    .chat-item.pinned {
+      border-right: 3px solid #fbbf24 !important;
+      background: linear-gradient(90deg, rgba(251, 191, 36, 0.06), transparent 40%) !important;
+    }
+
     @media (hover: none) { .cursor-glow { display: none; } }
