@@ -1534,4 +1534,465 @@
       background: linear-gradient(90deg, rgba(251, 191, 36, 0.06), transparent 40%) !important;
     }
 
+        /* ═══════════════════════════════════════════════════════
+       MISHKAT EVOLUTION — مستويات + إنجازات
+       ═══════════════════════════════════════════════════════ */
+
+    /* ─── Badge المستوى ─── */
+    .mk-level-badge {
+      position: absolute;
+      top: -4px;
+      right: -8px;
+      min-width: 24px;
+      height: 24px;
+      padding: 0 6px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #f59e0b, #ec4899);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.55), inset 0 1px 0 rgba(255,255,255,0.35);
+      cursor: pointer;
+      z-index: 10;
+      transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1);
+      animation: mkBadgeFloat 2.5s ease-in-out infinite;
+    }
+    .mk-level-badge:hover {
+      transform: scale(1.15) rotate(-6deg);
+    }
+    .mk-level-badge .mk-lv-num { font-size: 11px; }
+    .mk-level-badge .mk-lv-icon { font-size: 11px; line-height: 1; }
+    @keyframes mkBadgeFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+    /* ─── تطوّر مشكاة حسب المستوى ─── */
+    /* L1-2: شعلة صغيرة (الافتراضي) */
+    .mishkat[data-level="1"] .mk-glow,
+    .mishkat[data-level="2"] .mk-glow { opacity: 0.7; }
+
+    /* L3-4: توهج أوسع */
+    .mishkat[data-level="3"] .mk-glow,
+    .mishkat[data-level="4"] .mk-glow {
+      transform: scale(1.15);
+      filter: brightness(1.1);
+    }
+
+    /* L5-6: هالة ذهبية + تاج */
+    .mishkat[data-level="5"] .mk-glow,
+    .mishkat[data-level="6"] .mk-glow {
+      transform: scale(1.25);
+      filter: brightness(1.2) saturate(1.1);
+    }
+    .mishkat[data-level="5"]::before,
+    .mishkat[data-level="6"]::before,
+    .mishkat[data-level="7"]::before,
+    .mishkat[data-level="8"]::before,
+    .mishkat[data-level="9"]::before,
+    .mishkat[data-level="10"]::before {
+      content: '';
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 60px;
+      background: conic-gradient(from 0deg, #fbbf24, #f59e0b, #ec4899, #fbbf24);
+      border-radius: 50%;
+      z-index: -1;
+      filter: blur(15px);
+      opacity: 0.7;
+      animation: spinGlow 8s linear infinite;
+      pointer-events: none;
+    }
+
+    /* L7-8: هالة بيضاء + قمر */
+    .mishkat[data-level="7"] .mk-glow,
+    .mishkat[data-level="8"] .mk-glow {
+      transform: scale(1.4);
+      filter: brightness(1.35) saturate(1.15);
+    }
+    .mishkat[data-level="7"]::after,
+    .mishkat[data-level="8"]::after {
+      content: '✦';
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 16px;
+      color: #fff;
+      text-shadow: 0 0 14px #fef3c7, 0 0 20px #fbbf24;
+      animation: mkSparkleTop 3s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes mkSparkleTop {
+      0%, 100% { opacity: 0.7; transform: translateX(-50%) scale(1) rotate(0deg); }
+      50% { opacity: 1; transform: translateX(-50%) scale(1.2) rotate(180deg); }
+    }
+
+    /* L9-10: أورورا بنفسجية + وهج قوي */
+    .mishkat[data-level="9"] .mk-glow,
+    .mishkat[data-level="10"] .mk-glow {
+      transform: scale(1.5);
+      filter: brightness(1.45) saturate(1.3) hue-rotate(-10deg);
+    }
+    .mishkat[data-level="9"] .mk-flame,
+    .mishkat[data-level="10"] .mk-flame {
+      filter: brightness(1.2) drop-shadow(0 0 14px #a855f7);
+    }
+    .mishkat[data-level="10"] .mk-svg { animation: mkUltimateFloat 2s ease-in-out infinite; }
+    @keyframes mkUltimateFloat {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-4px) rotate(-2deg); }
+    }
+
+    /* ─── Achievement Toast ─── */
+    .mk-ach-toast {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-120%);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px 12px 14px;
+      background: linear-gradient(135deg, rgba(23,16,43,0.97), rgba(15,23,42,0.97));
+      border: 1px solid rgba(251,191,36,0.4);
+      border-radius: 18px;
+      box-shadow: 0 24px 60px -14px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.1);
+      backdrop-filter: blur(24px) saturate(1.6);
+      z-index: 9999;
+      transition: transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1);
+      max-width: 90vw;
+    }
+    .mk-ach-toast.show { transform: translateX(-50%) translateY(0); }
+    .mk-ach-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #fbbf24, #ec4899);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 6px 20px rgba(251,191,36,0.5);
+      flex-shrink: 0;
+      animation: mkBadgeFloat 2s ease-in-out infinite;
+    }
+    .mk-ach-body { display: flex; flex-direction: column; gap: 2px; color: #fff; }
+    .mk-ach-tag {
+      font-size: 10.5px;
+      color: #fbbf24;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+    .mk-ach-name { font-size: 14px; font-weight: 700; }
+    .mk-ach-desc { font-size: 11.5px; opacity: 0.65; }
+
+    /* ─── Level Up Modal ─── */
+    .mk-level-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(14px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.35s ease;
+      padding: 20px;
+    }
+    .mk-level-modal-overlay.show { opacity: 1; }
+    .mk-level-modal {
+      position: relative;
+      background: linear-gradient(160deg, #1a0f33 0%, #0a0518 100%);
+      border-radius: 28px;
+      padding: 40px 32px 28px;
+      max-width: 380px;
+      width: 100%;
+      text-align: center;
+      color: #fff;
+      border: 1px solid rgba(251,191,36,0.35);
+      box-shadow: 0 40px 120px -20px rgba(251,191,36,0.45), inset 0 1px 0 rgba(255,255,255,0.12);
+      overflow: hidden;
+      animation: mkLevelPop 0.6s cubic-bezier(0.34, 1.4, 0.64, 1);
+    }
+    @keyframes mkLevelPop {
+      0% { transform: scale(0.6) rotate(-6deg); opacity: 0; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    .mk-level-halo {
+      position: absolute;
+      top: -80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 240px;
+      height: 240px;
+      background: radial-gradient(circle, rgba(251,191,36,0.55) 0%, transparent 70%);
+      filter: blur(40px);
+      animation: mkPulse 3s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .mk-level-icon {
+      position: relative;
+      font-size: 64px;
+      line-height: 1;
+      margin-bottom: 14px;
+      filter: drop-shadow(0 10px 30px rgba(251,191,36,0.6));
+      animation: mkBadgeFloat 2s ease-in-out infinite;
+    }
+    .mk-level-tag {
+      display: inline-block;
+      padding: 4px 12px;
+      background: linear-gradient(135deg, #fbbf24, #ec4899);
+      color: #fff;
+      font-size: 10.5px;
+      font-weight: 700;
+      border-radius: 999px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 14px rgba(251,191,36,0.5);
+    }
+    .mk-level-title {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #fef3c7, #fbbf24, #ec4899);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+    .mk-level-sub {
+      font-size: 13px;
+      opacity: 0.7;
+      margin-bottom: 22px;
+    }
+    .mk-level-progress {
+      width: 100%;
+      height: 8px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 24px;
+      position: relative;
+    }
+    .mk-level-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #fbbf24, #ec4899, #a855f7);
+      border-radius: 999px;
+      transition: width 1.2s cubic-bezier(0.34, 1.3, 0.64, 1);
+      box-shadow: 0 0 14px rgba(251,191,36,0.7);
+    }
+    .mk-level-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    .mk-level-continue {
+      padding: 12px 28px;
+      background: linear-gradient(135deg, #fbbf24, #ec4899);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 10px 28px rgba(251,191,36,0.45), inset 0 1px 0 rgba(255,255,255,0.25);
+      transition: transform 0.2s;
+    }
+    .mk-level-continue:hover { transform: translateY(-2px); }
+    .mk-level-continue:active { transform: scale(0.96); }
+
+    /* ─── Evolution Panel ─── */
+    .mk-evo-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(14px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .mk-evo-overlay.show { opacity: 1; }
+    .mk-evo-modal {
+      position: relative;
+      background: linear-gradient(160deg, #1a0f33 0%, #0a0518 100%);
+      border-radius: 24px;
+      padding: 28px 22px;
+      max-width: 640px;
+      width: 100%;
+      color: #fff;
+      border: 1px solid rgba(251,191,36,0.25);
+      box-shadow: 0 40px 120px -20px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08);
+      max-height: 90vh;
+      overflow-y: auto;
+      margin: auto;
+      animation: mkLevelPop 0.5s cubic-bezier(0.34, 1.4, 0.64, 1);
+    }
+    .mk-evo-close {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .mk-evo-close:hover { background: rgba(239,68,68,0.2); color: #f87171; }
+    .mk-evo-header { text-align: center; margin-bottom: 22px; padding-top: 10px; }
+    .mk-evo-current-icon {
+      font-size: 54px;
+      line-height: 1;
+      margin-bottom: 10px;
+      filter: drop-shadow(0 8px 24px rgba(251,191,36,0.5));
+      animation: mkBadgeFloat 2.5s ease-in-out infinite;
+    }
+    .mk-evo-header h2 {
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #fef3c7, #fbbf24, #ec4899);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .mk-evo-header p { font-size: 13px; opacity: 0.65; }
+    .mk-evo-progress {
+      position: relative;
+      height: 24px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 22px;
+    }
+    .mk-evo-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #fbbf24, #ec4899, #a855f7);
+      border-radius: 999px;
+      box-shadow: 0 0 14px rgba(251,191,36,0.6);
+      transition: width 1s cubic-bezier(0.34, 1.3, 0.64, 1);
+    }
+    .mk-evo-progress-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+    .mk-evo-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .mk-evo-stat {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 12px 6px;
+      text-align: center;
+    }
+    .mk-evo-stat span {
+      display: block;
+      font-size: 18px;
+      font-weight: 800;
+      color: #fbbf24;
+      margin-bottom: 4px;
+    }
+    .mk-evo-stat label { font-size: 10.5px; opacity: 0.6; }
+    .mk-evo-section { margin-bottom: 22px; }
+    .mk-evo-section h3 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      opacity: 0.85;
+    }
+    .mk-evo-levels {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 8px;
+    }
+    .mk-evo-level {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 10px 6px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .mk-evo-level.done {
+      background: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(236,72,153,0.1));
+      border-color: rgba(251,191,36,0.35);
+    }
+    .mk-evo-level.current {
+      background: linear-gradient(135deg, rgba(251,191,36,0.25), rgba(236,72,153,0.18));
+      border-color: rgba(251,191,36,0.6);
+      box-shadow: 0 6px 20px rgba(251,191,36,0.3);
+      transform: scale(1.03);
+    }
+    .mk-evo-level-icon { font-size: 22px; margin-bottom: 4px; }
+    .mk-evo-level-num { font-size: 10px; opacity: 0.55; margin-bottom: 2px; }
+    .mk-evo-level-name { font-size: 11px; font-weight: 700; margin-bottom: 2px; }
+    .mk-evo-level-xp { font-size: 9.5px; opacity: 0.45; }
+    .mk-evo-level:not(.done) { opacity: 0.55; }
+
+    .mk-evo-achs {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 8px;
+    }
+    .mk-evo-ach {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 12px 8px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .mk-evo-ach.unlocked {
+      background: linear-gradient(135deg, rgba(251,191,36,0.18), rgba(236,72,153,0.12));
+      border-color: rgba(251,191,36,0.4);
+      box-shadow: 0 4px 14px rgba(251,191,36,0.2);
+    }
+    .mk-evo-ach.locked { opacity: 0.42; filter: grayscale(0.6); }
+    .mk-evo-ach-icon { font-size: 22px; margin-bottom: 6px; }
+    .mk-evo-ach-name { font-size: 11.5px; font-weight: 700; margin-bottom: 2px; }
+    .mk-evo-ach-desc { font-size: 10px; opacity: 0.6; }
+
+    /* الجوال */
+    @media (max-width: 600px) {
+      .mk-evo-stats { grid-template-columns: repeat(2, 1fr); }
+      .mk-level-title { font-size: 22px; }
+      .mk-evo-header h2 { font-size: 20px; }
+      .mk-ach-toast { padding: 10px 14px 10px 10px; max-width: calc(100vw - 24px); }
+    }
+
     @media (hover: none) { .cursor-glow { display: none; } }
