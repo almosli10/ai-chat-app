@@ -417,8 +417,23 @@
     }
 
     .msg-bubble pre { animation: fadeIn 0.3s ease; }
+        /* ═══════════════════════════════════════════
+       SYNTAX HIGHLIGHTING — highlight.js
+       ═══════════════════════════════════════════ */
+    .msg-bubble pre { background: #0d1117 !important; }
+    .msg-bubble pre code.hljs { padding: 0 !important; background: transparent !important; color: inherit !important; font-size: inherit !important; }
+    .msg-bubble pre .code-lang-badge {
+      position: absolute; top: 8px; left: 12px;
+      background: rgba(255,255,255,0.08); color: #94a3b8;
+      font-size: 10.5px; font-weight: 700; text-transform: lowercase;
+      padding: 3px 9px; border-radius: 5px;
+      font-family: 'Courier New', monospace; letter-spacing: 0.5px;
+      pointer-events: none; user-select: none; line-height: 1;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1608,7 +1623,49 @@ ${conversation}
       if (typeof saveAllChats === 'function') try { saveAllChats(); } catch(e){}
     });
 
-    console.log('✨ UI/UX Enhancements loaded');
+        console.log('✨ UI/UX Enhancements loaded');
+  </script>
+
+  <!-- ═══════════════════════════════════════════
+       SYNTAX HIGHLIGHTING — highlight.js
+       ═══════════════════════════════════════════ -->
+  <script>
+  (function syntaxHighlighting() {
+    if (typeof hljs === 'undefined') { console.warn('⚠️ hljs missing'); return; }
+
+    function highlightCodeBlocks(container) {
+      if (!container) return;
+      container.querySelectorAll('pre code').forEach(code => {
+        if (code.dataset.highlighted === 'yes') return;
+        try { hljs.highlightElement(code); } catch (e) {}
+        const pre = code.parentElement;
+        if (pre && !pre.querySelector('.code-lang-badge')) {
+          const match = (code.className || '').match(/language-([\w-]+)/);
+          const lang = match ? match[1].toLowerCase() : 'code';
+          const badge = document.createElement('span');
+          badge.className = 'code-lang-badge';
+          badge.textContent = lang;
+          pre.appendChild(badge);
+        }
+      });
+    }
+
+    // Hook: addCopyButtons يُستدعى بعد انتهاء البث وعند عرض رسالة ثابتة
+    if (typeof window.addCopyButtons === 'function' && !window.addCopyButtons.__hljsWrapped) {
+      const orig = window.addCopyButtons;
+      window.addCopyButtons = function(container) {
+        const r = orig.apply(this, arguments);
+        try { highlightCodeBlocks(container); } catch (e) {}
+        return r;
+      };
+      window.addCopyButtons.__hljsWrapped = true;
+    }
+
+    // إعادة تلوين الرسائل الموجودة عند تحميل الصفحة (سجل المحادثات)
+    setTimeout(() => highlightCodeBlocks(document.getElementById('chatInner')), 1000);
+
+    console.log('🎨 Syntax highlighting ready');
+  })();
   </script>
 </body>
 </html>
