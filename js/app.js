@@ -478,8 +478,7 @@ function openStats() {
 
 function openShortcuts() { document.getElementById('shortcutsModal').classList.add('show'); }
 document.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && e.key === 'k') { e.preventDefault(); searchInput.focus(); }
-  else if (e.ctrlKey && e.key === 'n') { e.preventDefault(); createNewChat(); }
+  if (e.ctrlKey && e.key === 'n') { e.preventDefault(); createNewChat(); }
   else if (e.ctrlKey && e.key === '/') { e.preventDefault(); input.focus(); }
   else if (e.ctrlKey && e.key === 'b') { e.preventDefault(); toggleAgentMode(); }
   else if (e.key === 'Escape') { ['settingsModal','themesModal','soundsModal','personasModal','shortcutsModal','syncModal','shareModal','statsModal','encryptionModal','notificationsModal','memoryModal'].forEach(id => closeModal(id)); if (searchInput.value) { searchInput.value = ''; renderSidebar(); } closeLightbox(); closeReadingMode(); }
