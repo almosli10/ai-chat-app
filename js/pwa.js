@@ -88,7 +88,30 @@
     banner.id = 'pwa-install-banner';
     banner.innerHTML = `
       <div class="pwa-install-content">
-        <div class="pwa-install-icon">✨</div>
+                <div class="pwa-install-icon">
+          <svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="ibBody" cx="0.4" cy="0.3">
+                <stop offset="0%" stop-color="#fef3c7"/>
+                <stop offset="35%" stop-color="#fcd34d"/>
+                <stop offset="70%" stop-color="#f59e0b"/>
+                <stop offset="100%" stop-color="#b45309"/>
+              </radialGradient>
+              <linearGradient id="ibFlame" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0%" stop-color="#ea580c"/>
+                <stop offset="40%" stop-color="#fbbf24"/>
+                <stop offset="100%" stop-color="#fffbeb"/>
+              </linearGradient>
+            </defs>
+            <path d="M50 8 Q 60 22 56 34 Q 62 30 60 42 Q 52 38 50 46 Q 48 38 40 42 Q 38 30 44 34 Q 40 22 50 8 Z" fill="url(#ibFlame)"/>
+            <ellipse cx="50" cy="68" rx="30" ry="28" fill="url(#ibBody)"/>
+            <ellipse cx="40" cy="68" rx="6" ry="7" fill="#fffbeb"/>
+            <circle cx="40" cy="68" r="3.5" fill="#1c1917"/>
+            <ellipse cx="60" cy="68" rx="6" ry="7" fill="#fffbeb"/>
+            <circle cx="60" cy="68" r="3.5" fill="#1c1917"/>
+            <path d="M44 82 Q50 85 56 82" stroke="#78350f" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
         <div class="pwa-install-text">
           <strong>ثبّت التطبيق</strong>
           <span>افتحه من سطح المكتب أو الشاشة الرئيسية</span>
@@ -274,10 +297,36 @@
     const splash = document.createElement('div');
     splash.id = 'pwa-splash';
     splash.innerHTML = `
-      <div class="pwa-splash-logo">✨</div>
-      <div class="pwa-splash-brand">مساعد AI</div>
-      <div class="pwa-splash-loader"><span></span><span></span><span></span></div>
-    `;
+  <div class="pwa-splash-logo">
+    <svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="spBody" cx="0.4" cy="0.3">
+          <stop offset="0%" stop-color="#fef3c7"/>
+          <stop offset="35%" stop-color="#fcd34d"/>
+          <stop offset="70%" stop-color="#f59e0b"/>
+          <stop offset="100%" stop-color="#b45309"/>
+        </radialGradient>
+        <linearGradient id="spFlame" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%" stop-color="#ea580c"/>
+          <stop offset="40%" stop-color="#fbbf24"/>
+          <stop offset="100%" stop-color="#fffbeb"/>
+        </linearGradient>
+      </defs>
+      <path d="M50 8 Q 60 22 56 34 Q 62 30 60 42 Q 52 38 50 46 Q 48 38 40 42 Q 38 30 44 34 Q 40 22 50 8 Z" fill="url(#spFlame)"/>
+      <ellipse cx="50" cy="68" rx="30" ry="28" fill="url(#spBody)"/>
+      <ellipse cx="40" cy="58" rx="9" ry="5" fill="white" opacity="0.35"/>
+      <ellipse cx="40" cy="68" rx="6" ry="7" fill="#fffbeb"/>
+      <circle cx="40" cy="68" r="3.5" fill="#1c1917"/>
+      <circle cx="38.5" cy="66.5" r="1.2" fill="white"/>
+      <ellipse cx="60" cy="68" rx="6" ry="7" fill="#fffbeb"/>
+      <circle cx="60" cy="68" r="3.5" fill="#1c1917"/>
+      <circle cx="58.5" cy="66.5" r="1.2" fill="white"/>
+      <path d="M44 82 Q50 85 56 82" stroke="#78350f" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="pwa-splash-brand">مِشكاة</div>
+  <div class="pwa-splash-loader"><span></span><span></span><span></span></div>
+`;
     document.body.appendChild(splash);
     sessionStorage.setItem('pwa_splash_done', '1');
     setTimeout(() => {
