@@ -288,6 +288,135 @@
       .top-actions button { padding: 6px 8px; font-size: 12px; }
       .top-actions button span.label { display: none; }
     }
+
+    /* ═══════════════════════════════════════════
+       UI/UX ENHANCEMENTS — إضافات تحسين التجربة
+       ═══════════════════════════════════════════ */
+
+    /* --- Micro-interactions: ضغط الأزرار --- */
+    button { transition: transform 0.12s cubic-bezier(0.4,0,0.2,1), box-shadow var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast) !important; }
+    button:active:not(:disabled) { transform: scale(0.95) !important; }
+    .chat-item:active, .suggestion-card:active, .theme-card:active, .persona-card:active,
+    .template-chip:active, .msg-action-btn:active, .reaction-picker button:active, .accent-swatch:active {
+      transform: scale(0.93);
+    }
+    .send-btn:active:not(:disabled) { transform: scale(0.88) !important; }
+
+    /* --- Focus states (a11y) --- */
+    button:focus-visible, input:focus-visible, textarea:focus-visible,
+    .chat-item:focus-visible, .suggestion-card:focus-visible, .theme-card:focus-visible {
+      outline: 2px solid var(--accent); outline-offset: 2px; border-radius: inherit;
+    }
+
+    /* --- Skeleton Loader --- */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-hover) 50%, var(--bg-tertiary) 75%);
+      background-size: 200% 100%; animation: skeletonShimmer 1.5s infinite linear;
+      border-radius: var(--radius-md);
+    }
+    @keyframes skeletonShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .skeleton-bubble { display: flex; flex-direction: column; gap: 8px; min-width: 180px; padding: 4px 0; }
+    .sk-line { height: 11px; }
+    .sk-line.w-90 { width: 90%; } .sk-line.w-70 { width: 70%; } .sk-line.w-50 { width: 50%; }
+
+    /* --- Tooltips --- */
+    [data-tooltip] { position: relative; }
+    [data-tooltip]::after {
+      content: attr(data-tooltip); position: absolute; bottom: calc(100% + 8px); left: 50%;
+      transform: translateX(-50%) translateY(4px); background: var(--text-primary); color: var(--bg-secondary);
+      padding: 5px 10px; border-radius: 8px; font-size: 11.5px; white-space: nowrap; font-weight: 500;
+      opacity: 0; pointer-events: none; transition: all 0.18s ease; z-index: 100; box-shadow: var(--shadow-md);
+    }
+    [data-tooltip]:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+    @media (max-width: 900px) { [data-tooltip]::after { display: none; } }
+
+    /* --- Ripple Effect --- */
+    .ripple { position: relative; overflow: hidden; }
+    .ripple::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit;
+      background: radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), rgba(255,255,255,0.4) 0%, transparent 55%);
+      opacity: 0; transition: opacity 0.5s ease; pointer-events: none;
+    }
+    .ripple:active::before { opacity: 1; transition: none; }
+
+    /* --- Confetti --- */
+    .confetti-piece { position: fixed; width: 10px; height: 14px; top: -20px; z-index: 5000; pointer-events: none; will-change: transform; }
+    @keyframes confettiFall { to { transform: translateY(105vh) rotate(720deg); opacity: 0; } }
+
+    /* --- Sticky header shadow on scroll --- */
+    .top-bar { position: sticky; top: 0; transition: box-shadow var(--transition), border-color var(--transition); }
+    .top-bar.scrolled { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    body[data-theme="dark"] .top-bar.scrolled, body[data-theme="blue-night"] .top-bar.scrolled { box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+
+    /* --- Avatar pulse --- */
+    .msg.assistant .msg-avatar { position: relative; }
+    .msg.assistant .msg-avatar::after {
+      content: ''; position: absolute; inset: 0; border-radius: 50%;
+      background: linear-gradient(135deg, #10b981, #06b6d4); z-index: -1;
+      animation: avatarPulse 2.5s ease-out infinite;
+    }
+    @keyframes avatarPulse { 0% { opacity: 0.55; transform: scale(1); } 70%,100% { opacity: 0; transform: scale(1.6); } }
+
+    /* --- Typing indicator أنيقة --- */
+    .typing-indicator span { width: 8px; height: 8px; background: var(--accent); }
+
+    /* --- Scroll to bottom button --- */
+    .scroll-bottom-btn {
+      position: absolute; bottom: 130px; left: 24px; width: 42px; height: 42px; border-radius: 50%;
+      background: var(--bg-secondary); border: 1px solid var(--border-light); color: var(--text-primary);
+      cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center;
+      box-shadow: var(--shadow-md); opacity: 0; pointer-events: none; transition: all 0.25s ease; z-index: 50;
+    }
+    .scroll-bottom-btn.show { opacity: 1; pointer-events: auto; }
+    .scroll-bottom-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+    /* --- Safe area للجوال --- */
+    @supports (padding: max(0px)) {
+      @media (max-width: 900px) {
+        .input-area { padding-bottom: max(16px, env(safe-area-inset-bottom, 16px)); }
+        .top-bar { padding-top: max(12px, env(safe-area-inset-top, 12px)); }
+        .sidebar { padding-top: max(20px, env(safe-area-inset-top, 20px)); }
+      }
+    }
+
+    /* --- Empty state محسّن --- */
+    .welcome { position: relative; }
+    .welcome::before {
+      content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+      background: radial-gradient(circle at 50% 20%, var(--accent-soft) 0%, transparent 60%);
+      animation: welcomeGlow 8s ease-in-out infinite;
+    }
+    @keyframes welcomeGlow { 0%,100% { opacity: 0.4; } 50% { opacity: 0.85; } }
+
+    /* --- Message enter animation --- */
+    @keyframes msgIn { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .msg { animation: msgIn 0.4s cubic-bezier(0.34, 1.3, 0.64, 1); }
+
+    /* --- Input glow عند تفعيل الوكيل --- */
+    .input-wrapper.agent-on { border-color: #06b6d4; box-shadow: 0 0 0 4px rgba(6,182,212,0.15), var(--shadow-md); }
+
+    /* --- إجراءات الرسالة دائماً ظاهرة على الجوال --- */
+    @media (max-width: 600px) {
+      .msg-actions { opacity: 1; }
+      .msg-actions .msg-action-btn { padding: 5px 9px; font-size: 11px; }
+    }
+
+    /* --- أهداف لمس أكبر على الشاشات اللمسية --- */
+    @media (hover: none) {
+      .icon-btn { width: 44px; height: 44px; }
+      .msg-action-btn { padding: 7px 11px; }
+    }
+
+    /* --- Toast محسّن --- */
+    .toast { display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 14px 26px; border: 1px solid rgba(255,255,255,0.1); }
+
+    /* --- تحسين الظهور للنوافذ على الجوال --- */
+    @media (max-width: 600px) {
+      .modal { padding: 22px 18px; border-radius: 20px; }
+      .modal h3 { font-size: 17px; }
+    }
+
+    .msg-bubble pre { animation: fadeIn 0.3s ease; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
@@ -1346,6 +1475,140 @@ ${conversation}
       } else setOnlineStatus('offline');
     }
     init();
+  </script>
+
+  <!-- ═══════════════════════════════════════════
+       UI/UX ENHANCEMENTS — سكربت التحسينات
+       ═══════════════════════════════════════════ -->
+  <script>
+    // 1) Haptic Feedback
+    function haptic(ms = 8) { if (navigator.vibrate) try { navigator.vibrate(ms); } catch(e){} }
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('button, .chat-item, .suggestion-card, .template-chip, .theme-card, .persona-card, .msg-action-btn')) haptic(8);
+    }, true);
+
+    // 2) Auto Dark Mode حسب النظام
+    (function initAutoTheme() {
+      if (localStorage.getItem('theme')) return;
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      if (mq.matches) document.body.setAttribute('data-theme', 'dark');
+      mq.addEventListener('change', (e) => {
+        if (!localStorage.getItem('theme')) document.body.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+      });
+    })();
+
+    // 3) Tooltips تلقائية
+    function addTooltips() {
+      document.querySelectorAll('.icon-btn, .send-btn, .menu-btn, .top-actions button').forEach(btn => {
+        const t = btn.getAttribute('title');
+        if (t && !btn.hasAttribute('data-tooltip')) { btn.setAttribute('data-tooltip', t); btn.removeAttribute('title'); }
+      });
+    }
+    setTimeout(addTooltips, 300);
+
+    // 4) Ripple Effect
+    document.addEventListener('pointerdown', (e) => {
+      const b = e.target.closest('button, .new-chat-btn, .send-btn');
+      if (!b) return;
+      b.classList.add('ripple');
+      const r = b.getBoundingClientRect();
+      b.style.setProperty('--rx', ((e.clientX - r.left) / r.width * 100) + '%');
+      b.style.setProperty('--ry', ((e.clientY - r.top) / r.height * 100) + '%');
+      setTimeout(() => b.classList.remove('ripple'), 500);
+    });
+
+    // 5) Confetti
+    function fireConfetti(count = 45) {
+      const colors = ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#f43f5e'];
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = 'confetti-piece';
+        p.style.left = Math.random() * 100 + 'vw';
+        p.style.background = colors[Math.floor(Math.random() * colors.length)];
+        p.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+        p.style.animation = `confettiFall ${1.6 + Math.random() * 1.4}s cubic-bezier(0.3, 0.6, 0.6, 1) ${Math.random() * 0.4}s forwards`;
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), 3600);
+      }
+    }
+
+    // 6) Scroll-to-Bottom Button
+    (function initScrollButton() {
+      const btn = document.createElement('button');
+      btn.className = 'scroll-bottom-btn';
+      btn.innerHTML = '↓';
+      btn.setAttribute('aria-label', 'الأسفل');
+      const chatEl = document.getElementById('chat');
+      btn.onclick = () => chatEl.scrollTo({ top: chatEl.scrollHeight, behavior: 'smooth' });
+      document.querySelector('.main-content').appendChild(btn);
+      chatEl.addEventListener('scroll', () => {
+        const far = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight > 300;
+        btn.classList.toggle('show', far);
+      }, { passive: true });
+    })();
+
+    // 7) Sticky Header Shadow
+    (function initStickyHeader() {
+      const tb = document.querySelector('.top-bar');
+      const c = document.getElementById('chat');
+      c.addEventListener('scroll', () => tb.classList.toggle('scrolled', c.scrollTop > 10), { passive: true });
+    })();
+
+    // 8) Skeleton Loader بدل typing dots
+    const skeletonObserver = new MutationObserver((muts) => {
+      muts.forEach(m => m.addedNodes.forEach(n => {
+        if (n.nodeType !== 1) return;
+        let ti = null;
+        if (n.classList && n.classList.contains('typing-indicator')) ti = n;
+        else if (n.querySelector) ti = n.querySelector('.typing-indicator');
+        if (ti) {
+          const bubble = ti.closest('.msg-bubble');
+          if (bubble && !bubble.querySelector('.skeleton-bubble')) {
+            bubble.innerHTML = '<div class="skeleton-bubble"><div class="sk-line skeleton w-90"></div><div class="sk-line skeleton w-70"></div><div class="sk-line skeleton w-50"></div></div>';
+          }
+        }
+      }));
+    });
+    skeletonObserver.observe(document.body, { childList: true, subtree: true });
+
+    // 9) Input glow عند تفعيل الوكيل
+    setInterval(() => {
+      const iw = document.getElementById('inputRow');
+      const ab = document.getElementById('agentBtn');
+      if (iw && ab) iw.classList.toggle('agent-on', ab.classList.contains('active'));
+    }, 300);
+
+    // 10) Confetti عند أول رسالة
+    (function firstMsgConfetti() {
+      if (localStorage.getItem('celebrated')) return;
+      const check = setInterval(() => {
+        const total = document.querySelectorAll('#chatInner .msg.user').length;
+        if (total >= 1 && !localStorage.getItem('celebrated')) {
+          fireConfetti(60);
+          localStorage.setItem('celebrated', '1');
+          clearInterval(check);
+        }
+      }, 800);
+    })();
+
+    // 11) Tooltips متجددة بعد فتح النوافذ
+    setTimeout(() => {
+      ['openSettings','openThemes','openPersonas','openSounds','openNotifications','openMemory','openStats','openShortcuts','openEncryption'].forEach(fn => {
+        if (typeof window[fn] === 'function' && !window[fn].__wrapped) {
+          const orig = window[fn];
+          const wrapped = function(...args) { const r = orig.apply(this, args); setTimeout(addTooltips, 200); return r; };
+          wrapped.__wrapped = true;
+          window[fn] = wrapped;
+        }
+      });
+    }, 500);
+
+    // 12) تأكيد الحفظ قبل الإغلاق
+    window.addEventListener('beforeunload', () => {
+      if (typeof saveAllChats === 'function') try { saveAllChats(); } catch(e){}
+    });
+
+    console.log('✨ UI/UX Enhancements loaded');
   </script>
 </body>
 </html>
