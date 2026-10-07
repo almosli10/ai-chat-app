@@ -97,7 +97,6 @@
     const offlineBadge = document.getElementById('offlineBadge');
     const agentBtn = document.getElementById('agentBtn');
 
-    if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 
     function updateAgentBtn() {
       if (agentMode) { agentBtn.classList.add('active'); agentBtn.innerHTML = '🤖 <span class="label">وكيل ON</span>'; }
@@ -469,7 +468,21 @@ ${conversation}
       }
       fileInput.value = ''; renderAttachmentsPreview(); playSound('click');
     }
-    async function extractPdfText(file) { const ab = await file.arrayBuffer(); const p = await pdfjsLib.getDocument({ data: ab }).promise; let t = ''; for (let i = 1; i <= p.numPages; i++) { const pg = await p.getPage(i); const c = await pg.getTextContent(); t += c.items.map(x => x.str).join(' ') + '\n'; } return t; }
+    async function extractPdfText(file) {
+      // حمّل pdf.js عند أول استخدام فقط
+      if (!window.pdfjsLib) {
+        await window.loadPdfJS();
+      }
+      const ab = await file.arrayBuffer();
+      const p = await pdfjsLib.getDocument({ data: ab }).promise;
+      let t = '';
+      for (let i = 1; i <= p.numPages; i++) {
+        const pg = await p.getPage(i);
+        const c = await pg.getTextContent();
+        t += c.items.map(x => x.str).join(' ') + '\n';
+      }
+      return t;
+    }
     function compressImage(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = e => { const i = new Image(); i.onload = () => { const c = document.createElement('canvas'); let w = i.width, h = i.height; if (w > MAX_IMAGE_DIMENSION || h > MAX_IMAGE_DIMENSION) { if (w > h) { h = Math.round(h * MAX_IMAGE_DIMENSION / w); w = MAX_IMAGE_DIMENSION; } else { w = Math.round(w * MAX_IMAGE_DIMENSION / h); h = MAX_IMAGE_DIMENSION; } } c.width = w; c.height = h; c.getContext('2d').drawImage(i, 0, 0, w, h); let q = 0.85; let d = c.toDataURL('image/jpeg', q); while (d.length / 1024 > MAX_IMAGE_SIZE_KB && q > 0.3) { q -= 0.1; d = c.toDataURL('image/jpeg', q); } res(d); }; i.onerror = rej; i.src = e.target.result; }; r.onerror = rej; r.readAsDataURL(file); }); }
     function renderAttachmentsPreview() {
       attachmentsPreview.innerHTML = '';

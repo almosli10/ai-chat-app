@@ -1,25 +1,14 @@
 // ═══════════════════════════════════════════
-// ICONS — استبدال الإيموجي بأيقونات SVG (Lucide)
+// ICONS — SVG icons (lazy loaded)
 // ═══════════════════════════════════════════
 (function initIcons() {
   const ICON_MAP = {
-    '⚙️': 'settings',
-    '🎨': 'palette',
-    '🎭': 'venetian-mask',
-    '📊': 'bar-chart-3',
-    '🔊': 'volume-2',
-    '🔐': 'lock',
-    '🔔': 'bell',
-    '☁️': 'cloud',
-    '📤': 'upload',
-    '📥': 'download',
-    '🧠': 'brain',
-    '⌨️': 'keyboard',
-    '🤖': 'bot',
-    '🔗': 'link',
-    '📄': 'file-text',
-    '📎': 'paperclip',
-    '🎤': 'mic',
+    '⚙️': 'settings', '🎨': 'palette', '🎭': 'venetian-mask',
+    '📊': 'bar-chart-3', '🔊': 'volume-2', '🔐': 'lock',
+    '🔔': 'bell', '☁️': 'cloud', '📤': 'upload',
+    '📥': 'download', '🧠': 'brain', '⌨️': 'keyboard',
+    '🤖': 'bot', '🔗': 'link', '📄': 'file-text',
+    '📎': 'paperclip', '🎤': 'mic',
   };
 
   function replaceInElement(el) {
@@ -52,35 +41,42 @@
     });
   }
 
-  function applyIcons() {
+  async function applyIcons() {
+    // حمّل lucide عند الحاجة فقط
+    if (!window.lucide) {
+      try {
+        await window.loadLucide();
+        console.log('✅ lucide loaded (lazy)');
+      } catch (e) {
+        console.warn('⚠️ lucide failed:', e);
+        return;
+      }
+    }
     const selectors = [
       '.sidebar-footer button',
       '.top-actions button',
       '.input-wrapper .icon-btn',
       '.new-chat-btn',
+      '.quick-settings-grid button',
     ];
     selectors.forEach(sel => {
       document.querySelectorAll(sel).forEach(el => replaceInElement(el));
     });
-
     if (window.lucide && lucide.createIcons) {
-      try { lucide.createIcons(); } catch (e) { console.warn(e); }
+      try { lucide.createIcons(); } catch (e) {}
     }
   }
 
   function tryInit(retries) {
-    if (typeof lucide === 'undefined') {
-      if (retries > 0) return setTimeout(() => tryInit(retries - 1), 120);
-      console.warn('⚠️ Lucide غير محمّل');
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => tryInit(retries), { once: true });
       return;
     }
-    applyIcons();
-    console.log('🎯 SVG icons ready');
+    // تأخير بسيط عشان الصفحة تكون جاهزة
+    setTimeout(() => {
+      applyIcons();
+      console.log('🎯 SVG icons ready');
+    }, 400);
   }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => tryInit(30));
-  } else {
-    tryInit(30);
-  }
+  tryInit(20);
 })();
