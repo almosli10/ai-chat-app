@@ -127,4 +127,48 @@
       }, true);
     })();
 
+        // ═══════ POLISH PASS ═══════
+    (function polishPass() {
+      // 1) وقت الرسالة — Tooltip خفيف يظهر عند المرور
+      function attachTimeToMessage(msgDiv) {
+        if (!msgDiv || msgDiv.querySelector('.msg-time')) return;
+        const body = msgDiv.querySelector('.msg-body');
+        if (!body) return;
+        const timeEl = document.createElement('span');
+        timeEl.className = 'msg-time';
+        const now = new Date();
+        timeEl.textContent = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        timeEl.title = now.toLocaleString('ar-EG', {
+          weekday: 'long', day: 'numeric', month: 'long',
+          hour: '2-digit', minute: '2-digit'
+        });
+        body.appendChild(timeEl);
+      }
+
+      // Hook: addMessage
+      function hookAddMessage(retries) {
+        if (typeof window.addMessage !== 'function') {
+          if (retries > 0) return setTimeout(() => hookAddMessage(retries - 1), 200);
+          return;
+        }
+        if (window.addMessage.__polished) return;
+        const orig = window.addMessage;
+        window.addMessage = function (...args) {
+          const result = orig.apply(this, args);
+          try {
+            if (result && result.div) attachTimeToMessage(result.div);
+          } catch (e) {}
+          return result;
+        };
+        window.addMessage.__polished = true;
+      }
+      hookAddMessage(20);
+
+      // 2) إضافة وقت للرسائل الموجودة مسبقًا عند التبديل
+      setTimeout(() => {
+        document.querySelectorAll('#chatInner .msg').forEach(attachTimeToMessage);
+      }, 1500);
+    })();
+
+
     console.log('✨ UI/UX Enhancements loaded');
