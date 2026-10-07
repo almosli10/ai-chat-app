@@ -181,5 +181,92 @@
       if (typeof playSound === 'function') playSound('click');
     };
 
+    // ═══════ هوية مِشكاة — رد فوري على أسئلة التعريف ═══════
+    (function mishkatIdentity() {
+      const IDENTITY_PATTERNS = [
+        /^من\s+(أنت|انت|انتي)/i,
+        /^من\s+هو\s+(مشكاة|مِشكاة)/i,
+        /ما\s+(اسمك|اسمُك)/i,
+        /^(عرّف|عرف)\s+(بنفسك|نفسك)/i,
+        /^(مين|منو)\s+(أنت|انت)/i,
+        /who\s+are\s+you/i,
+        /what.{0,10}your\s+name/i,
+        /tell\s+me\s+about\s+yourself/i,
+      ];
+
+      const MISHKAT_INTRO = `أهلًا! 🌟
+
+أنا **مِشكاة** — اسمي مستوحى من الآية الكريمة:
+
+> ﴿اللَّهُ نُورُ السَّمَاوَاتِ وَالْأَرْضِ ۚ مَثَلُ نُورِهِ كَمِشْكَاةٍ فِيهَا مِصْبَاحٌ﴾
+> — سورة النور، الآية ٣٥
+
+**المِشكاة** في اللغة: كُوَّة في الحائط يوضع فيها المصباح، فيتجمع النور ويشعّ في كل اتجاه. وهذه هي رسالتي: أن أكون **مصدر نور** لك — في المعرفة، والأفكار، وحلّ المشكلات.
+
+🤖 **ما أستطيع فعله:**
+- 💬 محادثة ذكية بأسلوب ودود
+- 🔍 البحث في الإنترنت (وضع الوكيل — Ctrl+B)
+- 💻 كتابة وشرح الأكواد
+- 📝 التلخيص، الترجمة، والإبداع
+- 📎 قراءة ملفات PDF والصور
+- 🧠 تذكّر ما يهمّك (ذاكرتي طويلة!)
+
+🔒 **ملاحظة**: محادثاتك محفوظة على جهازك، ويمكنك تفعيل التشفير E2E من الإعدادات.
+
+كيف أقدر أنير طريقك اليوم؟ ✨`;
+
+      function isIdentityQuestion(text) {
+        const t = (text || '').trim();
+        if (!t || t.length > 80) return false;
+        return IDENTITY_PATTERNS.some(p => p.test(t));
+      }
+
+      // نعترض إرسال الرسالة قبل أن يذهب للـ API
+      function hookSend(retries = 30) {
+        if (typeof window.send !== 'function') {
+          if (retries > 0) return setTimeout(() => hookSend(retries - 1), 250);
+          return;
+        }
+        if (window.send.__identityWrapped) return;
+        const orig = window.send;
+        window.send = function (...args) {
+          try {
+            const input = document.getElementById('msg');
+            const text = (input?.value || '').trim();
+            if (isIdentityQuestion(text) && !attachedFiles?.length) {
+              // اعرض الرد مباشرة
+              input.value = '';
+              const now = new Date();
+              const dateStr = now.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+              // أضف الرسالة للمستخدم
+              const umi = allChats[currentChatId].messages.length;
+              allChats[currentChatId].messages.push({ role: 'user', content: text, displayText: text });
+              addMessage('user', text, false, umi);
+              // أضف رد مِشكاة
+              const asstIndex = allChats[currentChatId].messages.length;
+              allChats[currentChatId].messages.push({ role: 'assistant', content: MISHKAT_INTRO });
+              addMessage('assistant', MISHKAT_INTRO, false, asstIndex);
+              // تحديث العنوان إن كانت محادثة جديدة
+              if (allChats[currentChatId].title === 'محادثة جديدة') {
+                allChats[currentChatId].title = text.substring(0, 25);
+                chatTitleDisplay.textContent = allChats[currentChatId].title;
+                renderSidebar();
+              }
+              saveAllChats();
+              if (typeof playSound === 'function') playSound('receive');
+              if (typeof pushChatToCloud === 'function') pushChatToCloud(allChats[currentChatId]);
+              if (typeof addRegenerateButtonIfNeeded === 'function') addRegenerateButtonIfNeeded();
+              return Promise.resolve();
+            }
+          } catch (e) {}
+          return orig.apply(this, args);
+        };
+        window.send.__identityWrapped = true;
+      }
+      hookSend();
+
+      console.log('🏮 Mishkat identity ready');
+    })();
+
 
     console.log('✨ UI/UX Enhancements loaded');

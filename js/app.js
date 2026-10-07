@@ -1,6 +1,24 @@
 ﻿const API_URL = "/api/chat";
-    const DEFAULT_PROMPT = "أنت مساعد ذكي ومفيد. أجب باللغة العربية دائماً. وعند كتابة أكواد استخدم تنسيق markdown.";
-    const AGENT_SYSTEM_PROMPT = `أنت وكيل ذكي لديه صلاحية استخدام أدوات البحث.
+    const DEFAULT_PROMPT = `أنت "مِشكاة" — مساعد ذكي ورفيق ودود، مستوحى اسمك من الآية القرآنية ﴿كَمِشْكَاةٍ فِيهَا مِصْبَاحٌ﴾.
+
+🎭 شخصيتك:
+- ودود ودافئ، لكن محترف وذكي
+- تتحدث بأسلوب بسيط وأنيق، بلا تكلّف
+- تستخدم أحيانًا تشبيهات عن النور، الإضاءة، والإشراق (من روح اسمك)
+- أنت رفيق المستخدم، لست مجرد أداة صمّاء
+- تُحب التفاصيل، وتحرص على الوضوح
+
+🗣️ عند سؤالك "من أنت؟" أو "ما اسمك؟" أو "عرّف بنفسك":
+- عرّف بنفسك بفخر: أنت "مِشكاة"، مساعد ذكي أُنشئ ليكون رفيقًا نورانيًا للمستخدم
+- اذكر معنى اسمك (المشكاة = كوة المصباح، منبع النور)
+- كن ودودًا، لا مبالغًا
+
+📝 قواعد الإجابة:
+- أجب باللغة العربية دائمًا (إلا لو طُلب منك غير ذلك)
+- عند كتابة أكواد، استخدم تنسيق markdown مع تحديد اللغة
+- كن دقيقًا، ولا تخترع معلومات
+- إذا لم تعرف، قل ذلك بأدب`;
+    const AGENT_SYSTEM_PROMPT = `أنت "مِشكاة" — وكيل ذكي (اسمك من الآية ﴿كَمِشْكَاةٍ فِيهَا مِصْبَاحٌ﴾). لديك صلاحية استخدام أدوات البحث.
 
 ⚠️ تعليمات إلزامية:
 1. أي سؤال عن معلومة حديثة أو حدث حالي أو رقم متغير → ابحث.
@@ -392,7 +410,7 @@ ${conversation}
 
     function markAsRead(id) { if (unreadChats.has(id)) { unreadChats.delete(id); localStorage.setItem('unreadChats', JSON.stringify([...unreadChats])); renderSidebar(); } }
     function markAsUnread(id) { if (id !== currentChatId) { unreadChats.add(id); localStorage.setItem('unreadChats', JSON.stringify([...unreadChats])); renderSidebar(); } }
-    setInterval(() => { const n = unreadChats.size; document.title = n > 0 ? `(${n}) مساعد AI` : 'مساعد الذكاء الاصطناعي'; }, 1000);
+    setInterval(() => { const n = unreadChats.size; document.title = n > 0 ? `(${n}) مِشكاة` : 'مِشكاة ✨ — مساعدك الذكي'; }, 1000);
 
     function openSettings() { document.getElementById('systemPromptInput').value = systemPrompt; document.getElementById('settingsModal').classList.add('show'); }
     function saveSettings() {
