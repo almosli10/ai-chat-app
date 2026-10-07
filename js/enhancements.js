@@ -181,19 +181,48 @@
       if (typeof playSound === 'function') playSound('click');
     };
 
-    // ═══════ هوية مِشكاة — رد فوري على أسئلة التعريف ═══════
+    // ═══════ هوية مِشكاة — رد فوري + حماية من تسريب NoTrack ═══════
     (function mishkatIdentity() {
-      const IDENTITY_PATTERNS = [
-        /^من\s+(أنت|انت|انتي)/i,
-        /^من\s+هو\s+(مشكاة|مِشكاة)/i,
-        /ما\s+(اسمك|اسمُك)/i,
-        /^(عرّف|عرف)\s+(بنفسك|نفسك)/i,
-        /^(مين|منو)\s+(أنت|انت)/i,
-        /who\s+are\s+you/i,
-        /what.{0,10}your\s+name/i,
-        /tell\s+me\s+about\s+yourself/i,
+      // ─────────────────────────────────────────────
+      // 1) كاشف ذكي لأسئلة الهوية
+      // ─────────────────────────────────────────────
+      const IDENTITY_TRIGGERS = [
+        // مجموعات كلمات (كلمة من A + كلمة من B = سؤال هوية)
+        { a: ['من', 'مين', 'منو', 'شكون', 'منهو', 'ايش', 'وش', 'شو'], b: ['انت', 'أنت', 'إنت', 'انتي', 'أنتي'] },
+        { a: ['ما', 'ماهو', 'ايش', 'وش', 'شو', 'شنهو'], b: ['اسمك', 'اسمُك', 'اسمك ايه', 'اسمك شنو'] },
+        { a: ['عرف', 'عرّف', 'عرّفني', 'عرفني', 'أخبرني', 'اخبرني', 'احكيلي', 'حدثني', 'حدّثني', 'كلمني', 'كلمّني', 'قولي'], b: ['نفسك', 'بنفسك', 'عنك', 'عن نفسك', 'عن ذاتك', 'عن شخصيتك'] },
+        { a: ['احكيلي', 'حدثني', 'أخبرني', 'اخبرني', 'كلمني', 'قولي'], b: ['عنك', 'عن مين انت', 'عن نفسك'] },
+        { a: ['شنو', 'وش', 'ايش', 'شو', 'ما'], b: ['انت', 'أنت'] },
+        // عبارات مباشرة
+        { exact: ['who are you', 'what are you', 'tell me about yourself', 'introduce yourself', 'what is your name', 'your identity'] },
       ];
 
+      const GREETING_EXCEPTIONS = ['كيف حالك', 'شلونك', 'كيفك', 'شخبارك'];
+
+      function isIdentityQuestion(text) {
+        const t = (text || '').trim().toLowerCase();
+        if (!t || t.length > 100) return false;
+
+        // استثناءات (لا نريد الرد الفوري عليها)
+        if (GREETING_EXCEPTIONS.some(g => t.includes(g))) return false;
+
+        // فحص مطابقات مباشرة
+        for (const trigger of IDENTITY_TRIGGERS) {
+          if (trigger.exact) {
+            if (trigger.exact.some(e => t.includes(e))) return true;
+          }
+          if (trigger.a && trigger.b) {
+            const hasA = trigger.a.some(w => t.includes(w));
+            const hasB = trigger.b.some(w => t.includes(w));
+            if (hasA && hasB) return true;
+          }
+        }
+        return false;
+      }
+
+      // ─────────────────────────────────────────────
+      // 2) نص التعريف
+      // ─────────────────────────────────────────────
       const MISHKAT_INTRO = `أهلًا! 🌟
 
 أنا **مِشكاة** — اسمي مستوحى من الآية الكريمة:
@@ -215,13 +244,9 @@
 
 كيف أقدر أنير طريقك اليوم؟ ✨`;
 
-      function isIdentityQuestion(text) {
-        const t = (text || '').trim();
-        if (!t || t.length > 80) return false;
-        return IDENTITY_PATTERNS.some(p => p.test(t));
-      }
-
-      // نعترض إرسال الرسالة قبل أن يذهب للـ API
+      // ─────────────────────────────────────────────
+      // 3) اعتراض الإرسال
+      // ─────────────────────────────────────────────
       function hookSend(retries = 30) {
         if (typeof window.send !== 'function') {
           if (retries > 0) return setTimeout(() => hookSend(retries - 1), 250);
@@ -234,19 +259,13 @@
             const input = document.getElementById('msg');
             const text = (input?.value || '').trim();
             if (isIdentityQuestion(text) && !attachedFiles?.length) {
-              // اعرض الرد مباشرة
               input.value = '';
-              const now = new Date();
-              const dateStr = now.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-              // أضف الرسالة للمستخدم
               const umi = allChats[currentChatId].messages.length;
               allChats[currentChatId].messages.push({ role: 'user', content: text, displayText: text });
               addMessage('user', text, false, umi);
-              // أضف رد مِشكاة
               const asstIndex = allChats[currentChatId].messages.length;
               allChats[currentChatId].messages.push({ role: 'assistant', content: MISHKAT_INTRO });
               addMessage('assistant', MISHKAT_INTRO, false, asstIndex);
-              // تحديث العنوان إن كانت محادثة جديدة
               if (allChats[currentChatId].title === 'محادثة جديدة') {
                 allChats[currentChatId].title = text.substring(0, 25);
                 chatTitleDisplay.textContent = allChats[currentChatId].title;
@@ -265,7 +284,96 @@
       }
       hookSend();
 
-      console.log('🏮 Mishkat identity ready');
+      // ─────────────────────────────────────────────
+      // 4) حماية: استبدال أي تسريب لـ "NoTrack" في الردود
+      // ─────────────────────────────────────────────
+      const LEAK_PATTERNS = [
+        /\bNoTrack\b/gi,
+        /\bnotrack\.ai\b/gi,
+        /أنا\s+NoTrack[^.]*\./gi,
+      ];
+
+      function fixLeakedIdentity(text) {
+        if (!text) return text;
+        let fixed = text;
+        let leaked = false;
+
+        // إذا الرد يقول "أنا NoTrack" أو يذكر notrack.ai
+        if (/NoTrack|notrack\.ai/i.test(fixed)) {
+          leaked = true;
+          // استبدل الجملة الكاملة للتعريف
+          fixed = fixed.replace(
+            /أنا\s+NoTrack[^.]*\.(?:\s*NoTrack[^.]*\.)?/gi,
+            'أنا مِشكاة — مساعد ذكي مستوحى من النور. ✨'
+          );
+          // أي ذكر آخر
+          fixed = fixed.replace(/NoTrack\s*\(notrack\.ai\)/gi, 'مِشكاة');
+          fixed = fixed.replace(/NoTrack\b/gi, 'مِشكاة');
+          fixed = fixed.replace(/notrack\.ai/gi, 'مِشكاة');
+          fixed = fixed.replace(/by notrack/gi, '');
+        }
+        return { text: fixed, leaked };
+      }
+
+      // اعترض streamResponse و streamOnce — نراقب النص النهائي
+      function hookMarkedParsing(retries = 30) {
+        // نراقب الفقاعات الجديدة ونصلح أي NoTrack فيها
+        const ci = document.getElementById('chatInner');
+        if (!ci) {
+          if (retries > 0) return setTimeout(() => hookMarkedParsing(retries - 1), 300);
+          return;
+        }
+        const obs = new MutationObserver((muts) => {
+          muts.forEach(m => m.addedNodes.forEach(n => {
+            if (n.nodeType !== 1) return;
+            if (n.classList?.contains('msg') && n.classList?.contains('assistant')) {
+              const bubble = n.querySelector('.msg-bubble');
+              if (!bubble) return;
+              // انتظر قليلاً حتى ينتهي البث
+              setTimeout(() => {
+                const html = bubble.innerHTML;
+                if (/NoTrack|notrack\.ai/i.test(html)) {
+                  const { text: fixedText } = fixLeakedIdentity(bubble.textContent);
+                  // أعد البناء بـ markdown
+                  const txt = bubble.textContent;
+                  const fixedTxt = txt.replace(/أنا\s+NoTrack[^.]*\.(?:\s*NoTrack[^.]*\.)?/gi, 'أنا مِشكاة — مساعد ذكي مستوحى من النور. ✨')
+                                       .replace(/NoTrack\s*\(notrack\.ai\)/gi, 'مِشكاة')
+                                       .replace(/NoTrack\b/gi, 'مِشكاة')
+                                       .replace(/notrack\.ai/gi, 'مِشكاة');
+                  if (typeof marked !== 'undefined') {
+                    bubble.innerHTML = marked.parse(fixedTxt);
+                    if (typeof addCopyButtons === 'function') addCopyButtons(bubble);
+                  }
+                  // حدّث الرسالة في allChats
+                  try {
+                    const idx = [...document.querySelectorAll('#chatInner .msg.assistant')].indexOf(n);
+                    if (idx >= 0) {
+                      const allAssistant = allChats[currentChatId].messages
+                        .map((m, i) => ({ m, i }))
+                        .filter(x => x.m.role === 'assistant');
+                      if (allAssistant[idx]) {
+                        allAssistant[idx].m.content = fixedTxt;
+                        saveAllChats();
+                        pushChatToCloud(allChats[currentChatId]);
+                      }
+                    }
+                  } catch (e) {}
+                  // أعد تلوين الكود
+                  if (typeof window.hljs !== 'undefined') {
+                    bubble.querySelectorAll('pre code').forEach(c => {
+                      try { hljs.highlightElement(c); } catch (e) {}
+                    });
+                  }
+                }
+              }, 1800);
+            }
+          }));
+        });
+        obs.observe(ci, { childList: true });
+      }
+      hookMarkedParsing();
+
+      console.log('🏮 Mishkat identity + NoTrack leak protection ready');
     })();
 
 
