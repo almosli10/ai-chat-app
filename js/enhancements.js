@@ -113,5 +113,18 @@
     window.addEventListener('beforeunload', () => {
       if (typeof saveAllChats === 'function') try { saveAllChats(); } catch(e){}
     });
+    // ═══════ إغلاق النوافذ عند الضغط على الخلفية ═══════
+    (function modalBackdropClose() {
+      document.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('modal-overlay')) return;
+        e.target.classList.remove('show');
+      }, true);
+
+      // إغلاق بـ Esc لكل النوافذ المفتوحة
+      document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        document.querySelectorAll('.modal-overlay.show').forEach(m => m.classList.remove('show'));
+      }, true);
+    })();
 
     console.log('✨ UI/UX Enhancements loaded');
