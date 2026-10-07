@@ -49,18 +49,11 @@
     <div class="section-label">المحادثات</div>
     <div id="chatList"></div>
     <div class="sidebar-footer">
-      <button onclick="openSettings()">⚙️ <span>الإعدادات</span></button>
-      <button onclick="openThemes()">🎨 <span>الثيمات</span></button>
-      <button onclick="openPersonas()">🎭 <span>الشخصيات</span></button>
-      <button onclick="openStats()">📊 <span>إحصائيات</span></button>
-      <button onclick="openSounds()">🔊 <span>الأصوات</span></button>
-      <button onclick="openEncryption()">🔐 <span>التشفير</span></button>
-      <button class="notif-btn" onclick="openNotifications()" id="notifBtn">🔔 <span>التنبيهات</span></button>
-      <button class="sync-btn" onclick="syncWithCloud()">☁️ <span>مزامنة</span></button>
-      <button onclick="exportAllData()">📤 <span>تصدير</span></button>
-      <button onclick="document.getElementById('importInput').click()">📥 <span>استيراد</span></button>
-      <button onclick="openMemory()">🧠 <span>الذاكرة</span></button>
-      <button onclick="openShortcuts()">⌨️ <span>اختصارات</span></button>
+      <button class="quick-settings-btn" onclick="openQuickSettings()">
+        <span class="ui-icon-wrap"><i data-lucide="settings-2"></i></span>
+        <span>الإعدادات والقائمة</span>
+        <span class="chev">▼</span>
+      </button>
     </div>
     <input type="file" id="importInput" accept=".json" hidden onchange="importData(event)" />
   </aside>
@@ -111,6 +104,65 @@
       <div class="modal-buttons">
         <button class="cancel" onclick="clearMemory()" style="background:#ef4444; color:white;">🗑️ مسح الكل</button>
         <button class="save" onclick="closeModal('memoryModal')">إغلاق</button>
+      </div>
+    </div>
+  </div>
+    <!-- نافذة الإعدادات والقائمة -->
+  <div class="modal-overlay" id="quickSettingsModal">
+    <div class="modal">
+      <h3>⚙️ الإعدادات والقائمة</h3>
+      <div class="quick-settings-grid">
+        <button onclick="openSettings();closeModal('quickSettingsModal')">
+          <span class="ui-icon-wrap"><i data-lucide="settings"></i></span>
+          <span>الإعدادات</span>
+        </button>
+        <button onclick="openThemes();closeModal('quickSettingsModal')">
+          <span class="ui-icon-wrap"><i data-lucide="palette"></i></span>
+          <span>الثيمات</span>
+        </button>
+        <button onclick="openPersonas();closeModal('quickSettingsModal')">
+          <span class="ui-icon-wrap"><i data-lucide="venetian-mask"></i></span>
+          <span>الشخصيات</span>
+        </button>
+        <button onclick="openStats();closeModal('quickSettingsModal')">
+          <span class="ui-icon-wrap"><i data-lucide="bar-chart-3"></i></span>
+          <span>إحصائيات</span>
+        </button>
+        <button onclick="openSounds();closeModal('quickSettingsModal')">
+          <span class="ui-icon-wrap"><i data-lucide="volume-2"></i></span>
+          <span>الأصوات</span>
+        </button>
+        <button onclick="openEncryption();closeModal('quickSettingsModal')">
+          <span class="ui-icon-wrap"><i data-lucide="lock"></i></span>
+          <span>التشفير</span>
+        </button>
+        <button class="notif-btn" id="notifBtn" onclick="openNotifications();closeModal('quickSettingsModal')">
+          <span class="ui-icon-wrap"><i data-lucide="bell"></i></span>
+          <span>التنبيهات</span>
+        </button>
+        <button class="sync-btn" onclick="syncWithCloud();closeModal('quickSettingsModal')">
+          <span class="ui-icon-wrap"><i data-lucide="cloud"></i></span>
+          <span>مزامنة</span>
+        </button>
+        <button onclick="exportAllData()">
+          <span class="ui-icon-wrap"><i data-lucide="upload"></i></span>
+          <span>تصدير</span>
+        </button>
+        <button onclick="document.getElementById('importInput').click()">
+          <span class="ui-icon-wrap"><i data-lucide="download"></i></span>
+          <span>استيراد</span>
+        </button>
+        <button onclick="openMemory();closeModal('quickSettingsModal')">
+          <span class="ui-icon-wrap"><i data-lucide="brain"></i></span>
+          <span>الذاكرة</span>
+        </button>
+        <button onclick="openShortcuts();closeModal('quickSettingsModal')">
+          <span class="ui-icon-wrap"><i data-lucide="keyboard"></i></span>
+          <span>اختصارات</span>
+        </button>
+      </div>
+      <div class="modal-buttons">
+        <button class="save" onclick="closeModal('quickSettingsModal')">إغلاق</button>
       </div>
     </div>
   </div>

@@ -949,12 +949,24 @@ ${conversation}
       if (loadSharedChatIfPresent()) return;
       await initEncryption();
       updateNotifUI();
+
+      // 🆕 احذف أي محادثة فارغة سابقة (لتجنب تراكم "محادثة جديدة")
+      Object.keys(allChats).forEach(id => {
+        const c = allChats[id];
+        if (c && c.title === 'محادثة جديدة' &&
+            c.messages.filter(m => m.role !== 'system').length === 0) {
+          delete allChats[id];
+        }
+      });
+      localStorage.removeItem('lastChatId');
+      localStorage.setItem('allChats', JSON.stringify(allChats));
+
       renderSidebar();
       renderTemplates();
-      const li = localStorage.getItem('lastChatId');
-      if (li && allChats[li]) switchChat(li);
-      else if (Object.keys(allChats).length > 0) { const s = Object.values(allChats).sort((a,b) => b.timestamp - a.timestamp); switchChat(s[0].id); }
-      else createNewChat();
+
+      // 🆕 دائمًا افتح محادثة جديدة عند التحميل
+      createNewChat();
+
       if (initSupabase()) {
         await pullAllFromCloud(true);
         subscribeRealtime();

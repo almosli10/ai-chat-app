@@ -786,4 +786,91 @@
       display: inline-flex;
     }
     }
+        /* ═══════════════════════════════════════════════════════
+       QUICK SETTINGS — نافذة الإعدادات والقائمة
+       ═══════════════════════════════════════════════════════ */
+
+    /* حرّر مساحة كبيرة لقائمة المحادثات */
+    #chatList {
+      min-height: 200px;
+      max-height: none;
+    }
+
+    .sidebar-footer {
+      display: flex !important;
+      grid-template-columns: none !important;
+      padding-top: 14px;
+      margin-top: 12px;
+      flex-shrink: 0;
+    }
+
+    .quick-settings-btn {
+      width: 100% !important;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1)) !important;
+      color: var(--sidebar-text) !important;
+      border: 1px solid rgba(99,102,241,0.35) !important;
+      padding: 12px 14px !important;
+      font-size: 13.5px !important;
+      font-weight: 600 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 10px !important;
+      transition: all 0.22s cubic-bezier(0.4,0,0.2,1) !important;
+      position: relative;
+    }
+    .quick-settings-btn .chev {
+      margin-right: auto;
+      font-size: 10px;
+      opacity: 0.6;
+      transition: transform 0.25s ease;
+    }
+    .quick-settings-btn:hover {
+      background: linear-gradient(135deg, rgba(99,102,241,0.28), rgba(139,92,246,0.2)) !important;
+      border-color: var(--accent-user) !important;
+      color: #fff !important;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 22px rgba(99,102,241,0.3) !important;
+    }
+    .quick-settings-btn:hover .chev { transform: rotate(180deg); }
+    .quick-settings-btn:hover .ui-icon-wrap { color: var(--accent-user); }
+
+    /* شبكة الأزرار داخل النافذة */
+    .quick-settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .quick-settings-grid button {
+      padding: 14px 12px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+      border: 1px solid var(--border-light);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.22s cubic-bezier(0.4,0,0.2,1);
+      text-align: right;
+    }
+    .quick-settings-grid button .ui-icon-wrap {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+    .quick-settings-grid button:hover {
+      background: linear-gradient(135deg, var(--accent-soft), transparent);
+      border-color: var(--accent);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 24px -8px var(--accent-soft);
+      color: var(--accent);
+    }
+    .quick-settings-grid button:hover .ui-icon-wrap { color: var(--accent); }
+    .quick-settings-grid button.sync-btn { color: #6ee7b7; }
+    .quick-settings-grid button.notif-btn.active { color: #a5b4fc; border-color: rgba(99,102,241,0.5); }
     @media (hover: none) { .cursor-glow { display: none; } }
