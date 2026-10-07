@@ -461,5 +461,83 @@
   }, { passive: true });
 
   resetSleepTimer();
+    // ═══════════════════════════════════════════════════════
+  // MINI AVATAR — استبدال ✨ بشخصية مشكاة صغيرة
+  // ═══════════════════════════════════════════════════════
+  const MINI_SVG = `
+    <svg viewBox="0 0 100 100" class="mk-mini-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <radialGradient id="mkMiniGlow">
+          <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.55"/>
+          <stop offset="60%" stop-color="#f59e0b" stop-opacity="0.15"/>
+          <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="mkMiniBody" cx="0.4" cy="0.3">
+          <stop offset="0%" stop-color="#fef3c7"/>
+          <stop offset="35%" stop-color="#fcd34d"/>
+          <stop offset="70%" stop-color="#f59e0b"/>
+          <stop offset="100%" stop-color="#b45309"/>
+        </radialGradient>
+        <linearGradient id="mkMiniFlame" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%" stop-color="#ea580c"/>
+          <stop offset="40%" stop-color="#fbbf24"/>
+          <stop offset="100%" stop-color="#fffbeb"/>
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="68" r="44" fill="url(#mkMiniGlow)" class="mk-mini-glow"/>
+      <g class="mk-mini-flame">
+        <path d="M50 8 Q 60 22 56 34 Q 62 30 60 42 Q 52 38 50 46 Q 48 38 40 42 Q 38 30 44 34 Q 40 22 50 8 Z" fill="url(#mkMiniFlame)"/>
+        <path d="M50 16 Q 54 24 52 32 Q 50 36 50 38 Q 50 36 48 32 Q 46 24 50 16 Z" fill="#fffbeb" opacity="0.9"/>
+      </g>
+      <ellipse cx="50" cy="68" rx="30" ry="28" fill="url(#mkMiniBody)"/>
+      <ellipse cx="40" cy="58" rx="9" ry="5" fill="white" opacity="0.35"/>
+      <ellipse cx="64" cy="80" rx="5" ry="2.5" fill="#7c2d12" opacity="0.15"/>
+      <ellipse cx="40" cy="68" rx="6" ry="7" fill="#fffbeb"/>
+      <circle cx="40" cy="68" r="3.5" fill="#1c1917"/>
+      <circle cx="38.5" cy="66.5" r="1.2" fill="white"/>
+      <ellipse cx="60" cy="68" rx="6" ry="7" fill="#fffbeb"/>
+      <circle cx="60" cy="68" r="3.5" fill="#1c1917"/>
+      <circle cx="58.5" cy="66.5" r="1.2" fill="white"/>
+      <path d="M44 82 Q50 85 56 82" stroke="#78350f" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    </svg>
+  `;
+
+  function swapSparkles(root) {
+    if (!root || root.nodeType !== 1) return;
+    const SELECTORS = '.brand-logo, .welcome-logo, .msg.assistant .msg-avatar';
+    const candidates = [];
+    if (root.matches && root.matches(SELECTORS)) candidates.push(root);
+    if (root.querySelectorAll) candidates.push(...root.querySelectorAll(SELECTORS));
+
+    candidates.forEach(el => {
+      if (el.dataset.mkReplaced === '1') return;
+      if (el.querySelector('.mk-mini-svg')) { el.dataset.mkReplaced = '1'; return; }
+      if ((el.textContent || '').trim() === '✨') {
+        el.innerHTML = MINI_SVG;
+        el.dataset.mkReplaced = '1';
+        el.classList.add('mk-avatar-mini');
+      }
+    });
+  }
+
+  // مراقبة الإضافات الجديدة (رسائل، شاشات الترحيب)
+  const miniObs = new MutationObserver((muts) => {
+    muts.forEach(m => {
+      m.addedNodes.forEach(n => { if (n.nodeType === 1) swapSparkles(n); });
+    });
+  });
+  if (document.body) miniObs.observe(document.body, { childList: true, subtree: true });
+
+  // pass أولي
+  const initPass = () => swapSparkles(document.body);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPass, { once: true });
+  } else {
+    initPass();
+  }
+
+  // مكرر كل ثانية كأمان (يغطي حالات نادرة)
+  setInterval(initPass, 1500);
+
   console.log('🏮 Mishkat 2.0 loaded');
 })();
