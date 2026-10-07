@@ -522,21 +522,17 @@
       background: rgba(0,0,0,0.62) !important;
       backdrop-filter: blur(14px) saturate(1.3) !important;
       -webkit-backdrop-filter: blur(14px) saturate(1.3) !important;
+      overflow-y: auto !important;
+      align-items: flex-start !important;
+      padding: 20px !important;
     }
     .modal {
       backdrop-filter: blur(32px) saturate(1.6) !important;
       -webkit-backdrop-filter: blur(32px) saturate(1.6) !important;
       box-shadow: 0 40px 110px -22px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08) !important;
       position: relative;
+      margin: auto !important;
     }
-    /* السماح بالتمرير داخل النافذة عند الحاجة */
-    .modal-overlay {
-      overflow-y: auto !important;
-      align-items: flex-start !important;
-      padding: 20px !important;
-    }
-    .modal-overlay.show { display: flex; }
-    .modal { margin: auto !important; }
     .modal::before {
       content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
       background: linear-gradient(90deg, transparent, var(--accent), transparent);
@@ -637,7 +633,9 @@
       outline: 2px solid var(--accent) !important;
       outline-offset: 3px !important;
       box-shadow: 0 0 0 6px var(--accent-soft) !important;
-          /* ═══════════════════════════════════════════════════════
+    }
+
+    /* ═══════════════════════════════════════════════════════
        VISUAL PACK — SVG icons + Particles + Polish
        ═══════════════════════════════════════════════════════ */
 
@@ -785,8 +783,8 @@
       color: var(--accent);
       display: inline-flex;
     }
-    }
-        /* ═══════════════════════════════════════════════════════
+
+    /* ═══════════════════════════════════════════════════════
        QUICK SETTINGS — نافذة الإعدادات والقائمة
        ═══════════════════════════════════════════════════════ */
 
@@ -873,4 +871,5 @@
     .quick-settings-grid button:hover .ui-icon-wrap { color: var(--accent); }
     .quick-settings-grid button.sync-btn { color: #6ee7b7; }
     .quick-settings-grid button.notif-btn.active { color: #a5b4fc; border-color: rgba(99,102,241,0.5); }
+
     @media (hover: none) { .cursor-glow { display: none; } }

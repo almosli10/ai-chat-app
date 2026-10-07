@@ -170,5 +170,16 @@
       }, 1500);
     })();
 
+        // ═══════ نافذة الإعدادات والقائمة السريعة ═══════
+    window.openQuickSettings = function() {
+      const modal = document.getElementById('quickSettingsModal');
+      if (!modal) { console.warn('⚠️ quickSettingsModal غير موجود في HTML'); return; }
+      modal.classList.add('show');
+      if (window.lucide && lucide.createIcons) {
+        try { lucide.createIcons(); } catch (e) {}
+      }
+      if (typeof playSound === 'function') playSound('click');
+    };
+
 
     console.log('✨ UI/UX Enhancements loaded');
