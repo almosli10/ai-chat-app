@@ -124,6 +124,10 @@
     <div class="modal">
       <h3>⚙️ الإعدادات والقائمة</h3>
       <div class="quick-settings-grid">
+                <button onclick="toggleFocusMode();closeModal('quickSettingsModal')">
+          <span class="ui-icon-wrap"><i data-lucide="timer"></i></span>
+          <span>وضع التركيز</span>
+        </button>
         <button onclick="openSettings();closeModal('quickSettingsModal')">
           <span class="ui-icon-wrap"><i data-lucide="settings"></i></span>
           <span>الإعدادات</span>
@@ -196,5 +200,6 @@
   <script src="js/mishkat.js"></script>
   <script src="js/mishkat-extras.js"></script>
   <script src="js/mishkat-evolution.js"></script>
+  <script src="js/mishkat-features.js"></script>  
 </body>
 </html>
