@@ -265,6 +265,13 @@
     .reading-mode.show { display: flex; animation: fadeIn 0.3s ease; }
     .reading-mode-inner { max-width: 800px; margin: 0 auto; width: 100%; font-size: 17px; line-height: 2; }
     .reading-mode-close { position: fixed; top: 20px; right: 20px; background: var(--bg-secondary); border: 1px solid var(--border-light); width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; z-index: 2600; }
+
+        .api-selector { display: flex; gap: 8px; align-items: center; max-width: 820px; margin: 0 auto 8px; padding: 0 4px; flex-wrap: wrap; }
+    .api-selector label { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+    .api-select { background: var(--bg-secondary); border: 1px solid var(--border-light); color: var(--text-primary); padding: 6px 12px; border-radius: var(--radius-pill); font-size: 12.5px; font-family: inherit; cursor: pointer; outline: none; transition: all var(--transition-fast); max-width: 260px; }
+    .api-select:hover { border-color: var(--accent); }
+    .api-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
     /* 📝 قوالب سريعة */
     .templates-bar { display: flex; gap: 8px; overflow-x: auto; padding: 8px 4px; margin-bottom: 8px; scrollbar-width: none; max-width: 820px; margin-left: auto; margin-right: auto; }
     .templates-bar::-webkit-scrollbar { display: none; }
@@ -348,7 +355,17 @@
       </div>
     </div>
     <div id="chat"><div class="chat-inner" id="chatInner"></div></div>
-    <div class="input-area">
+        <div class="input-area">
+      <div class="api-selector">
+        <label>🤖 النموذج:</label>
+        <select id="apiSelect" class="api-select" onchange="onApiChange()">
+          <option value="notrack">Notrack (الحالي)</option>
+          <option value="openrouter-deepseek">DeepSeek R1 (مجاني)</option>
+          <option value="openrouter-llama">Llama 3.3 70B (مجاني)</option>
+          <option value="openrouter-qwen">Qwen 2.5 72B (مجاني)</option>
+          <option value="openrouter-mistral">Mistral Small (مجاني)</option>
+        </select>
+      </div>
       <div class="templates-bar" id="templatesBar"></div>
       <div class="attachments-preview-wrap"><div id="attachmentsPreview" class="attachments-preview"></div></div>
       <div class="input-wrapper" id="inputRow">
@@ -454,6 +471,25 @@
     let notifSettings = JSON.parse(localStorage.getItem('notifSettings') || JSON.stringify({ enabled: false, backgroundOnly: true }));
     let soundSettings = JSON.parse(localStorage.getItem('soundSettings') || JSON.stringify({ enabled: true, send: true, receive: true, click: true, notif: true }));
     let userMemory = JSON.parse(localStorage.getItem('userMemory') || '[]');
+        // 🌐 إعدادات APIs المتعددة
+    let currentApi = localStorage.getItem('currentApi') || 'notrack';
+    const API_CONFIGS = {
+      'notrack': { url: '/api/chat', model: null, name: 'Notrack' },
+      'openrouter-deepseek': { url: '/api/openrouter', model: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1' },
+      'openrouter-llama': { url: '/api/openrouter', model: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B' },
+      'openrouter-qwen': { url: '/api/openrouter', model: 'qwen/qwen-2.5-72b-instruct:free', name: 'Qwen 2.5 72B' },
+      'openrouter-mistral': { url: '/api/openrouter', model: 'mistralai/mistral-small-24b-instruct-2501:free', name: 'Mistral Small' }
+    };
+    function onApiChange() {
+      currentApi = document.getElementById('apiSelect').value;
+      localStorage.setItem('currentApi', currentApi);
+      toast(`🤖 تم التبديل إلى: ${API_CONFIGS[currentApi].name}`);
+      playSound('click');
+    }
+    function initApiSelector() {
+      const sel = document.getElementById('apiSelect');
+      if (sel) sel.value = currentApi;
+    }
 
     const PROMPT_TEMPLATES = [
       { icon: '📝', name: 'لخّص', text: 'لخّص النص التالي بإيجاز شديد: ' },
@@ -677,7 +713,10 @@ ${conversation}
       let fullReply = ''; let aborted = false;
       try {
         const messages = allChats[currentChatId].messages.map(m => ({ role: m.role, content: m.content }));
-        const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, stream: true }), signal: agentAbortController?.signal });
+        const cfg = API_CONFIGS[currentApi];
+        const reqBody = { messages, stream: true };
+        if (cfg.model) reqBody.model = cfg.model;
+        const res = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody), signal: agentAbortController?.signal });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const reader = res.body.getReader(); const decoder = new TextDecoder(); let buffer = ''; let firstChunk = true;
         while (true) {
@@ -1156,7 +1195,10 @@ ${conversation}
       lb.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
       let full = '';
       try {
-        const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: allChats[currentChatId].messages.map(m => ({ role: m.role, content: m.content })), stream: true }) });
+                const cfg = API_CONFIGS[currentApi];
+        const reqBody = { messages: allChats[currentChatId].messages.map(m => ({ role: m.role, content: m.content })), stream: true };
+        if (cfg.model) reqBody.model = cfg.model;
+        const res = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody) });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const reader = res.body.getReader(); const decoder = new TextDecoder(); let buffer = ''; let fc = true;
         while (true) {
@@ -1341,6 +1383,7 @@ ${conversation}
       updateNotifUI();
       renderSidebar();
       renderTemplates();
+      initApiSelector();
       const li = localStorage.getItem('lastChatId');
       if (li && allChats[li]) switchChat(li);
       else if (Object.keys(allChats).length > 0) { const s = Object.values(allChats).sort((a,b) => b.timestamp - a.timestamp); switchChat(s[0].id); }
