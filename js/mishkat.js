@@ -1,10 +1,9 @@
 // ═══════════════════════════════════════════════════════
-// MISHKAT — كائن حي يتفاعل مع المستخدم
+// MISHKAT 2.0 — واقعية أعلى + تفاعل ذكي
 // ═══════════════════════════════════════════════════════
 (function mishkat() {
   'use strict';
 
-  // ───── SVGs (Flame + Head + Eyes + Mouth) ─────
   const SVG = `
     <svg viewBox="0 0 120 120" class="mk-svg" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -33,68 +32,119 @@
         <path d="M60 22 Q 64 30 62 38 Q 60 42 60 44 Q 60 42 58 38 Q 56 30 60 22 Z" fill="#fffbeb" opacity="0.85"/>
       </g>
 
-      <g class="mk-head">
-        <ellipse cx="60" cy="72" rx="32" ry="30" fill="url(#mkBody)"/>
-        <ellipse cx="48" cy="60" rx="11" ry="6" fill="white" opacity="0.3"/>
-        <ellipse cx="76" cy="86" rx="6" ry="3" fill="#7c2d12" opacity="0.15"/>
+      <g class="mk-head-breathe">
+        <g class="mk-head">
+          <ellipse cx="60" cy="72" rx="32" ry="30" fill="url(#mkBody)"/>
+          <ellipse cx="48" cy="60" rx="11" ry="6" fill="white" opacity="0.3"/>
+          <ellipse cx="76" cy="86" rx="6" ry="3" fill="#7c2d12" opacity="0.15"/>
 
-        <g class="mk-eye mk-eye-l">
-          <ellipse cx="48" cy="72" rx="7" ry="8.5" fill="#fffbeb"/>
-          <circle class="mk-pupil mk-pupil-l" cx="48" cy="72" r="4" fill="#1c1917"/>
-          <circle cx="46.5" cy="70" r="1.4" fill="white"/>
+          <g class="mk-eye mk-eye-l">
+            <ellipse cx="48" cy="72" rx="7" ry="8.5" fill="#fffbeb"/>
+            <circle class="mk-pupil mk-pupil-l" cx="48" cy="72" r="4" fill="#1c1917"/>
+            <circle cx="46.5" cy="70" r="1.4" fill="white"/>
+          </g>
+          <g class="mk-eye mk-eye-r">
+            <ellipse cx="72" cy="72" rx="7" ry="8.5" fill="#fffbeb"/>
+            <circle class="mk-pupil mk-pupil-r" cx="72" cy="72" r="4" fill="#1c1917"/>
+            <circle cx="70.5" cy="70" r="1.4" fill="white"/>
+          </g>
+
+          <ellipse class="mk-lid mk-lid-l" cx="48" cy="72" rx="7.5" ry="0" fill="#d97706"/>
+          <ellipse class="mk-lid mk-lid-r" cx="72" cy="72" rx="7.5" ry="0" fill="#d97706"/>
+
+          <path class="mk-mouth mk-mouth-neutral" d="M 53 88 Q 60 91 67 88" stroke="#78350f" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <path class="mk-mouth mk-mouth-happy" d="M 50 86 Q 60 95 70 86" stroke="#78350f" stroke-width="2.2" fill="none" stroke-linecap="round" style="display:none"/>
+          <path class="mk-mouth mk-mouth-think" d="M 55 88 L 65 88" stroke="#78350f" stroke-width="2" fill="none" stroke-linecap="round" style="display:none"/>
+          <ellipse class="mk-blush mk-blush-l" cx="42" cy="82" rx="4" ry="2.5" fill="#f43f5e" opacity="0"/>
+          <ellipse class="mk-blush mk-blush-r" cx="78" cy="82" rx="4" ry="2.5" fill="#f43f5e" opacity="0"/>
         </g>
-        <g class="mk-eye mk-eye-r">
-          <ellipse cx="72" cy="72" rx="7" ry="8.5" fill="#fffbeb"/>
-          <circle class="mk-pupil mk-pupil-r" cx="72" cy="72" r="4" fill="#1c1917"/>
-          <circle cx="70.5" cy="70" r="1.4" fill="white"/>
-        </g>
-
-        <ellipse class="mk-lid mk-lid-l" cx="48" cy="72" rx="7.5" ry="0" fill="#d97706"/>
-        <ellipse class="mk-lid mk-lid-r" cx="72" cy="72" rx="7.5" ry="0" fill="#d97706"/>
-
-        <path class="mk-mouth mk-mouth-neutral" d="M 53 88 Q 60 91 67 88" stroke="#78350f" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <path class="mk-mouth mk-mouth-happy" d="M 50 86 Q 60 95 70 86" stroke="#78350f" stroke-width="2.2" fill="none" stroke-linecap="round" style="display:none"/>
-        <ellipse class="mk-blush mk-blush-l" cx="42" cy="82" rx="4" ry="2.5" fill="#f43f5e" opacity="0"/>
-        <ellipse class="mk-blush mk-blush-r" cx="78" cy="82" rx="4" ry="2.5" fill="#f43f5e" opacity="0"/>
       </g>
     </svg>
   `;
 
-  // ───── أنشئ العنصر ─────
   const wrap = document.createElement('div');
   wrap.id = 'mishkat';
   wrap.className = 'mishkat';
   wrap.setAttribute('role', 'img');
   wrap.setAttribute('aria-label', 'مساعد مشكاة');
   wrap.innerHTML = SVG;
-  if (document.body) document.body.appendChild(wrap);
-  else document.addEventListener('DOMContentLoaded', () => document.body.appendChild(wrap), { once: true });
+  const mount = () => document.body.appendChild(wrap);
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount, { once: true });
 
   const $ = s => wrap.querySelector(s);
   const pupils = [$('.mk-pupil-l'), $('.mk-pupil-r')];
   const lids = [$('.mk-lid-l'), $('.mk-lid-r')];
   const mouthN = $('.mk-mouth-neutral');
   const mouthH = $('.mk-mouth-happy');
+  const mouthT = $('.mk-mouth-think');
   const blush = [$('.mk-blush-l'), $('.mk-blush-r')];
-  const flame = $('.mk-flame');
 
   // ───── State ─────
-  let state = 'idle'; // idle | attentive | typing | thinking | happy | sleepy | peeking
-  let sleepTimer = null;
-  let blinkTimer = null;
-  let peekTimer = null;
+  let state = 'idle';
+  let currentX = 0, currentY = 0;
+  let sleepTimer = null, blinkTimer = null, idleTimer = null, saccadeTimer = null;
   let lastActivity = Date.now();
+  let inputActive = false;
+  let lastTypedLength = 0;
 
-  function setState(newState, opts = {}) {
-    if (state === newState && !opts.force) return;
-    state = newState;
-    wrap.setAttribute('data-state', newState);
-    lastActivity = Date.now();
-    resetSleepTimer();
+  // ═══════════════════════════════════════════════════════
+  // LOOKAT — Saccades (حركات قافزة بشرية)
+  // ═══════════════════════════════════════════════════════
+  function lookAt(x, y, instant = false) {
+    const targetX = (x || 0) * 2.5;
+    const targetY = (y || 0) * 2.5;
+
+    if (instant) {
+      currentX = targetX;
+      currentY = targetY;
+      applyPupils();
+      return;
+    }
+
+    // قفزات صغيرة تحاكي حركة العين البشرية
+    const steps = 2 + Math.floor(Math.random() * 3);
+    let step = 0;
+    const startX = currentX, startY = currentY;
+
+    const move = () => {
+      step++;
+      const t = step / steps;
+      // easing سريع في البداية (Saccade pattern)
+      const eased = 1 - Math.pow(1 - t, 3);
+      currentX = startX + (targetX - startX) * eased;
+      currentY = startY + (targetY - startY) * eased;
+      applyPupils();
+      if (step < steps) setTimeout(move, 25 + Math.random() * 15);
+    };
+    move();
   }
 
-  // ───── Actions ─────
-  function blink(duration = 160) {
+  function applyPupils() {
+    pupils.forEach(p => {
+      p.style.transform = `translate(${currentX}px, ${currentY}px)`;
+      p.style.transformOrigin = 'center';
+    });
+  }
+
+  // الإدخال بالنسبة لموقع مِشكاة (أسفل-يسار) = يمين-أسفل
+  function lookAtInput() {
+    lookAt(0.75, 0.55);
+  }
+  function lookForward() {
+    lookAt(0, 0);
+  }
+  function lookUpThinking() {
+    lookAt(0.35, -0.75);
+  }
+  function lookAside() {
+    const dir = Math.random() > 0.5 ? 1 : -1;
+    lookAt(dir * 0.85, 0.1);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // BLINK — أنماط بشرية
+  // ═══════════════════════════════════════════════════════
+  function blink(duration = 150) {
     lids.forEach(l => l.setAttribute('ry', '10'));
     setTimeout(() => {
       if (state === 'sleepy' || state === 'peeking') return;
@@ -102,26 +152,48 @@
     }, duration);
   }
 
-  function lookAt(x, y) {
-    // x: -1 (يسار) → 1 (يمين) | y: -1 (فوق) → 1 (تحت)
-    const px = (x || 0) * 2.5;
-    const py = (y || 0) * 2.5;
-    pupils.forEach(p => {
-      p.style.transform = `translate(${px}px, ${py}px)`;
-      p.style.transformOrigin = 'center';
-    });
+  function naturalBlink() {
+    const type = Math.random();
+    if (type < 0.6) {
+      blink(140 + Math.random() * 40);
+    } else if (type < 0.85) {
+      // رفّة مزدوجة (شائعة في البشر)
+      blink(110);
+      setTimeout(() => blink(110), 190);
+    } else {
+      // رفّة بطيئة (تفكير/كسل)
+      blink(280 + Math.random() * 100);
+    }
   }
 
-  function lookAtInput() {
-    // الإدخال عادة أسفل-يسار
-    lookAt(-0.7, 0.6);
-    setState('typing', { force: true });
+  function quickBlink() {
+    blink(90);
   }
 
-  function lookForward() {
-    lookAt(0, 0);
+  // ═══════════════════════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════════════════════
+  function setState(newState, opts = {}) {
+    if (state === newState && !opts.force) return;
+    state = newState;
+    wrap.setAttribute('data-state', newState);
+    lastActivity = Date.now();
+    resetSleepTimer();
+    updateMouth();
   }
 
+  function updateMouth() {
+    mouthN.style.display = 'none';
+    mouthH.style.display = 'none';
+    mouthT.style.display = 'none';
+    if (state === 'happy') mouthH.style.display = 'block';
+    else if (state === 'thinking') mouthT.style.display = 'block';
+    else mouthN.style.display = 'block';
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // ACTIONS
+  // ═══════════════════════════════════════════════════════
   function leanIn() {
     wrap.classList.add('leaning');
     setTimeout(() => wrap.classList.remove('leaning'), 1100);
@@ -133,34 +205,28 @@
   }
 
   function thinkUp() {
-    lookAt(0.4, -0.7);
+    lookUpThinking();
     setState('thinking', { force: true });
   }
 
-  function celebrate() {
+  function celebrate(intensity = 'normal') {
     setState('happy', { force: true });
-    // فتح الفم المبتسم
-    mouthN.style.display = 'none';
-    mouthH.style.display = 'block';
-    blush.forEach(b => { b.setAttribute('opacity', '0.55'); });
-    lookAt(0, 0);
+    lookForward();
+    blush.forEach(b => b.setAttribute('opacity', '0.55'));
     wrap.classList.add('bouncing');
-    // شرارات
-    spawnSparks(6);
+    spawnSparks(intensity === 'big' ? 10 : 6);
+    const duration = intensity === 'big' ? 3200 : 2400;
     setTimeout(() => {
-      mouthN.style.display = 'block';
-      mouthH.style.display = 'none';
-      blush.forEach(b => { b.setAttribute('opacity', '0'); });
+      blush.forEach(b => b.setAttribute('opacity', '0'));
       wrap.classList.remove('bouncing');
       setState('idle');
-    }, 2400);
+    }, duration);
   }
 
   function peek() {
-    // يغض عيونه مع "نظرة جانبية"
     setState('peeking', { force: true });
     lids.forEach(l => l.setAttribute('ry', '9'));
-    lookAt(-0.3, 0);
+    lookAt(-0.3, 0.1);
     setTimeout(() => {
       if (state === 'peeking') {
         lids.forEach(l => l.setAttribute('ry', '0'));
@@ -169,17 +235,17 @@
     }, 900);
   }
 
-  function sleep() {
+  function sleepy() {
     setState('sleepy', { force: true });
     lids.forEach(l => l.setAttribute('ry', '10'));
-    lookAt(0, 0);
+    lookAt(0, 0.1);
   }
 
   function wake() {
     if (state === 'sleepy') {
       lids.forEach(l => l.setAttribute('ry', '0'));
       setState('idle', { force: true });
-      blink();
+      quickBlink();
     }
     lastActivity = Date.now();
     resetSleepTimer();
@@ -188,11 +254,13 @@
   function resetSleepTimer() {
     clearTimeout(sleepTimer);
     sleepTimer = setTimeout(() => {
-      if (state === 'idle') sleep();
-    }, 65000);
+      if (state === 'idle') sleepy();
+    }, 55000);
   }
 
-  // ───── Sparks ─────
+  // ═══════════════════════════════════════════════════════
+  // SPARKS
+  // ═══════════════════════════════════════════════════════
   function spawnSparks(n) {
     for (let i = 0; i < n; i++) {
       const s = document.createElement('div');
@@ -207,18 +275,51 @@
     }
   }
 
-  // ───── Idle loop ─────
-  function idleLoop() {
-    // رمشة عشوائية
-    clearTimeout(blinkTimer);
-    blinkTimer = setTimeout(() => {
-      if (state === 'idle' || state === 'attentive' || state === 'typing') blink();
-      idleLoop();
-    }, 2200 + Math.random() * 3500);
-  }
-  idleLoop();
+  // ═══════════════════════════════════════════════════════
+  // IDLE LOOPS — التنفس، الرفّة، النظرات العشوائية
+  // ═══════════════════════════════════════════════════════
 
-  // ───── Wire to input ─────
+  // رفّة عشوائية طبيعية
+  function blinkLoop() {
+    clearTimeout(blinkTimer);
+    const delay = 1800 + Math.random() * 3800;
+    blinkTimer = setTimeout(() => {
+      if (state === 'idle' || state === 'attentive' || state === 'typing') naturalBlink();
+      blinkLoop();
+    }, delay);
+  }
+  blinkLoop();
+
+  // نظرات عشوائية خفيفة في وضع الراحة
+  function saccadeLoop() {
+    clearTimeout(saccadeTimer);
+    const delay = 3000 + Math.random() * 4500;
+    saccadeTimer = setTimeout(() => {
+      if (state === 'idle' && Math.random() < 0.4) {
+        const rx = (Math.random() - 0.5) * 1.4;
+        const ry = (Math.random() - 0.5) * 0.6;
+        lookAt(rx, ry);
+        // رجوع تدريجي للمنتصف بعد لحظة
+        setTimeout(() => { if (state === 'idle') lookForward(); }, 1200 + Math.random() * 800);
+      }
+      saccadeLoop();
+    }, delay);
+  }
+  saccadeLoop();
+
+  // تمايل خفيف (idle sway)
+  function swayLoop() {
+    if (state === 'idle' || state === 'attentive') {
+      wrap.classList.add('swaying');
+      setTimeout(() => wrap.classList.remove('swaying'), 3500);
+    }
+    setTimeout(swayLoop, 7000 + Math.random() * 6000);
+  }
+  swayLoop();
+
+  // ═══════════════════════════════════════════════════════
+  // WIRE TO UI
+  // ═══════════════════════════════════════════════════════
   function wireUp(retries = 40) {
     const input = document.getElementById('msg');
     const sendBtn = document.getElementById('sendBtn');
@@ -227,20 +328,24 @@
       return;
     }
 
+    // تركيز على الإدخال
     input.addEventListener('focus', () => {
       wake();
+      inputActive = true;
       lookAtInput();
       setState('attentive', { force: true });
     });
 
     input.addEventListener('blur', () => {
-      if (state === 'attentive' || state === 'typing') {
+      inputActive = false;
+      if (state === 'attentive' || state === 'typing' || state === 'peeking') {
         lookForward();
         setState('idle', { force: true });
       }
     });
 
-    let lastLength = 0;
+    // كتابة
+    let charBurst = 0;
     input.addEventListener('input', () => {
       wake();
       const val = input.value;
@@ -249,40 +354,54 @@
       if (len === 0) {
         lookForward();
         setState('attentive', { force: true });
+        lastTypedLength = 0;
         return;
       }
 
+      // الكتابة النشطة — ينظر للإدخال
       lookAtInput();
+      setState('typing', { force: true });
 
-      // بعد 40 حرف: أحيانًا يقرب يشوف
-      if (len > 40 && len - lastLength > 0 && Math.random() < 0.12) {
+      // burst: يكتب بسرعة → بعض التفاعلات
+      charBurst++;
+
+      // بعد 40+ حرف: أحيانًا يقرب "يشوف زين"
+      if (len > 40 && len - lastTypedLength > 0 && Math.random() < 0.15) {
         leanIn();
+        quickBlink();
       }
-      // بعد 80 حرف: أحيانًا يغض عيونه (يحترم الخصوصية)
-      if (len > 80 && Math.random() < 0.08) {
+      // بعد 70+ حرف: أحيانًا يغض عيونه
+      if (len > 70 && Math.random() < 0.10) {
         peek();
       }
-      lastLength = len;
-    });
-
-    sendBtn.addEventListener('click', () => {
-      wake();
-      nod();
-      lookForward();
-      setTimeout(() => thinkUp(), 700);
-    });
-
-    // التفاعل مع Enter من داخل الإدخال
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        nod();
-        setTimeout(() => thinkUp(), 500);
+      // كل ~15 ضغطة: نظرة جانبية فضولية
+      if (charBurst > 0 && charBurst % 15 === 0 && Math.random() < 0.5) {
+        lookAside();
+        setTimeout(() => { if (inputActive) lookAtInput(); }, 700);
       }
+
+      lastTypedLength = len;
+    });
+
+    // عند الإرسال: يرمش → يومئ → يرفع عيونه (يفكر)
+    const onSend = () => {
+      wake();
+      quickBlink();
+      setTimeout(() => { nod(); lookAt(0, -0.3); }, 200);
+      setTimeout(() => thinkUp(), 900);
+      lastTypedLength = 0;
+      charBurst = 0;
+    };
+    sendBtn.addEventListener('click', onSend);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) onSend();
     });
   }
   wireUp();
 
-  // ───── Hook: عندما يظهر رد المساعد ─────
+  // ═══════════════════════════════════════════════════════
+  // REPLY OBSERVER — يتفاعل حسب طول الرد
+  // ═══════════════════════════════════════════════════════
   function wireReplyObserver(retries = 40) {
     const chatInner = document.getElementById('chatInner');
     if (!chatInner) {
@@ -292,14 +411,15 @@
     const obs = new MutationObserver((muts) => {
       muts.forEach(m => m.addedNodes.forEach(n => {
         if (n.nodeType !== 1) return;
-        // رسالة مساعد جديدة (لكن ليست streaming فارغة)
         if (n.classList && n.classList.contains('msg') && n.classList.contains('assistant')) {
-          // تأخير بسيط حتى ينتهي البث
+          // تأخير بسيط ليكون البث انتهى نسبيًا
           setTimeout(() => {
-            // لا تتفاعل لو اختفى العنصر
             if (!n.isConnected) return;
-            celebrate();
-          }, 400);
+            // هل الرد طويل؟
+            const textLen = (n.textContent || '').length;
+            const intensity = textLen > 400 ? 'big' : 'normal';
+            celebrate(intensity);
+          }, 500);
         }
       }));
     });
@@ -307,13 +427,14 @@
   }
   wireReplyObserver();
 
-  // ───── Poke on click ─────
+  // ═══════════════════════════════════════════════════════
+  // POKE + GLOBAL WAKE
+  // ═══════════════════════════════════════════════════════
   wrap.addEventListener('click', () => {
     wake();
-    celebrate();
+    celebrate('normal');
   });
 
-  // ───── Wake on any user interaction ─────
   ['mousemove', 'keydown', 'touchstart', 'click'].forEach(evt => {
     document.addEventListener(evt, () => {
       if (state === 'sleepy') wake();
@@ -324,6 +445,21 @@
     }, { passive: true });
   });
 
+  // تتبع الماوس (اختياري — 20% احتمال فقط عند اقترابه)
+  document.addEventListener('mousemove', (e) => {
+    if (state !== 'idle' && state !== 'attentive') return;
+    if (Math.random() > 0.08) return;
+    const rect = wrap.getBoundingClientRect();
+    const mkX = rect.left + rect.width / 2;
+    const mkY = rect.top + rect.height / 2;
+    const dx = (e.clientX - mkX) / (window.innerWidth / 2);
+    const dy = (e.clientY - mkY) / (window.innerHeight / 2);
+    if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) {
+      lookAt(Math.max(-1, Math.min(1, dx)), Math.max(-1, Math.min(1, dy)));
+      setTimeout(() => { if (state === 'idle') lookForward(); }, 900);
+    }
+  }, { passive: true });
+
   resetSleepTimer();
-  console.log('🏮 Mishkat companion loaded');
+  console.log('🏮 Mishkat 2.0 loaded');
 })();
