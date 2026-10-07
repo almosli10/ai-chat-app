@@ -255,29 +255,18 @@
     .notif-toggle-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
     .sidebar-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); display: none; z-index: 999; }
     .sidebar-overlay.show { display: block; animation: fadeIn 0.2s ease; }
-    /* 🧠 الذاكرة */
     .memory-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-tertiary); border-radius: var(--radius-md); margin-bottom: 6px; font-size: 13.5px; }
     .memory-item button { background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 16px; padding: 4px; }
     .memory-category { font-size: 11px; background: var(--accent-soft); color: var(--accent); padding: 2px 8px; border-radius: var(--radius-pill); margin-left: 8px; }
     .memory-empty { text-align: center; padding: 30px; opacity: 0.5; }
-    /* 📖 وضع القراءة */
     .reading-mode { position: fixed; inset: 0; background: var(--bg-primary); z-index: 2500; display: none; flex-direction: column; padding: 40px 20px; overflow-y: auto; }
     .reading-mode.show { display: flex; animation: fadeIn 0.3s ease; }
     .reading-mode-inner { max-width: 800px; margin: 0 auto; width: 100%; font-size: 17px; line-height: 2; }
     .reading-mode-close { position: fixed; top: 20px; right: 20px; background: var(--bg-secondary); border: 1px solid var(--border-light); width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; z-index: 2600; }
-
-        .api-selector { display: flex; gap: 8px; align-items: center; max-width: 820px; margin: 0 auto 8px; padding: 0 4px; flex-wrap: wrap; }
-    .api-selector label { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
-    .api-select { background: var(--bg-secondary); border: 1px solid var(--border-light); color: var(--text-primary); padding: 6px 12px; border-radius: var(--radius-pill); font-size: 12.5px; font-family: inherit; cursor: pointer; outline: none; transition: all var(--transition-fast); max-width: 260px; }
-    .api-select:hover { border-color: var(--accent); }
-    .api-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-
-    /* 📝 قوالب سريعة */
     .templates-bar { display: flex; gap: 8px; overflow-x: auto; padding: 8px 4px; margin-bottom: 8px; scrollbar-width: none; max-width: 820px; margin-left: auto; margin-right: auto; }
     .templates-bar::-webkit-scrollbar { display: none; }
     .template-chip { flex-shrink: 0; background: var(--bg-secondary); border: 1px solid var(--border-light); color: var(--text-primary); padding: 6px 12px; border-radius: var(--radius-pill); cursor: pointer; font-size: 12.5px; font-family: inherit; transition: all var(--transition-fast); white-space: nowrap; }
     .template-chip:hover { background: var(--accent-soft); border-color: var(--accent); transform: translateY(-1px); }
-    /* زر القراءة */
     .read-btn { position: absolute; right: 30px; top: 12px; background: transparent; border: none; cursor: pointer; font-size: 14px; opacity: 0; transition: 0.2s; padding: 4px; }
     .assistant:hover .read-btn { opacity: 0.7; }
     @media (max-width: 900px) {
@@ -355,17 +344,7 @@
       </div>
     </div>
     <div id="chat"><div class="chat-inner" id="chatInner"></div></div>
-        <div class="input-area">
-      <div class="api-selector">
-        <label>🤖 النموذج:</label>
-        <select id="apiSelect" class="api-select" onchange="onApiChange()">
-          <option value="notrack">Notrack (الحالي)</option>
-          <option value="openrouter-deepseek">DeepSeek R1 (مجاني)</option>
-          <option value="openrouter-llama">Llama 3.3 70B (مجاني)</option>
-          <option value="openrouter-qwen">Qwen 2.5 72B (مجاني)</option>
-          <option value="openrouter-mistral">Mistral Small (مجاني)</option>
-        </select>
-      </div>
+    <div class="input-area">
       <div class="templates-bar" id="templatesBar"></div>
       <div class="attachments-preview-wrap"><div id="attachmentsPreview" class="attachments-preview"></div></div>
       <div class="input-wrapper" id="inputRow">
@@ -389,7 +368,6 @@
   <div class="modal-overlay" id="statsModal"><div class="modal"><h3>📊 الإحصائيات</h3><div id="statsContent"></div><div class="modal-buttons"><button class="save" onclick="closeModal('statsModal')">إغلاق</button></div></div></div>
   <div class="modal-overlay" id="encryptionModal"><div class="modal"><h3>🔐 التشفير E2E</h3><p style="font-size: 13.5px; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.7;">تُشفَّر محادثاتك على جهازك قبل الرفع.<br><span style="color:#f59e0b;">⚠️ احفظ عبارة المرور!</span></p><input type="password" id="passphraseInput" placeholder="عبارة المرور..." /><div style="margin-top: 12px; font-size: 12.5px; color: var(--text-secondary);" id="encStatusText"></div><div class="modal-buttons"><button class="cancel" onclick="closeModal('encryptionModal')">إغلاق</button><button class="cancel" onclick="disableEncryption()" id="disableEncBtn" style="background:#ef4444; color:white;">تعطيل</button><button class="save" onclick="enableEncryption()">تفعيل</button></div></div></div>
   <div class="modal-overlay" id="notificationsModal"><div class="modal"><h3>🔔 الإشعارات</h3><div class="notif-info-box" id="notifInfoBox"></div><div class="notif-toggle-row"><label><input type="checkbox" id="notifToggle" /> تفعيل الإشعارات</label></div><div class="notif-toggle-row"><label><input type="checkbox" id="notifBackgroundOnlyToggle" /> 🔕 فقط في الخلفية</label></div><div class="modal-buttons"><button class="cancel" onclick="closeModal('notificationsModal')">إغلاق</button><button class="save" onclick="testNotification()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">🧪 تجربة</button><button class="save" onclick="saveNotificationSettings()">حفظ</button></div></div></div>
-  <!-- 🧠 نافذة الذاكرة -->
   <div class="modal-overlay" id="memoryModal">
     <div class="modal">
       <h3>🧠 ذاكرة المساعد</h3>
@@ -401,7 +379,6 @@
       </div>
     </div>
   </div>
-  <!-- 📖 وضع القراءة -->
   <div class="reading-mode" id="readingMode">
     <button class="reading-mode-close" onclick="closeReadingMode()">✕</button>
     <div class="reading-mode-inner" id="readingContent"></div>
@@ -471,25 +448,6 @@
     let notifSettings = JSON.parse(localStorage.getItem('notifSettings') || JSON.stringify({ enabled: false, backgroundOnly: true }));
     let soundSettings = JSON.parse(localStorage.getItem('soundSettings') || JSON.stringify({ enabled: true, send: true, receive: true, click: true, notif: true }));
     let userMemory = JSON.parse(localStorage.getItem('userMemory') || '[]');
-        // 🌐 إعدادات APIs المتعددة
-    let currentApi = localStorage.getItem('currentApi') || 'notrack';
-    const API_CONFIGS = {
-      'notrack': { url: '/api/chat', model: null, name: 'Notrack' },
-      'openrouter-deepseek': { url: '/api/openrouter', model: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1' },
-      'openrouter-llama': { url: '/api/openrouter', model: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B' },
-      'openrouter-qwen': { url: '/api/openrouter', model: 'qwen/qwen-2.5-72b-instruct:free', name: 'Qwen 2.5 72B' },
-      'openrouter-mistral': { url: '/api/openrouter', model: 'mistralai/mistral-small-24b-instruct-2501:free', name: 'Mistral Small' }
-    };
-    function onApiChange() {
-      currentApi = document.getElementById('apiSelect').value;
-      localStorage.setItem('currentApi', currentApi);
-      toast(`🤖 تم التبديل إلى: ${API_CONFIGS[currentApi].name}`);
-      playSound('click');
-    }
-    function initApiSelector() {
-      const sel = document.getElementById('apiSelect');
-      if (sel) sel.value = currentApi;
-    }
 
     const PROMPT_TEMPLATES = [
       { icon: '📝', name: 'لخّص', text: 'لخّص النص التالي بإيجاز شديد: ' },
@@ -713,10 +671,7 @@ ${conversation}
       let fullReply = ''; let aborted = false;
       try {
         const messages = allChats[currentChatId].messages.map(m => ({ role: m.role, content: m.content }));
-        const cfg = API_CONFIGS[currentApi];
-        const reqBody = { messages, stream: true };
-        if (cfg.model) reqBody.model = cfg.model;
-        const res = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody), signal: agentAbortController?.signal });
+        const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, stream: true }), signal: agentAbortController?.signal });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const reader = res.body.getReader(); const decoder = new TextDecoder(); let buffer = ''; let firstChunk = true;
         while (true) {
@@ -1195,10 +1150,7 @@ ${conversation}
       lb.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
       let full = '';
       try {
-                const cfg = API_CONFIGS[currentApi];
-        const reqBody = { messages: allChats[currentChatId].messages.map(m => ({ role: m.role, content: m.content })), stream: true };
-        if (cfg.model) reqBody.model = cfg.model;
-        const res = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody) });
+        const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: allChats[currentChatId].messages.map(m => ({ role: m.role, content: m.content })), stream: true }) });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const reader = res.body.getReader(); const decoder = new TextDecoder(); let buffer = ''; let fc = true;
         while (true) {
@@ -1383,7 +1335,6 @@ ${conversation}
       updateNotifUI();
       renderSidebar();
       renderTemplates();
-      initApiSelector();
       const li = localStorage.getItem('lastChatId');
       if (li && allChats[li]) switchChat(li);
       else if (Object.keys(allChats).length > 0) { const s = Object.values(allChats).sort((a,b) => b.timestamp - a.timestamp); switchChat(s[0].id); }
