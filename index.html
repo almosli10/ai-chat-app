@@ -12,6 +12,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="manifest" href="/manifest.json" />
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+  </script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     :root { --accent-user: #6366f1; --accent-user-2: #8b5cf6; --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px; --radius-2xl: 24px; --radius-pill: 999px; --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1); --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -247,6 +255,24 @@
     .notif-toggle-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
     .sidebar-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); display: none; z-index: 999; }
     .sidebar-overlay.show { display: block; animation: fadeIn 0.2s ease; }
+    /* 🧠 الذاكرة */
+    .memory-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-tertiary); border-radius: var(--radius-md); margin-bottom: 6px; font-size: 13.5px; }
+    .memory-item button { background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 16px; padding: 4px; }
+    .memory-category { font-size: 11px; background: var(--accent-soft); color: var(--accent); padding: 2px 8px; border-radius: var(--radius-pill); margin-left: 8px; }
+    .memory-empty { text-align: center; padding: 30px; opacity: 0.5; }
+    /* 📖 وضع القراءة */
+    .reading-mode { position: fixed; inset: 0; background: var(--bg-primary); z-index: 2500; display: none; flex-direction: column; padding: 40px 20px; overflow-y: auto; }
+    .reading-mode.show { display: flex; animation: fadeIn 0.3s ease; }
+    .reading-mode-inner { max-width: 800px; margin: 0 auto; width: 100%; font-size: 17px; line-height: 2; }
+    .reading-mode-close { position: fixed; top: 20px; right: 20px; background: var(--bg-secondary); border: 1px solid var(--border-light); width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; z-index: 2600; }
+    /* 📝 قوالب سريعة */
+    .templates-bar { display: flex; gap: 8px; overflow-x: auto; padding: 8px 4px; margin-bottom: 8px; scrollbar-width: none; max-width: 820px; margin-left: auto; margin-right: auto; }
+    .templates-bar::-webkit-scrollbar { display: none; }
+    .template-chip { flex-shrink: 0; background: var(--bg-secondary); border: 1px solid var(--border-light); color: var(--text-primary); padding: 6px 12px; border-radius: var(--radius-pill); cursor: pointer; font-size: 12.5px; font-family: inherit; transition: all var(--transition-fast); white-space: nowrap; }
+    .template-chip:hover { background: var(--accent-soft); border-color: var(--accent); transform: translateY(-1px); }
+    /* زر القراءة */
+    .read-btn { position: absolute; right: 30px; top: 12px; background: transparent; border: none; cursor: pointer; font-size: 14px; opacity: 0; transition: 0.2s; padding: 4px; }
+    .assistant:hover .read-btn { opacity: 0.7; }
     @media (max-width: 900px) {
       .sidebar { position: fixed; top: 0; right: 0; height: 100vh; z-index: 1000; transform: translateX(100%); width: 300px; box-shadow: -8px 0 40px rgba(0,0,0,0.4); }
       .sidebar.open { transform: translateX(0); }
@@ -272,14 +298,6 @@
   <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-  <link rel="manifest" href="/manifest.json" />
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(() => {});
-      });
-    }
-  </script>
 <body data-theme="light">
   <div class="aurora-bg">
     <div class="aurora-blob b1"></div>
@@ -310,7 +328,8 @@
       <button class="sync-btn" onclick="syncWithCloud()">☁️ <span>مزامنة</span></button>
       <button onclick="exportAllData()">📤 <span>تصدير</span></button>
       <button onclick="document.getElementById('importInput').click()">📥 <span>استيراد</span></button>
-      <button onclick="openShortcuts()" style="grid-column: 1/-1;">⌨️ <span>اختصارات لوحة المفاتيح</span></button>
+      <button onclick="openMemory()">🧠 <span>الذاكرة</span></button>
+      <button onclick="openShortcuts()">⌨️ <span>اختصارات</span></button>
     </div>
     <input type="file" id="importInput" accept=".json" hidden onchange="importData(event)" />
   </aside>
@@ -330,6 +349,7 @@
     </div>
     <div id="chat"><div class="chat-inner" id="chatInner"></div></div>
     <div class="input-area">
+      <div class="templates-bar" id="templatesBar"></div>
       <div class="attachments-preview-wrap"><div id="attachmentsPreview" class="attachments-preview"></div></div>
       <div class="input-wrapper" id="inputRow">
         <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="إرفاق ملف">📎</button>
@@ -352,6 +372,23 @@
   <div class="modal-overlay" id="statsModal"><div class="modal"><h3>📊 الإحصائيات</h3><div id="statsContent"></div><div class="modal-buttons"><button class="save" onclick="closeModal('statsModal')">إغلاق</button></div></div></div>
   <div class="modal-overlay" id="encryptionModal"><div class="modal"><h3>🔐 التشفير E2E</h3><p style="font-size: 13.5px; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.7;">تُشفَّر محادثاتك على جهازك قبل الرفع.<br><span style="color:#f59e0b;">⚠️ احفظ عبارة المرور!</span></p><input type="password" id="passphraseInput" placeholder="عبارة المرور..." /><div style="margin-top: 12px; font-size: 12.5px; color: var(--text-secondary);" id="encStatusText"></div><div class="modal-buttons"><button class="cancel" onclick="closeModal('encryptionModal')">إغلاق</button><button class="cancel" onclick="disableEncryption()" id="disableEncBtn" style="background:#ef4444; color:white;">تعطيل</button><button class="save" onclick="enableEncryption()">تفعيل</button></div></div></div>
   <div class="modal-overlay" id="notificationsModal"><div class="modal"><h3>🔔 الإشعارات</h3><div class="notif-info-box" id="notifInfoBox"></div><div class="notif-toggle-row"><label><input type="checkbox" id="notifToggle" /> تفعيل الإشعارات</label></div><div class="notif-toggle-row"><label><input type="checkbox" id="notifBackgroundOnlyToggle" /> 🔕 فقط في الخلفية</label></div><div class="modal-buttons"><button class="cancel" onclick="closeModal('notificationsModal')">إغلاق</button><button class="save" onclick="testNotification()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">🧪 تجربة</button><button class="save" onclick="saveNotificationSettings()">حفظ</button></div></div></div>
+  <!-- 🧠 نافذة الذاكرة -->
+  <div class="modal-overlay" id="memoryModal">
+    <div class="modal">
+      <h3>🧠 ذاكرة المساعد</h3>
+      <p style="font-size: 13px; opacity: 0.7; margin-bottom: 14px;">معلومات يتذكرها المساعد عنك تلقائيًا. يمكنك حذف أي منها.</p>
+      <div id="memoryList"></div>
+      <div class="modal-buttons">
+        <button class="cancel" onclick="clearMemory()" style="background:#ef4444; color:white;">🗑️ مسح الكل</button>
+        <button class="save" onclick="closeModal('memoryModal')">إغلاق</button>
+      </div>
+    </div>
+  </div>
+  <!-- 📖 وضع القراءة -->
+  <div class="reading-mode" id="readingMode">
+    <button class="reading-mode-close" onclick="closeReadingMode()">✕</button>
+    <div class="reading-mode-inner" id="readingContent"></div>
+  </div>
   <div class="toast" id="toast"></div>
   <script>
     const API_URL = "/api/chat";
@@ -416,6 +453,17 @@
     let agentRunning = false;
     let notifSettings = JSON.parse(localStorage.getItem('notifSettings') || JSON.stringify({ enabled: false, backgroundOnly: true }));
     let soundSettings = JSON.parse(localStorage.getItem('soundSettings') || JSON.stringify({ enabled: true, send: true, receive: true, click: true, notif: true }));
+    let userMemory = JSON.parse(localStorage.getItem('userMemory') || '[]');
+
+    const PROMPT_TEMPLATES = [
+      { icon: '📝', name: 'لخّص', text: 'لخّص النص التالي بإيجاز شديد: ' },
+      { icon: '💡', name: 'اشرح', text: 'اشرح بأسلوب مبسط جدًا: ' },
+      { icon: '🌍', name: 'ترجم', text: 'ترجم إلى الإنجليزية مع الحفاظ على المعنى: ' },
+      { icon: '💻', name: 'كود', text: 'اكتب كود بايثون نظيفًا لـ: ' },
+      { icon: '✏️', name: 'حسّن', text: 'حسّن صياغة النص التالي: ' },
+      { icon: '🎯', name: 'مهام', text: 'استخرج المهام الرئيسية من: ' },
+      { icon: '📊', name: 'حلّل', text: 'حلّل التالي بشكل منطقي: ' },
+    ];
 
     let deviceId = localStorage.getItem('deviceId');
     if (!deviceId) { deviceId = 'dev_' + Math.random().toString(36).substr(2, 12) + Date.now().toString(36); localStorage.setItem('deviceId', deviceId); }
@@ -473,6 +521,81 @@
     function closeModal(id) { document.getElementById(id).classList.remove('show'); }
     function escapeHtml(str) { return String(str).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
     function formatTime(ts) { const d = new Date(ts); const diffMs = Date.now() - d; const diffMin = Math.floor(diffMs / 60000); if (diffMin < 1) return 'الآن'; if (diffMin < 60) return `قبل ${diffMin} د`; const diffHr = Math.floor(diffMin / 60); if (diffHr < 24) return `قبل ${diffHr} س`; const diffDay = Math.floor(diffHr / 24); if (diffDay < 7) return `قبل ${diffDay} ي`; return d.toLocaleDateString('ar-EG'); }
+
+    function saveMemory() { localStorage.setItem('userMemory', JSON.stringify(userMemory)); }
+    function buildMemoryContext() {
+      if (userMemory.length === 0) return '';
+      const facts = userMemory.slice(-20).map(m => '- ' + m.fact).join('\n');
+      return `\n\n[معلومات معروفة عن المستخدم]:\n${facts}`;
+    }
+    async function extractMemoryFromChat() {
+      const chat = allChats[currentChatId];
+      const recent = chat.messages.slice(-8).filter(m => m.role !== 'system');
+      if (recent.length < 4) return;
+      const conversation = recent.map(m => (m.role === 'user' ? 'المستخدم: ' : 'المساعد: ') + (m.displayText || m.content)).join('\n');
+      const existing = userMemory.map(m => m.fact).join('\n') || 'لا يوجد';
+      const prompt = `استخرج حقائق جديدة مهمة عن المستخدم من المحادثة التالية.
+المعلومات الموجودة مسبقًا:
+${existing}
+
+المحادثة:
+${conversation}
+
+اكتب فقط JSON بهذا الشكل بدون أي نص آخر:
+[{"fact": "اسمه أحمد", "category": "شخصي"}]
+الفئات المسموحة: شخصي، عمل، اهتمام، مهارة، تفضيل
+إذا لم توجد معلومات جديدة، اكتب: []`;
+      try {
+        const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], stream: false }) });
+        if (!res.ok) return;
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        const match = text.match(/\[[\s\S]*\]/);
+        if (!match) return;
+        const newFacts = JSON.parse(match[0]);
+        if (!Array.isArray(newFacts)) return;
+        let added = 0;
+        newFacts.forEach(f => {
+          if (f.fact && typeof f.fact === 'string' && f.fact.length > 3) {
+            const exists = userMemory.some(m => m.fact.toLowerCase() === f.fact.toLowerCase());
+            if (!exists) { userMemory.push({ fact: f.fact, category: f.category || 'عام', date: Date.now() }); added++; }
+          }
+        });
+        if (added > 0) { saveMemory(); toast(`🧠 تعلّمت ${added} معلومة جديدة عنك`); }
+      } catch (e) {}
+    }
+    function openMemory() { renderMemoryList(); document.getElementById('memoryModal').classList.add('show'); }
+    function renderMemoryList() {
+      const el = document.getElementById('memoryList');
+      if (userMemory.length === 0) { el.innerHTML = '<div class="memory-empty">🧠 لا توجد معلومات محفوظة بعد.<br>أكمل محادثات وسيتذكر المساعد تلقائيًا.</div>'; return; }
+      el.innerHTML = '';
+      userMemory.slice().reverse().forEach((m, i) => {
+        const idx = userMemory.length - 1 - i;
+        const div = document.createElement('div');
+        div.className = 'memory-item';
+        div.innerHTML = `<span>${escapeHtml(m.fact)}<span class="memory-category">${escapeHtml(m.category)}</span></span>`;
+        const btn = document.createElement('button');
+        btn.textContent = '✕';
+        btn.onclick = () => { userMemory.splice(idx, 1); saveMemory(); renderMemoryList(); };
+        div.appendChild(btn);
+        el.appendChild(div);
+      });
+    }
+    function clearMemory() { if (!confirm('مسح كل الذاكرة؟')) return; userMemory = []; saveMemory(); renderMemoryList(); }
+    function openReadingMode(text) { document.getElementById('readingContent').innerHTML = marked.parse(text); document.getElementById('readingMode').classList.add('show'); }
+    function closeReadingMode() { document.getElementById('readingMode').classList.remove('show'); }
+    function renderTemplates() {
+      const bar = document.getElementById('templatesBar');
+      if (!bar) return;
+      bar.innerHTML = '';
+      PROMPT_TEMPLATES.forEach(t => {
+        const btn = document.createElement('button');
+        btn.className = 'template-chip';
+        btn.textContent = `${t.icon} ${t.name}`;
+        btn.onclick = () => { input.value = t.text; input.focus(); playSound('click'); };
+        bar.appendChild(btn);
+      });
+    }
 
     async function searchWikipedia(query, lang = 'ar') {
       try {
@@ -723,7 +846,7 @@
       else if (e.ctrlKey && e.key === 'n') { e.preventDefault(); createNewChat(); }
       else if (e.ctrlKey && e.key === '/') { e.preventDefault(); input.focus(); }
       else if (e.ctrlKey && e.key === 'b') { e.preventDefault(); toggleAgentMode(); }
-      else if (e.key === 'Escape') { ['settingsModal','themesModal','soundsModal','personasModal','shortcutsModal','syncModal','shareModal','statsModal','encryptionModal','notificationsModal'].forEach(id => closeModal(id)); if (searchInput.value) { searchInput.value = ''; renderSidebar(); } closeLightbox(); }
+      else if (e.key === 'Escape') { ['settingsModal','themesModal','soundsModal','personasModal','shortcutsModal','syncModal','shareModal','statsModal','encryptionModal','notificationsModal','memoryModal'].forEach(id => closeModal(id)); if (searchInput.value) { searchInput.value = ''; renderSidebar(); } closeLightbox(); closeReadingMode(); }
     });
 
     async function handleFiles(files) {
@@ -814,6 +937,8 @@
       document.getElementById('readonlyBadge').style.display = v ? 'inline-flex' : 'none';
       document.getElementById('inputRow').style.display = v ? 'none' : 'flex';
       document.getElementById('inputHint').style.display = v ? 'none' : 'block';
+      const tb = document.getElementById('templatesBar');
+      if (tb) tb.style.display = v ? 'none' : 'flex';
     }
     function switchChat(id) {
       chatInner.style.opacity = '0';
@@ -841,6 +966,14 @@
       if (role === 'assistant') {
         bubble.innerHTML = marked.parse(text);
         if (!isStreaming) addCopyButtons(bubble);
+        if (!isStreaming && text.length > 200) {
+          const rd = document.createElement('button');
+          rd.className = 'read-btn';
+          rd.textContent = '📖';
+          rd.title = 'وضع القراءة';
+          rd.onclick = () => openReadingMode(text);
+          div.appendChild(rd);
+        }
         if (toolLog && toolLog.length > 0) {
           const logDiv = document.createElement('div'); logDiv.className = 'tool-log collapsed';
           logDiv.innerHTML = `<div class="tool-log-header" onclick="this.parentElement.classList.toggle('collapsed')"><span>🔧 استخدم الوكيل ${toolLog.length} أداة</span><span class="chev">▼</span></div><div class="tool-log-body"></div>`;
@@ -957,8 +1090,8 @@
       const now = new Date();
       const dateStr = now.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       const timeStr = now.toLocaleTimeString('ar-EG');
-      const dateContext = `\n\n[معلومة مهمة: تاريخ اليوم هو ${dateStr}، والوقت الآن ${timeStr}.]`;
-      if (allChats[currentChatId].messages[0]?.role === 'system') { const base = allChats[currentChatId].messages[0].content.split('\n\n[معلومة مهمة:')[0]; allChats[currentChatId].messages[0].content = base + dateContext; }
+      const dateContext = `\n\n[معلومة مهمة: تاريخ اليوم هو ${dateStr}، والوقت الآن ${timeStr}.]${buildMemoryContext()}`;
+      if (allChats[currentChatId].messages[0]?.role === 'system') { const base = allChats[currentChatId].messages[0].content.split('\n\n[معلومة مهمة:')[0].split('\n\n[معلومات معروفة عن المستخدم]:')[0]; allChats[currentChatId].messages[0].content = base + dateContext; }
       sendBtn.classList.add('shake'); setTimeout(() => sendBtn.classList.remove('shake'), 350);
       playSound('send');
       const fs = [...attachedFiles]; const an = fs.map(f => f.name);
@@ -1048,6 +1181,18 @@
         a.appendChild(ub); a.appendChild(db);
         const rbtn = document.createElement('button'); rbtn.className = 'msg-action-btn'; rbtn.textContent = '😊'; rbtn.onclick = () => toggleReactionPicker(p, ai); a.appendChild(rbtn);
         saveAllChats(); addRegenerateButtonIfNeeded(); renderSidebar(); pushChatToCloud(allChats[currentChatId]);
+        if (full.length > 200) {
+          const rd = document.createElement('button');
+          rd.className = 'read-btn';
+          rd.textContent = '📖';
+          rd.title = 'وضع القراءة';
+          rd.onclick = () => openReadingMode(full);
+          p.appendChild(rd);
+        }
+        const asstCount = allChats[currentChatId].messages.filter(m => m.role === 'assistant').length;
+        if (asstCount > 0 && asstCount % 4 === 0) {
+          extractMemoryFromChat();
+        }
       } catch (err) { lb.textContent = 'خطأ: ' + err.message; playSound('error'); }
       finally { sendBtn.disabled = false; input.focus(); }
     }
@@ -1167,7 +1312,7 @@
     }
 
     function download(f, c) { const b = new Blob([c], { type: 'text/plain;charset=utf-8' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = f; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(u); }
-    function exportAllData() { download(`ai-chat-backup-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify({ version: 1, exportDate: new Date().toISOString(), systemPrompt, chats: allChats }, null, 2)); }
+    function exportAllData() { download(`ai-chat-backup-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify({ version: 1, exportDate: new Date().toISOString(), systemPrompt, chats: allChats, memory: userMemory }, null, 2)); }
     function exportCurrentChat() {
       if (!currentChatId) return;
       const c = allChats[currentChatId];
@@ -1179,7 +1324,7 @@
     function importData(e) {
       const f = e.target.files[0]; if (!f) return;
       const r = new FileReader();
-      r.onload = ev => { try { const d = JSON.parse(ev.target.result); if (!d.chats) throw new Error('غير صالح'); if (!confirm(`${Object.keys(d.chats).length}`)) return; Object.assign(allChats, d.chats); if (d.systemPrompt) { systemPrompt = d.systemPrompt; localStorage.setItem('systemPrompt', systemPrompt); } localStorage.setItem('allChats', JSON.stringify(allChats)); renderSidebar(); alert('✅'); } catch (er) { alert('فشل: ' + er.message); } e.target.value = ''; };
+      r.onload = ev => { try { const d = JSON.parse(ev.target.result); if (!d.chats) throw new Error('غير صالح'); if (!confirm(`${Object.keys(d.chats).length}`)) return; Object.assign(allChats, d.chats); if (d.systemPrompt) { systemPrompt = d.systemPrompt; localStorage.setItem('systemPrompt', systemPrompt); } if (d.memory && Array.isArray(d.memory)) { userMemory = d.memory; saveMemory(); } localStorage.setItem('allChats', JSON.stringify(allChats)); renderSidebar(); alert('✅'); } catch (er) { alert('فشل: ' + er.message); } e.target.value = ''; };
       r.readAsText(f);
     }
 
@@ -1195,6 +1340,7 @@
       await initEncryption();
       updateNotifUI();
       renderSidebar();
+      renderTemplates();
       const li = localStorage.getItem('lastChatId');
       if (li && allChats[li]) switchChat(li);
       else if (Object.keys(allChats).length > 0) { const s = Object.values(allChats).sort((a,b) => b.timestamp - a.timestamp); switchChat(s[0].id); }
