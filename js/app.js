@@ -79,6 +79,8 @@
     let agentMode = localStorage.getItem('agentMode') === 'true';
     let agentAbortController = null;
     let agentRunning = false;
+    let streamAbortController = null;
+    let streamRunning = false;
     let notifSettings = JSON.parse(localStorage.getItem('notifSettings') || JSON.stringify({ enabled: false, backgroundOnly: true }));
     let soundSettings = JSON.parse(localStorage.getItem('soundSettings') || JSON.stringify({ enabled: true, send: true, receive: true, click: true, notif: true }));
     let userMemory = JSON.parse(localStorage.getItem('userMemory') || '[]');
@@ -722,7 +724,22 @@ ${conversation}
     }
 
     function composeMessage(t, fs) { if (fs.length === 0) return t; let s = ''; fs.forEach(f => { s += `[ملف: ${f.name}]\n${f.content}\n[نهاية]\n\n`; }); s += t || 'حلل الملفات.'; return s; }
-    function sendOrStop() { if (agentRunning) stopAgent(); else send(); }
+        function sendOrStop() {
+      if (agentRunning) { stopAgent(); return; }
+      if (streamRunning) { stopStream(); return; }
+      send();
+    }
+    function stopStream() {
+      if (streamAbortController) {
+        try { streamAbortController.abort(); } catch (e) {}
+      }
+      streamRunning = false;
+      streamAbortController = null;
+      sendBtn.classList.remove('stop');
+      sendBtn.textContent = '➤';
+      sendBtn.disabled = false;
+      toast('⏹️ تم إيقاف الرد');
+    }
     function stopAgent() { if (agentAbortController) agentAbortController.abort(); agentRunning = false; agentAbortController = null; hideAgentIndicator(); sendBtn.classList.remove('stop'); sendBtn.textContent = '➤'; sendBtn.disabled = false; toast('⏹️ تم الإيقاف'); }
 
     async function send() {
@@ -792,33 +809,69 @@ ${conversation}
     }
 
     async function streamResponse() {
-      sendBtn.disabled = true;
+      streamRunning = true;
+      streamAbortController = new AbortController();
+      sendBtn.disabled = false;
+      sendBtn.classList.add('stop');
+      sendBtn.textContent = '⏹';
+      sendBtn.onclick = sendOrStop;
+
       const { bubble: lb } = addMessage('assistant', '', true);
       lb.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
       let full = '';
+      let aborted = false;
+
       try {
-        const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: allChats[currentChatId].messages.map(m => ({ role: m.role, content: m.content })), stream: true }) });
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: allChats[currentChatId].messages.map(m => ({ role: m.role, content: m.content })),
+            stream: true
+          }),
+          signal: streamAbortController.signal
+        });
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const reader = res.body.getReader(); const decoder = new TextDecoder(); let buffer = ''; let fc = true;
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fc = true;
         while (true) {
-          const { done, value } = await reader.read(); if (done) break;
+          const { done, value } = await reader.read();
+          if (done) break;
           buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n'); buffer = lines.pop();
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
           for (const line of lines) {
             if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-              try { const data = JSON.parse(line.substring(6)); const content = data.choices[0]?.delta?.content || ''; if (content) { if (fc) { lb.innerHTML = ''; fc = false; } full += content; lb.innerHTML = marked.parse(full); chatContainer.scrollTop = chatContainer.scrollHeight; } } catch (e) {}
+              try {
+                const data = JSON.parse(line.substring(6));
+                const content = data.choices[0]?.delta?.content || '';
+                if (content) {
+                  if (fc) { lb.innerHTML = ''; fc = false; }
+                  full += content;
+                  lb.innerHTML = marked.parse(full);
+                  chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+              } catch (e) {}
             }
           }
         }
+
+        // اكتمل البث بنجاح
         addCopyButtons(lb);
         const ai = allChats[currentChatId].messages.length;
         allChats[currentChatId].messages.push({ role: "assistant", content: full });
         playSound('receive');
-        const p = lb.closest('.msg'); const a = p.querySelector('.msg-actions'); a.innerHTML = '';
+        const p = lb.closest('.msg');
+        const a = p.querySelector('.msg-actions');
+        a.innerHTML = '';
         const sb = document.createElement('button'); sb.className = 'msg-action-btn speak-btn'; sb.textContent = '🔊'; sb.onclick = () => speakMessage(sb, full); a.appendChild(sb);
         const cb = document.createElement('button'); cb.className = 'msg-action-btn'; cb.textContent = '📋'; cb.onclick = () => { navigator.clipboard.writeText(full).then(() => { cb.textContent = '✓'; setTimeout(() => cb.textContent = '📋', 1800); }); }; a.appendChild(cb);
-        const ub = document.createElement('button'); ub.className = 'msg-action-btn'; ub.textContent = '👍'; const db = document.createElement('button'); db.className = 'msg-action-btn'; db.textContent = '👎';
-        ub.onclick = () => setRating(ai, 'up', ub, db); db.onclick = () => setRating(ai, 'down', ub, db);
+        const ub = document.createElement('button'); ub.className = 'msg-action-btn'; ub.textContent = '👍';
+        const db = document.createElement('button'); db.className = 'msg-action-btn'; db.textContent = '👎';
+        ub.onclick = () => setRating(ai, 'up', ub, db);
+        db.onclick = () => setRating(ai, 'down', ub, db);
         a.appendChild(ub); a.appendChild(db);
         const rbtn = document.createElement('button'); rbtn.className = 'msg-action-btn'; rbtn.textContent = '😊'; rbtn.onclick = () => toggleReactionPicker(p, ai); a.appendChild(rbtn);
         saveAllChats(); addRegenerateButtonIfNeeded(); renderSidebar(); pushChatToCloud(allChats[currentChatId]);
@@ -834,8 +887,41 @@ ${conversation}
         if (asstCount > 0 && asstCount % 4 === 0) {
           extractMemoryFromChat();
         }
-      } catch (err) { lb.textContent = 'خطأ: ' + err.message; playSound('error'); }
-      finally { sendBtn.disabled = false; input.focus(); }
+
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          aborted = true;
+          // احفظ ما وصلناه
+          if (full && full.trim()) {
+            lb.innerHTML = marked.parse(full + '\n\n*⏹️ تم إيقاف الرد بناءً على طلبك*');
+            addCopyButtons(lb);
+            const ai = allChats[currentChatId].messages.length;
+            allChats[currentChatId].messages.push({ role: "assistant", content: full + '\n\n*⏹️ (متوقف)*' });
+            const p = lb.closest('.msg');
+            const a = p.querySelector('.msg-actions');
+            a.innerHTML = '';
+            const cb = document.createElement('button'); cb.className = 'msg-action-btn'; cb.textContent = '📋'; cb.onclick = () => { navigator.clipboard.writeText(full).then(() => { cb.textContent = '✓'; setTimeout(() => cb.textContent = '📋', 1800); }); }; a.appendChild(cb);
+            const rbtn = document.createElement('button'); rbtn.className = 'msg-action-btn'; rbtn.textContent = '😊'; rbtn.onclick = () => toggleReactionPicker(p, ai); a.appendChild(rbtn);
+            saveAllChats(); pushChatToCloud(allChats[currentChatId]);
+          } else {
+            // لا يوجد شيء محفوظ — احذف الفقاعة
+            const p = lb.closest('.msg');
+            if (p) p.remove();
+            toast('⏹️ تم الإيقاف');
+          }
+        } else {
+          lb.textContent = 'خطأ: ' + err.message;
+          playSound('error');
+        }
+      } finally {
+        streamRunning = false;
+        streamAbortController = null;
+        sendBtn.classList.remove('stop');
+        sendBtn.textContent = '➤';
+        sendBtn.disabled = false;
+        sendBtn.onclick = sendOrStop;
+        input.focus();
+      }
     }
 
     function shareCurrentChat() {
