@@ -98,7 +98,13 @@ function renderProfileModal(profile) {
           </select>
         </label>
       </div>
-      <button id="pfSave" class="btn-primary">💾 حفظ التغييرات</button>
+      
+      <!-- قسم الأزرار السفلية -->
+      <div style="display: flex; gap: 10px; margin-top: 1.5rem;">
+        <button id="pfSave" class="btn-primary" style="flex: 1;">💾 حفظ التغييرات</button>
+        <button onclick="document.getElementById('profileModalWrapper').remove()" style="background: #4b5563; color: white; border: none; border-radius: 10px; padding: 0.8rem 1.5rem; cursor: pointer; font-weight: bold; font-family: inherit;">إغلاق</button>
+      </div>
+      
       <hr>
       <section class="danger-zone">
         <h3>🔑 الأمان</h3>
@@ -154,8 +160,24 @@ window.openProfileModal = async function() {
   if (!profile) return alert('يجب تسجيل الدخول أولاً');
   
   const modal = document.createElement('div');
+  modal.id = 'profileModalWrapper'; // معرف جديد لإغلاق النافذة
   modal.innerHTML = renderProfileModal(profile);
   document.body.appendChild(modal);
+  
+  // إغلاق عند الضغط على الخلفية السوداء
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+
+  // إغلاق عند الضغط على زر Esc
+  const escHandler = (e) => {
+    if (e.key === 'Escape') {
+      const m = document.getElementById('profileModalWrapper');
+      if (m) m.remove();
+      document.removeEventListener('keydown', escHandler);
+    }
+  };
+  document.addEventListener('keydown', escHandler);
   
   bindProfileEvents(modal, ({ avatar_url, saved }) => {
     if (avatar_url) {
