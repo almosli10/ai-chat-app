@@ -1284,12 +1284,14 @@ async function generateImage() {
     const imgHtml = `
       <div style="text-align: center; margin-top: 8px;">
         <img src="${imgUrl}" 
-             alt="${escapeHtml(text)}" 
-             style="max-width: 100%; border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); cursor: pointer; transition: transform 0.2s;" 
-             onclick="openLightbox('${imgUrl}')" 
-             onmouseover="this.style.transform='scale(1.02)'" 
-             onmouseout="this.style.transform='scale(1)'"
-             loading="lazy" />
+     referrerpolicy="no-referrer"
+     alt="${escapeHtml(text)}" 
+     style="max-width: 100%; border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); cursor: pointer; transition: transform 0.2s;" 
+     onclick="openLightbox('${imgUrl}')" 
+     onmouseover="this.style.transform='scale(1.02)'" 
+     onmouseout="this.style.transform='scale(1)'"
+     onerror="this.parentElement.innerHTML='<p style=\'color:#ef4444; font-size:14px;\'>⚠️ فشل تحميل الصورة. قد تكون الخدمة مشغولة، حاول مرة أخرى.</p>'"
+     loading="lazy" />
         <p style="font-size: 12px; opacity: 0.65; margin-top: 8px;">🎨 تم التوليد بواسطة Pollinations.ai</p>
       </div>
     `;
