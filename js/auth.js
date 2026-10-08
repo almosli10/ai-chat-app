@@ -1,10 +1,9 @@
 // ═══════════════════════════════════════════════════════
-// AUTH — تسجيل الدخول / حساب جديد / ضيف
+// AUTH — تسجيل الدخول / حساب جديد (بدون وضع زائر)
 // ═══════════════════════════════════════════════════════
 (function auth() {
   'use strict';
 
-  const GUEST_MODE_KEY = 'mishkat_guest_mode';
   let currentUser = null;
 
   // ═══════ UI ═══════
@@ -81,7 +80,7 @@
       const { data, error } = await window.sbClient.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: window.location.origin }
+        options: { emailRedirectTo: 'https://ai-chat-app-two-lime.vercel.app' }
       });
       if (error) return { error };
       return { data };
@@ -92,11 +91,11 @@
     if (!window.sbClient) return;
     try {
       await window.sbClient.auth.signInWithOAuth({
-  provider: 'google',
-  options: {
-    redirectTo: 'https://ai-chat-app-two-lime.vercel.app'
-  }
-});
+        provider: 'google',
+        options: {
+          redirectTo: 'https://ai-chat-app-two-lime.vercel.app'
+        }
+      });
     } catch (e) {
       showError('فشل تسجيل الدخول بـ Google: ' + e.message);
     }
@@ -106,7 +105,7 @@
     if (!window.sbClient) return { error: { message: 'الاتصال غير متاح' } };
     try {
       const { error } = await window.sbClient.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin
+        redirectTo: 'https://ai-chat-app-two-lime.vercel.app'
       });
       return { error };
     } catch (e) { return { error: { message: e.message } }; }
@@ -121,16 +120,10 @@
 
   // ═══════ Main Flow ═══════
   async function initAuth() {
-    // إذا ما فيه sbClient، اسمح بالمرور
+    // إذا ما فيه sbClient، اجبر عرض الشاشة
     if (!window.sbClient) {
-      console.warn('⚠️ Supabase غير جاهز — تجاوز Auth');
-      hideAuthScreen();
-      return;
-    }
-
-    // إذا كان في وضع الزائر
-    if (localStorage.getItem(GUEST_MODE_KEY) === '1') {
-      hideAuthScreen();
+      console.warn('⚠️ Supabase غير جاهز');
+      showAuthScreen();
       return;
     }
 
@@ -141,6 +134,7 @@
         currentUser = data.session.user;
         await onLoggedIn(currentUser);
       } else {
+        // 🔒 لا يوجد تسجيل دخول — اعرض الشاشة فورًا
         showAuthScreen();
       }
     } catch (e) {
@@ -151,7 +145,6 @@
     window.sbClient.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         currentUser = session.user;
-        // لا تعيد التحميل عند OAuth callback إذا كان المستخدم بالفعل متصل
         await onLoggedIn(currentUser);
       } else if (event === 'SIGNED_OUT') {
         currentUser = null;
@@ -167,7 +160,7 @@
       window.setCurrentUserId(user.id);
     }
     updateUserUI();
-    updateUserCard(user);  // 🆕 اعرض بطاقة الحساب
+    updateUserCard(user);
     hideAuthScreen();
 
     // أعد المزامنة مع user_id
@@ -270,27 +263,26 @@
     const googleBtn = document.getElementById('googleSignInBtn');
     if (googleBtn) googleBtn.onclick = signInWithGoogle;
 
-    // زائر
+    // 🔒 زر الزائر معطّل
     const guestBtn = document.getElementById('guestBtn');
     if (guestBtn) {
       guestBtn.onclick = () => {
-        localStorage.setItem(GUEST_MODE_KEY, '1');
-        hideAuthScreen();
-        if (typeof toast === 'function') toast('👋 مرحبًا بك كزائر');
+        if (typeof toast === 'function') toast('🔒 يرجى تسجيل الدخول أولًا');
       };
+      guestBtn.style.opacity = '0.5';
+      guestBtn.style.cursor = 'not-allowed';
     }
   }
 
-  // تسجيل الخروج (يُستدعى من الزر)
+  // تسجيل الخروج
   window.handleLogout = async function () {
     if (!confirm('هل تريد تسجيل الخروج؟')) return;
-    localStorage.removeItem(GUEST_MODE_KEY);
     await signOut();
     if (typeof toast === 'function') toast('👋 تم تسجيل الخروج');
     setTimeout(() => window.location.reload(), 800);
   };
 
-    // ═══════ USER CARD ═══════
+  // ═══════ USER CARD ═══════
   function updateUserCard(user) {
     const card = document.getElementById('userCard');
     const avatar = document.getElementById('userAvatar');
@@ -386,8 +378,6 @@
       document.addEventListener('click', close);
     }, 100);
   }
-
-  // ═══════ Init ═══════
 
   // ═══════ Init ═══════
   function tryInit(retries = 40) {

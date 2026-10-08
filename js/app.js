@@ -838,6 +838,14 @@ function stopAgent() { if (agentAbortController) agentAbortController.abort(); a
 
 async function send() {
   if (isReadOnly) { toast('⚠️'); return; }
+      // 🔒 منع الإرسال بدون تسجيل دخول
+    if (window.sbClient && !currentUserId) {
+      if (typeof toast === 'function') toast('🔒 يرجى تسجيل الدخول أولًا');
+      const authEl = document.getElementById('authScreen');
+      if (authEl) authEl.classList.add('show');
+      document.body.classList.add('auth-locked');
+      return;
+    }
   const text = input.value.trim(); if (!text && attachedFiles.length === 0) return;
   const now = new Date();
   const dateStr = now.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
