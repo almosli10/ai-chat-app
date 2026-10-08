@@ -1232,4 +1232,109 @@ async function init() {
     setInterval(() => pullAllFromCloud(true), AUTO_SYNC_INTERVAL_MS);
   } else setOnlineStatus('offline');
 }
+
+// ═══════ توليد الصور من النص (Pollinations.ai) ═══════
+async function generateImage() {
+  if (isReadOnly) { toast('⚠️ لا يمكن التوليد في وضع القراءة'); return; }
+  if (window.sbClient && !currentUserId) {
+    toast('🔒 يرجى تسجيل الدخول أولاً');
+    return;
+  }
+
+  const text = input.value.trim();
+  if (!text) {
+    toast('⚠️ اكتب وصف الصورة أولاً');
+    return;
+  }
+
+  input.value = ''; // تفريغ الحقل
+  playSound('send');
+
+  // 1. إضافة رسالة المستخدم
+  const umi = allChats[currentChatId].messages.length;
+  allChats[currentChatId].messages.push({
+    role: "user",
+    content: `[طلب توليد صورة]: ${text}`,
+    displayText: `🎨 ${text}`
+  });
+  addMessage('user', `🎨 ${text}`, false, umi);
+
+  // 2. إظهار مؤشر التحميل
+  const { div, bubble } = addMessage('assistant', '', true);
+  bubble.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+
+  try {
+    // 3. ترجمة النص إلى الإنجليزية (لأن مولّد الصور يعمل بالإنجليزية)
+    const transPrompt = `Translate the following Arabic text to English for an image generation prompt. Reply ONLY with the English translation, no extra words, no quotes, no explanation. Text: "${text}"`;
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: [{ role: 'user', content: transPrompt }], stream: false })
+    });
+    const data = await res.json();
+    let englishPrompt = data.choices?.[0]?.message?.content?.trim() || text;
+    
+    // تنظيف النص المترجم من أي علامات اقتباس أو نقاط
+    englishPrompt = englishPrompt.replace(/["'.\n]/g, '').trim();
+    
+    // 4. بناء رابط الصورة من Pollinations.ai
+    const imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishPrompt)}?width=1024&height=1024&nologo=true&seed=${Date.now()}`;
+
+    // 5. عرض الصورة في المحادثة
+    const imgHtml = `
+      <div style="text-align: center; margin-top: 8px;">
+        <img src="${imgUrl}" 
+             alt="${escapeHtml(text)}" 
+             style="max-width: 100%; border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); cursor: pointer; transition: transform 0.2s;" 
+             onclick="openLightbox('${imgUrl}')" 
+             onmouseover="this.style.transform='scale(1.02)'" 
+             onmouseout="this.style.transform='scale(1)'"
+             loading="lazy" />
+        <p style="font-size: 12px; opacity: 0.65; margin-top: 8px;">🎨 تم التوليد بواسطة Pollinations.ai</p>
+      </div>
+    `;
+    bubble.innerHTML = imgHtml;
+    addCopyButtons(bubble);
+
+    // 6. حفظ في سجل المحادثة
+    const aiIndex = allChats[currentChatId].messages.length;
+    allChats[currentChatId].messages.push({
+      role: "assistant",
+      content: imgHtml
+    });
+    if (div) div.dataset.index = aiIndex;
+
+    // إضافة أزرار التفاعل (إعجاب، نسخ، إلخ)
+    const actions = div.querySelector('.msg-actions');
+    actions.innerHTML = '';
+    const cb = document.createElement('button');
+    cb.className = 'msg-action-btn';
+    cb.textContent = '📋';
+    cb.title = 'نسخ الرابط';
+    cb.onclick = () => navigator.clipboard.writeText(imgUrl).then(() => { cb.textContent = '✓'; setTimeout(() => cb.textContent = '📋', 1800); });
+    actions.appendChild(cb);
+
+    const db = document.createElement('button');
+    db.className = 'msg-action-btn';
+    db.style.color = '#ef4444';
+    db.textContent = '🗑️';
+    db.onclick = () => deleteSingleMessage(aiIndex);
+    actions.appendChild(db);
+
+    playSound('receive');
+    saveAllChats();
+    renderSidebar();
+    pushChatToCloud(allChats[currentChatId]);
+
+    // 7. اقتراح حفظ الصورة
+    setTimeout(() => {
+      if (typeof toast === 'function') toast('✨ اضغط على الصورة لعرضها أو حفظها');
+    }, 1500);
+
+  } catch (err) {
+    bubble.textContent = '❌ فشل توليد الصورة: ' + err.message;
+    playSound('error');
+  }
+}
+
 init();
