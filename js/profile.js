@@ -1,7 +1,8 @@
 // js/profile.js — إدارة الملف الشخصي
-const supabase = window.sbClient;
 
 async function loadProfile() {
+  const supabase = window.sbClient;
+  if (!supabase) return null;
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
@@ -16,6 +17,7 @@ async function loadProfile() {
 }
 
 async function updateProfile({ full_name, bio, theme, font }) {
+  const supabase = window.sbClient;
   const { data: { user } } = await supabase.auth.getUser();
   const { error } = await supabase
     .from('profiles')
@@ -25,6 +27,7 @@ async function updateProfile({ full_name, bio, theme, font }) {
 }
 
 async function uploadAvatar(file) {
+  const supabase = window.sbClient;
   const { data: { user } } = await supabase.auth.getUser();
   const ext = file.name.split('.').pop();
   const path = `${user.id}/avatar-${Date.now()}.${ext}`;
@@ -44,11 +47,13 @@ async function uploadAvatar(file) {
 }
 
 async function changePassword(newPassword) {
+  const supabase = window.sbClient;
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) throw error;
 }
 
 async function deleteAccount() {
+  const supabase = window.sbClient;
   const { data: { session } } = await supabase.auth.getSession();
   const res = await fetch('/api/delete-account', {
     method: 'POST',
@@ -144,6 +149,7 @@ function bindProfileEvents(modalEl, onChange) {
 
 // ═══════ ربط الدالة بنافذة المتصفح ═══════
 window.openProfileModal = async function() {
+  if (!window.sbClient) return alert('جاري الاتصال بالسيرفر... حاول مرة أخرى بعد ثانية.');
   const profile = await loadProfile();
   if (!profile) return alert('يجب تسجيل الدخول أولاً');
   
