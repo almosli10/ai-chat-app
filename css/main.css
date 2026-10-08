@@ -2537,10 +2537,23 @@
        AUTH SCREEN — واجهة تسجيل الدخول
        ═══════════════════════════════════════════════════════ */
     body.auth-locked { overflow: hidden; }
+        /* إخفاء كل شيء عند ظهور واجهة تسجيل الدخول */
     body.auth-locked .sidebar,
-body.auth-locked .main-content { 
-  display: none; 
-}
+    body.auth-locked .sidebar-overlay,
+    body.auth-locked .main-content,
+    body.auth-locked .aurora-bg,
+    body.auth-locked .particles-bg,
+    body.auth-locked .cursor-glow {
+      display: none !important;
+    }
+    body.auth-locked #mishkat,
+    body.auth-locked .mk-bubble,
+    body.auth-locked .mood-indicator {
+      display: none !important;
+    }
+    body.auth-locked {
+      overflow: hidden !important;
+    }
 
     .auth-screen {
       position: fixed;
