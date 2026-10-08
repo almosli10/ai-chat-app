@@ -359,7 +359,7 @@
     };
     dd.querySelector('#ddSettings').onclick = () => {
       dd.remove();
-      if (typeof openSettings === 'function') openSettings();
+      if (typeof openProfileModal === 'function') openProfileModal();
     };
     dd.querySelector('#ddLogout').onclick = () => {
       dd.remove();

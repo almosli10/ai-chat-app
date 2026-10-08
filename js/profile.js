@@ -147,7 +147,7 @@ export function bindProfileEvents(modalEl, onChange) {
   modalEl.querySelector('[data-close]').onclick = () => modalEl.remove();
 }
 // ═══════ ربط الدالة بنافذة المتصفح ═══════
-window.openSettings = async function() {
+window.openProfileModal = async function() {
   const profile = await loadProfile();
   if (!profile) return alert('يجب تسجيل الدخول أولاً');
   
