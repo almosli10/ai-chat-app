@@ -1048,6 +1048,8 @@ function initSupabase() {
   try {
     const { createClient } = window.supabase;
     sbClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // 🆕 اجعله متاح globally لـ auth.js
+    window.sbClient = sbClient;
     setOnlineStatus('connecting');
     return true;
   } catch (e) { console.error('Supabase init failed:', e); return false; }
