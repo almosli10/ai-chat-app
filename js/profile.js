@@ -1,7 +1,7 @@
 // js/profile.js — إدارة الملف الشخصي
 const supabase = window.sbClient;
 
-export async function loadProfile() {
+async function loadProfile() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
@@ -15,7 +15,7 @@ export async function loadProfile() {
   return { ...data, email: user.email };
 }
 
-export async function updateProfile({ full_name, bio, theme, font }) {
+async function updateProfile({ full_name, bio, theme, font }) {
   const { data: { user } } = await supabase.auth.getUser();
   const { error } = await supabase
     .from('profiles')
@@ -24,7 +24,7 @@ export async function updateProfile({ full_name, bio, theme, font }) {
   if (error) throw error;
 }
 
-export async function uploadAvatar(file) {
+async function uploadAvatar(file) {
   const { data: { user } } = await supabase.auth.getUser();
   const ext = file.name.split('.').pop();
   const path = `${user.id}/avatar-${Date.now()}.${ext}`;
@@ -43,13 +43,12 @@ export async function uploadAvatar(file) {
   return publicUrl;
 }
 
-export async function changePassword(newPassword) {
+async function changePassword(newPassword) {
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) throw error;
 }
 
-export async function deleteAccount() {
-  // يحتاج Edge Function لأن الحذف يتطلب service_role
+async function deleteAccount() {
   const { data: { session } } = await supabase.auth.getSession();
   const res = await fetch('/api/delete-account', {
     method: 'POST',
@@ -59,33 +58,32 @@ export async function deleteAccount() {
   await supabase.auth.signOut();
 }
 
-export function renderProfileModal(profile) {
+function renderProfileModal(profile) {
   return `
   <div class="profile-modal" id="profileModal">
     <div class="profile-card">
       <button class="close-btn" data-close>&times;</button>
       <h2>الملف الشخصي</h2>
-
       <div class="avatar-section">
-        <img src="${profile.avatar_url || 'assets/default-avatar.png'}"
-             id="avatarPreview" class="avatar-preview" alt="avatar">
+        <img src="${profile.avatar_url || 'assets/default-avatar.png'}" id="avatarPreview" class="avatar-preview" alt="avatar">
         <label class="avatar-upload">
           تغيير الصورة
           <input type="file" id="avatarInput" accept="image/*" hidden>
         </label>
       </div>
-
       <label>الاسم الكامل
         <input id="pfName" value="${profile.full_name || ''}" maxlength="60">
       </label>
-
       <label>نبذة
         <textarea id="pfBio" maxlength="200">${profile.bio || ''}</textarea>
       </label>
-
       <div class="pf-row">
         <label>الثيم
-          <select id="pfTheme">…</select>
+          <select id="pfTheme">
+            <option value="dark">داكن</option>
+            <option value="light">فاتح</option>
+            <option value="blue-night">أزرق ليلي</option>
+          </select>
         </label>
         <label>الخط
           <select id="pfFont">
@@ -95,11 +93,8 @@ export function renderProfileModal(profile) {
           </select>
         </label>
       </div>
-
       <button id="pfSave" class="btn-primary">💾 حفظ التغييرات</button>
-
       <hr>
-
       <section class="danger-zone">
         <h3>🔑 الأمان</h3>
         <button id="pfChangePass" class="btn-warn">تغيير كلمة المرور</button>
@@ -109,7 +104,7 @@ export function renderProfileModal(profile) {
   </div>`;
 }
 
-export function bindProfileEvents(modalEl, onChange) {
+function bindProfileEvents(modalEl, onChange) {
   const $ = s => modalEl.querySelector(s);
 
   $('#avatarInput').addEventListener('change', async e => {
@@ -146,6 +141,7 @@ export function bindProfileEvents(modalEl, onChange) {
 
   modalEl.querySelector('[data-close]').onclick = () => modalEl.remove();
 }
+
 // ═══════ ربط الدالة بنافذة المتصفح ═══════
 window.openProfileModal = async function() {
   const profile = await loadProfile();
