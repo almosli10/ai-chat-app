@@ -1,6 +1,5 @@
 ﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<script src="js/lazy.js"></script>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -33,13 +32,8 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="dns-prefetch" href="https://cxdwgzdwwexgfdfhaknx.supabase.co">
-    <!-- Lazy Loader -->
+  <!-- Lazy Loader -->
   <script src="js/lazy.js"></script>
-  <!-- Resource Hints -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="preconnect" href="https://unpkg.com" crossorigin>
-  <link rel="dns-prefetch" href="https://cxdwgzdwwexgfdfhaknx.supabase.co">
-</head>
 </head>
 <body data-theme="light">
   <div class="aurora-bg">
@@ -101,18 +95,6 @@
   <div class="modal-overlay" id="settingsModal"><div class="modal"><h3>⚙️ إعدادات الذكاء الاصطناعي</h3><p style="margin-bottom: 12px; font-size: 13.5px;">حدد شخصية المساعد (System Prompt):</p><textarea id="systemPromptInput"></textarea><div class="modal-buttons"><button class="cancel" onclick="closeModal('settingsModal')">إلغاء</button><button class="save" onclick="saveSettings()">حفظ</button></div></div></div>
   <div class="modal-overlay" id="themesModal"><div class="modal"><h3>🎨 الثيمات والألوان</h3><p style="font-size: 13px; color: var(--text-secondary);">اختر ثيمًا جاهزًا:</p><div class="theme-grid" id="themeGrid"></div><p style="font-size: 13px; color: var(--text-secondary); margin-top: 20px;">اختر لونًا رئيسيًا:</p><div class="accent-grid" id="accentGrid"></div><div class="modal-buttons"><button class="save" onclick="closeModal('themesModal')">إغلاق</button></div></div></div>
   <div class="modal-overlay" id="soundsModal"><div class="modal"><h3>🔊 إعدادات الأصوات</h3><div class="sound-grid"><div class="sound-row"><label><input type="checkbox" id="soundsEnabledToggle" /> تفعيل الأصوات</label></div><div class="sound-row"><label><input type="checkbox" id="soundSendToggle" /> صوت الإرسال</label><button onclick="playSound('send')">🔊 تجربة</button></div><div class="sound-row"><label><input type="checkbox" id="soundReceiveToggle" /> صوت الاستقبال</label><button onclick="playSound('receive')">🔊 تجربة</button></div><div class="sound-row"><label><input type="checkbox" id="soundClickToggle" /> صوت النقر</label><button onclick="playSound('click')">🔊 تجربة</button></div><div class="sound-row"><label><input type="checkbox" id="soundNotifToggle" /> صوت الإشعارات</label><button onclick="playSound('notif')">🔊 تجربة</button></div></div><div class="modal-buttons"><button class="save" onclick="saveSoundSettings()">حفظ</button></div></div></div>
-       
-        <div class="sound-row">
-          <label>
-            <input type="radio" name="syncScope" value="all" id="syncScopeAll" />
-            🌍 كل الأجهزة (مشاركة المحادثات)
-          </label>
-        </div>
-        <p style="font-size: 12px; opacity: 0.7; margin-top: 8px; line-height: 1.6;">
-          <strong>هذا الجهاز فقط</strong>: كل محادثاتك تبقى خاصة بهذا الجهاز.<br>
-          <strong>كل الأجهزة</strong>: تظهر نفس المحادثات على كل أجهزتك.
-        </p>
-      </div>
   <div class="modal-overlay" id="personasModal"><div class="modal"><h3>🎭 شخصيات جاهزة</h3><div class="persona-grid" id="personaGrid"></div><textarea id="personaPromptInput" style="margin-top: 16px;"></textarea><div class="modal-buttons"><button class="cancel" onclick="closeModal('personasModal')">إلغاء</button><button class="save" onclick="applyPersona()">تطبيق</button></div></div></div>
   <div class="modal-overlay" id="shortcutsModal"><div class="modal"><h3>⌨️ الاختصارات</h3><ul class="shortcut-list"><li><span>محادثة جديدة</span><kbd>Ctrl + N</kbd></li><li><span>البحث</span><kbd>Ctrl + K</kbd></li><li><span>التركيز على الإدخال</span><kbd>Ctrl + /</kbd></li><li><span>تفعيل/إيقاف الوكيل</span><kbd>Ctrl + B</kbd></li><li><span>إرسال</span><kbd>Enter</kbd></li><li><span>إغلاق النوافذ</span><kbd>Esc</kbd></li></ul><div class="modal-buttons"><button class="save" onclick="closeModal('shortcutsModal')">فهمت</button></div></div></div>
   <div class="modal-overlay" id="syncModal"><div class="modal"><h3>☁️ المزامنة</h3><div id="syncContent"></div><div class="modal-buttons"><button class="cancel" onclick="closeModal('syncModal')">إغلاق</button><button class="save" onclick="doSync()" id="doSyncBtn">🔄 ابدأ</button></div></div></div>
@@ -120,7 +102,7 @@
   <div class="modal-overlay" id="statsModal"><div class="modal"><h3>📊 الإحصائيات</h3><div id="statsContent"></div><div class="modal-buttons"><button class="save" onclick="closeModal('statsModal')">إغلاق</button></div></div></div>
   <div class="modal-overlay" id="encryptionModal"><div class="modal"><h3>🔐 التشفير E2E</h3><p style="font-size: 13.5px; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.7;">تُشفَّر محادثاتك على جهازك قبل الرفع.<br><span style="color:#f59e0b;">⚠️ احفظ عبارة المرور!</span></p><input type="password" id="passphraseInput" placeholder="عبارة المرور..." /><div style="margin-top: 12px; font-size: 12.5px; color: var(--text-secondary);" id="encStatusText"></div><div class="modal-buttons"><button class="cancel" onclick="closeModal('encryptionModal')">إغلاق</button><button class="cancel" onclick="disableEncryption()" id="disableEncBtn" style="background:#ef4444; color:white;">تعطيل</button><button class="save" onclick="enableEncryption()">تفعيل</button></div></div></div>
   <div class="modal-overlay" id="notificationsModal"><div class="modal"><h3>🔔 الإشعارات</h3><div class="notif-info-box" id="notifInfoBox"></div><div class="notif-toggle-row"><label><input type="checkbox" id="notifToggle" /> تفعيل الإشعارات</label></div><div class="notif-toggle-row"><label><input type="checkbox" id="notifBackgroundOnlyToggle" /> 🔕 فقط في الخلفية</label></div><div class="modal-buttons"><button class="cancel" onclick="closeModal('notificationsModal')">إغلاق</button><button class="save" onclick="testNotification()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">🧪 تجربة</button><button class="save" onclick="saveNotificationSettings()">حفظ</button></div></div></div>
-    <!-- نافذة خصوصية الأجهزة -->
+  <!-- نافذة خصوصية الأجهزة -->
   <div class="modal-overlay" id="devicesModal">
     <div class="modal">
       <h3>🌐 خصوصية الأجهزة</h3>
@@ -169,20 +151,20 @@
       </div>
     </div>
   </div>
-    <!-- نافذة الإعدادات والقائمة -->
+  <!-- نافذة الإعدادات والقائمة -->
   <div class="modal-overlay" id="quickSettingsModal">
     <div class="modal">
       <h3>⚙️ الإعدادات والقائمة</h3>
-              <button onclick="openPersonasLibrary();closeModal('quickSettingsModal')">
+      <div class="quick-settings-grid">
+        <button onclick="openPersonasLibrary();closeModal('quickSettingsModal')">
           <span class="ui-icon-wrap"><i data-lucide="library"></i></span>
           <span>مكتبة الشخصيات</span>
         </button>
-      <div class="quick-settings-grid">
-                <button onclick="openDevicesModal();closeModal('quickSettingsModal')">
+        <button onclick="openDevicesModal();closeModal('quickSettingsModal')">
           <span class="ui-icon-wrap"><i data-lucide="smartphone"></i></span>
           <span>خصوصية الأجهزة</span>
         </button>
-                <button onclick="toggleFocusMode();closeModal('quickSettingsModal')">
+        <button onclick="toggleFocusMode();closeModal('quickSettingsModal')">
           <span class="ui-icon-wrap"><i data-lucide="timer"></i></span>
           <span>وضع التركيز</span>
         </button>
@@ -246,11 +228,8 @@
   </div>
   <div class="toast" id="toast"></div>
   <script src="js/app.js"></script>
-
   <script src="js/enhancements.js"></script>
-
   <script src="js/syntax.js"></script>
-
   <script src="js/cursor.js"></script>
   <script src="js/pwa.js"></script>
   <script src="js/icons.js"></script>
@@ -258,7 +237,7 @@
   <script src="js/mishkat.js"></script>
   <script src="js/mishkat-extras.js"></script>
   <script src="js/mishkat-evolution.js"></script>
-  <script src="js/mishkat-features.js"></script>  
+  <script src="js/mishkat-features.js"></script>
   <script src="js/personas-library.js"></script>
   <script src="js/tts-pro.js"></script>
   <script src="js/perf.js"></script>
