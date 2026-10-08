@@ -92,9 +92,11 @@
     if (!window.sbClient) return;
     try {
       await window.sbClient.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin }
-      });
+  provider: 'google',
+  options: {
+    redirectTo: 'https://ai-chat-app-two-lime.vercel.app'
+  }
+});
     } catch (e) {
       showError('فشل تسجيل الدخول بـ Google: ' + e.message);
     }
