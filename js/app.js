@@ -1247,10 +1247,9 @@ async function generateImage() {
     return;
   }
 
-  input.value = ''; // تفريغ الحقل
+  input.value = '';
   playSound('send');
 
-  // 1. إضافة رسالة المستخدم
   const umi = allChats[currentChatId].messages.length;
   allChats[currentChatId].messages.push({
     role: "user",
@@ -1259,12 +1258,11 @@ async function generateImage() {
   });
   addMessage('user', `🎨 ${text}`, false, umi);
 
-  // 2. إظهار مؤشر التحميل
   const { div, bubble } = addMessage('assistant', '', true);
   bubble.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
 
   try {
-    // 3. ترجمة النص إلى الإنجليزية (لأن مولّد الصور يعمل بالإنجليزية)
+    // ترجمة النص إلى الإنجليزية
     const transPrompt = `Translate the following Arabic text to English for an image generation prompt. Reply ONLY with the English translation, no extra words, no quotes, no explanation. Text: "${text}"`;
     const res = await fetch(API_URL, {
       method: 'POST',
@@ -1273,37 +1271,21 @@ async function generateImage() {
     });
     const data = await res.json();
     let englishPrompt = data.choices?.[0]?.message?.content?.trim() || text;
-    
-    // تنظيف النص المترجم من أي علامات اقتباس أو نقاط
     englishPrompt = englishPrompt.replace(/["'.\n]/g, '').trim();
-    
-    // 4. بناء رابط الصورة من Pollinations.ai
-        // 4. بناء رابط الصورة
+
+    // بناء رابط الصورة والمرور عبر بروكسي allorigins
     const imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishPrompt)}?width=1024&height=1024&nologo=true&seed=${Date.now()}`;
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(imgUrl)}`;
 
-    // 5. جلب الصورة كـ Blob (لتجاوز حظر CORS)
-    bubble.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
-    let localImgUrl = '';
-    try {
-      const imgResponse = await fetch(imgUrl);
-      if (!imgResponse.ok) throw new Error('HTTP ' + imgResponse.status);
-      const imgBlob = await imgResponse.blob();
-      localImgUrl = URL.createObjectURL(imgBlob);
-    } catch (imgErr) {
-      bubble.innerHTML = `❌ فشل تحميل الصورة: ${imgErr.message}. قد تكون الخدمة مشغولة، جرب وصفاً آخر.`;
-      playSound('error');
-      return;
-    }
-
-    // 6. عرض الصورة في المحادثة
     const imgHtml = `
       <div style="text-align: center; margin-top: 8px;">
-        <img src="${localImgUrl}" 
+        <img src="${proxyUrl}" 
              alt="${escapeHtml(text)}" 
              style="max-width: 100%; border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); cursor: pointer; transition: transform 0.2s;" 
-             onclick="openLightbox('${localImgUrl}')" 
+             onclick="openLightbox('${proxyUrl}')" 
              onmouseover="this.style.transform='scale(1.02)'" 
-             onmouseout="this.style.transform='scale(1)'" 
+             onmouseout="this.style.transform='scale(1)'"
+             onerror="this.parentElement.innerHTML='<p style=\\'color:#ef4444; font-size:14px;\\'>⚠️ فشل تحميل الصورة. حاول مرة أخرى بعد لحظات.</p>'"
              loading="lazy" />
         <p style="font-size: 12px; opacity: 0.65; margin-top: 8px;">🎨 تم التوليد بواسطة Pollinations.ai</p>
       </div>
@@ -1311,7 +1293,6 @@ async function generateImage() {
     bubble.innerHTML = imgHtml;
     addCopyButtons(bubble);
 
-    // 6. حفظ في سجل المحادثة
     const aiIndex = allChats[currentChatId].messages.length;
     allChats[currentChatId].messages.push({
       role: "assistant",
@@ -1319,7 +1300,6 @@ async function generateImage() {
     });
     if (div) div.dataset.index = aiIndex;
 
-    // إضافة أزرار التفاعل (إعجاب، نسخ، إلخ)
     const actions = div.querySelector('.msg-actions');
     actions.innerHTML = '';
     const cb = document.createElement('button');
@@ -1341,10 +1321,7 @@ async function generateImage() {
     renderSidebar();
     pushChatToCloud(allChats[currentChatId]);
 
-    // 7. اقتراح حفظ الصورة
-    setTimeout(() => {
-      if (typeof toast === 'function') toast('✨ اضغط على الصورة لعرضها أو حفظها');
-    }, 1500);
+    setTimeout(() => toast('✨ اضغط على الصورة لعرضها أو حفظها'), 1500);
 
   } catch (err) {
     bubble.textContent = '❌ فشل توليد الصورة: ' + err.message;
