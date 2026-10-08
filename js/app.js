@@ -1278,20 +1278,33 @@ async function generateImage() {
     englishPrompt = englishPrompt.replace(/["'.\n]/g, '').trim();
     
     // 4. بناء رابط الصورة من Pollinations.ai
+        // 4. بناء رابط الصورة
     const imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishPrompt)}?width=1024&height=1024&nologo=true&seed=${Date.now()}`;
 
-    // 5. عرض الصورة في المحادثة
+    // 5. جلب الصورة كـ Blob (لتجاوز حظر CORS)
+    bubble.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+    let localImgUrl = '';
+    try {
+      const imgResponse = await fetch(imgUrl);
+      if (!imgResponse.ok) throw new Error('HTTP ' + imgResponse.status);
+      const imgBlob = await imgResponse.blob();
+      localImgUrl = URL.createObjectURL(imgBlob);
+    } catch (imgErr) {
+      bubble.innerHTML = `❌ فشل تحميل الصورة: ${imgErr.message}. قد تكون الخدمة مشغولة، جرب وصفاً آخر.`;
+      playSound('error');
+      return;
+    }
+
+    // 6. عرض الصورة في المحادثة
     const imgHtml = `
       <div style="text-align: center; margin-top: 8px;">
-        <img src="${imgUrl}" 
-     referrerpolicy="no-referrer"
-     alt="${escapeHtml(text)}" 
-     style="max-width: 100%; border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); cursor: pointer; transition: transform 0.2s;" 
-     onclick="openLightbox('${imgUrl}')" 
-     onmouseover="this.style.transform='scale(1.02)'" 
-     onmouseout="this.style.transform='scale(1)'"
-     onerror="this.parentElement.innerHTML='<p style=\'color:#ef4444; font-size:14px;\'>⚠️ فشل تحميل الصورة. قد تكون الخدمة مشغولة، حاول مرة أخرى.</p>'"
-     loading="lazy" />
+        <img src="${localImgUrl}" 
+             alt="${escapeHtml(text)}" 
+             style="max-width: 100%; border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); cursor: pointer; transition: transform 0.2s;" 
+             onclick="openLightbox('${localImgUrl}')" 
+             onmouseover="this.style.transform='scale(1.02)'" 
+             onmouseout="this.style.transform='scale(1)'" 
+             loading="lazy" />
         <p style="font-size: 12px; opacity: 0.65; margin-top: 8px;">🎨 تم التوليد بواسطة Pollinations.ai</p>
       </div>
     `;
