@@ -92,6 +92,7 @@ let streamRunning = false;
 let notifSettings = JSON.parse(localStorage.getItem('notifSettings') || JSON.stringify({ enabled: false, backgroundOnly: true }));
 let soundSettings = JSON.parse(localStorage.getItem('soundSettings') || JSON.stringify({ enabled: true, send: true, receive: true, click: true, notif: true }));
 let userMemory = JSON.parse(localStorage.getItem('userMemory') || '[]');
+let currentUserId = null;
 
 const PROMPT_TEMPLATES = [
   { icon: '📝', name: 'لخّص', text: 'لخّص النص التالي بإيجاز شديد: ' },
@@ -105,6 +106,12 @@ const PROMPT_TEMPLATES = [
 
 let deviceId = localStorage.getItem('deviceId');
 if (!deviceId) { deviceId = 'dev_' + Math.random().toString(36).substr(2, 12) + Date.now().toString(36); localStorage.setItem('deviceId', deviceId); }
+
+// ═══════ AUTH INTEGRATION ═══════
+window.setCurrentUserId = function (uid) {
+  currentUserId = uid;
+  console.log('👤 User ID set:', uid);
+};
 
 const chatContainer = document.getElementById('chat');
 const chatInner = document.getElementById('chatInner');
@@ -380,7 +387,6 @@ function openSounds() {
   document.getElementById('soundNotifToggle').checked = soundSettings.notif;
   document.getElementById('soundsModal').classList.add('show');
 }
-
 function saveSoundSettings() { soundSettings = { enabled: document.getElementById('soundsEnabledToggle').checked, send: document.getElementById('soundSendToggle').checked, receive: document.getElementById('soundReceiveToggle').checked, click: document.getElementById('soundClickToggle').checked, notif: document.getElementById('soundNotifToggle').checked }; localStorage.setItem('soundSettings', JSON.stringify(soundSettings)); closeModal('soundsModal'); toast('🔊 تم الحفظ'); }
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
 function openLightbox(src) { document.getElementById('lightboxImg').src = src; document.getElementById('lightbox').classList.add('show'); playSound('click'); }
@@ -432,31 +438,21 @@ setInterval(() => { const n = unreadChats.size; document.title = n > 0 ? `(${n})
 function openDevicesModal() {
   const modal = document.getElementById('devicesModal');
   if (!modal) return;
-
-  // ⚡ معرّف الجهاز
   const idEl = document.getElementById('deviceIdDisplay');
   if (idEl) idEl.textContent = deviceId;
-
-  // ⚡ اختر الحالي
   const scope = localStorage.getItem('syncScope') || 'device';
   modal.querySelectorAll('.device-scope-btn').forEach(btn => {
     const active = btn.dataset.scope === scope;
     btn.classList.toggle('active', active);
   });
-
-  // ⚡ تفعيل الأزرار
   modal.querySelectorAll('.device-scope-btn').forEach(btn => {
     btn.onclick = () => {
       const newScope = btn.dataset.scope;
-      if (newScope === scope) return; // لا تغيير
-
+      if (newScope === scope) return;
       localStorage.setItem('syncScope', newScope);
       modal.querySelectorAll('.device-scope-btn').forEach(b => b.classList.toggle('active', b === btn));
-
-      // 🆕 عند التحويل إلى "هذا الجهاز فقط" — احذف محادثات الأجهزة الأخرى
       if (newScope === 'device') {
         const before = Object.keys(allChats).length;
-        // احذف المحادثات التي ليست لهذا الجهاز
         const ownedIds = JSON.parse(localStorage.getItem('ownChatIds') || '[]');
         Object.keys(allChats).forEach(id => {
           const c = allChats[id];
@@ -476,15 +472,12 @@ function openDevicesModal() {
       } else {
         toast('🌍 سيتم عرض محادثات كل الأجهزة');
       }
-
-      // أعد تشغيل Realtime + اسحب
       setTimeout(() => {
         if (typeof subscribeRealtime === 'function') subscribeRealtime();
         if (typeof pullAllFromCloud === 'function') pullAllFromCloud(false);
       }, 400);
     };
   });
-
   modal.classList.add('show');
 }
 window.openDevicesModal = openDevicesModal;
@@ -612,19 +605,14 @@ function renderSidebar() {
   chatList.innerHTML = '';
   const q = searchInput.value.trim().toLowerCase();
   const scope = localStorage.getItem('syncScope') || 'device';
-const ownedIds = JSON.parse(localStorage.getItem('ownChatIds') || '[]');
-let chats = Object.values(allChats).filter(c => {
-  // في وضع "الكل" — اعرض كل شيء
-  if (scope === 'all') return true;
-  // في وضع "الجهاز فقط" — اعرض فقط:
-  // 1) المحادثات من هذا الجهاز (ownerDevice)
-  // 2) أو المحادثات القديمة اللي ملكها لهذا الجهاز
-  if (c.ownerDevice === deviceId) return true;
-  if (ownedIds.includes(c.id)) return true;
-  // 3) محادثات قديمة قبل إضافة ownerDevice (لا نعرف لمن هي)
-  if (!c.ownerDevice && !ownedIds.length) return true;
-  return false;
-});
+  const ownedIds = JSON.parse(localStorage.getItem('ownChatIds') || '[]');
+  let chats = Object.values(allChats).filter(c => {
+    if (scope === 'all') return true;
+    if (c.ownerDevice === deviceId) return true;
+    if (ownedIds.includes(c.id)) return true;
+    if (!c.ownerDevice && !ownedIds.length) return true;
+    return false;
+  });
   if (q) chats = chats.filter(c => (c.title || '').toLowerCase().includes(q) || c.messages.some(m => m.role !== 'system' && (m.content || '').toLowerCase().includes(q)));
   chats.sort((a, b) => { if (!!b.pinned !== !!a.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0); return b.timestamp - a.timestamp; });
   if (chats.length === 0) { chatList.innerHTML = `<div style="text-align:center; padding: 24px 12px; opacity:0.5; font-size:13px;">${q ? 'لا نتائج' : 'ابدأ محادثة'}</div>`; return; }
@@ -636,21 +624,18 @@ let chats = Object.values(allChats).filter(c => {
     const actions = document.createElement('div');
     actions.className = 'chat-item-actions';
     actions.onclick = (e) => e.stopPropagation();
-
     const p = document.createElement('button');
     p.className = 'chat-action-btn pin-btn' + (c.pinned ? ' active' : '');
     p.title = c.pinned ? 'إلغاء التثبيت' : 'تثبيت';
     p.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>';
     p.onclick = (e) => { e.stopPropagation(); allChats[c.id].pinned = !allChats[c.id].pinned; saveAllChats(); renderSidebar(); pushChatToCloud(allChats[c.id]); playSound('click'); };
     actions.appendChild(p);
-
     const del = document.createElement('button');
     del.className = 'chat-action-btn delete-btn';
     del.title = 'حذف';
     del.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>';
     del.onclick = (e) => { e.stopPropagation(); deleteChat(c.id); };
     actions.appendChild(del);
-
     d.appendChild(actions);
     d.onclick = () => { switchChat(c.id); playSound('click'); if (window.innerWidth <= 900) toggleSidebar(); };
     chatList.appendChild(d);
@@ -664,10 +649,9 @@ function createNewChat() {
     title: 'محادثة جديدة',
     timestamp: Date.now(),
     pinned: false,
-    ownerDevice: deviceId, // 🆕 معرّف المالك
+    ownerDevice: deviceId,
     messages: [{ role: "system", content: systemPrompt }]
   };
-  // 🆕 سجّل هذه المحادثة كملك لهذا الجهاز
   const ownedIds = JSON.parse(localStorage.getItem('ownChatIds') || '[]');
   if (!ownedIds.includes(id)) {
     ownedIds.push(id);
@@ -892,6 +876,7 @@ async function runAgentConversation() {
     const typingInterval = setInterval(() => { if (i >= result.finalText.length) { clearInterval(typingInterval); return; } i = Math.min(i + 5, result.finalText.length); bubble.innerHTML = marked.parse(result.finalText.substring(0, i)); chatContainer.scrollTop = chatContainer.scrollHeight; }, 15);
     await new Promise(r => setTimeout(r, Math.min(result.finalText.length * 3, 2500)));
     clearInterval(typingInterval); bubble.innerHTML = marked.parse(result.finalText); addCopyButtons(bubble);
+    if (div) div.dataset.evoReal = '1';
     const asstIndex = allChats[currentChatId].messages.length;
     allChats[currentChatId].messages.push({ role: "assistant", content: result.finalText, toolLog: result.toolLog });
     if (result.toolLog.length > 0) {
@@ -968,7 +953,6 @@ async function streamResponse() {
       }
     }
 
-        // 🏷️ علّم هذه الرسالة كرد حقيقي (لنظام XP)
     const realMsgEl = lb.closest('.msg');
     if (realMsgEl) realMsgEl.dataset.evoReal = '1';
 
@@ -1068,6 +1052,7 @@ function initSupabase() {
     return true;
   } catch (e) { console.error('Supabase init failed:', e); return false; }
 }
+
 async function sbFetch(p, o = {}) {
   const u = SUPABASE_URL + '/rest/v1/' + p;
   const r = await fetch(u, { ...o, headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal', ...(o.headers || {}) } });
@@ -1076,27 +1061,48 @@ async function sbFetch(p, o = {}) {
   if (!text) return null;
   try { return JSON.parse(text); } catch (e) { return null; }
 }
+
 function setOnlineStatus(status) {
   isOnline = (status === 'online');
   if (status === 'online') { syncDot.classList.add('online'); syncDot.style.background = '#10b981'; syncStatusText.textContent = 'متصل'; }
   else if (status === 'connecting') { syncDot.classList.remove('online'); syncDot.style.background = '#f59e0b'; syncStatusText.textContent = 'جارٍ الاتصال...'; }
   else { syncDot.classList.remove('online'); syncDot.style.background = '#ef4444'; syncStatusText.textContent = 'غير متصل'; }
 }
+
 async function pushChatToCloud(c) {
   if (!sbClient || !c) return;
-  try { const ms = encKey ? await encryptData(c.messages) : c.messages; await sbClient.from('chats').upsert({ id: c.id, device_id: deviceId, title: c.title, pinned: !!c.pinned, timestamp: c.timestamp, messages: ms }); setOnlineStatus('online'); } catch (e) { setOnlineStatus('offline'); }
+  try {
+    const ms = encKey ? await encryptData(c.messages) : c.messages;
+    const row = {
+      id: c.id,
+      device_id: deviceId,
+      title: c.title,
+      pinned: !!c.pinned,
+      timestamp: c.timestamp,
+      messages: ms
+    };
+    if (currentUserId) row.user_id = currentUserId;
+    await sbClient.from('chats').upsert(row);
+    setOnlineStatus('online');
+  } catch (e) { setOnlineStatus('offline'); }
 }
+
 async function deleteChatFromCloud(id) { if (!sbClient) return; try { await sbClient.from('chats').delete().eq('id', id); } catch (e) {} }
+
 async function pullAllFromCloud(silent = false) {
   if (!sbClient) return;
   try {
-    // 🆕 كل جهاز يرى محادثاته فقط (افتراضي)
-    const scope = localStorage.getItem('syncScope') || 'device';
     let query = sbClient.from('chats').select('*');
-    if (scope === 'device') {
-      query = query.eq('device_id', deviceId);
+    if (currentUserId) {
+      // مسجل دخول → فقط محادثات المستخدم
+      query = query.eq('user_id', currentUserId);
+    } else {
+      // زائر → حسب الإعداد
+      const scope = localStorage.getItem('syncScope') || 'device';
+      if (scope === 'device') query = query.eq('device_id', deviceId);
     }
-    const { data, error } = await query; if (error) throw error;
+    const { data, error } = await query;
+    if (error) throw error;
     let m = 0;
     for (const row of (data || [])) {
       let ms = row.messages;
@@ -1108,18 +1114,24 @@ async function pullAllFromCloud(silent = false) {
     setOnlineStatus('online');
   } catch (e) { setOnlineStatus('offline'); }
 }
+
 function subscribeRealtime() {
   if (!sbClient) return;
   if (realtimeChannel) sbClient.removeChannel(realtimeChannel);
-    realtimeChannel = sbClient.channel('chats-realtime').on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, async (payload) => {
+  realtimeChannel = sbClient.channel('chats-realtime').on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, async (payload) => {
     const row = payload.new || payload.old; if (!row) return;
-            // 🆕 في وضع "الجهاز فقط"، تجاهل الأحداث من أجهزة أخرى
-        const scope = localStorage.getItem('syncScope') || 'device';
-        if (scope === 'device' && row.device_id && row.device_id !== deviceId) return;
+
+    // فلترة حسب المستخدم / الجهاز
+    if (currentUserId) {
+      if (row.user_id && row.user_id !== currentUserId) return;
+    } else {
+      const scope = localStorage.getItem('syncScope') || 'device';
+      if (scope === 'device' && row.device_id && row.device_id !== deviceId) return;
+      if (scope === 'all' && row.device_id === deviceId) return;
+    }
+
     if (payload.eventType === 'DELETE') { delete allChats[row.id]; unreadChats.delete(row.id); localStorage.setItem('allChats', JSON.stringify(allChats)); localStorage.setItem('unreadChats', JSON.stringify([...unreadChats])); renderSidebar(); if (currentChatId === row.id) { const r = Object.keys(allChats); if (r.length > 0) switchChat(r[0]); else createNewChat(); } }
     else {
-              // في وضع "الكل"، تجاهل التحديثات من نفس الجهاز (لتجنب loop)
-        if (scope === 'all' && row.device_id === deviceId) return;
       let ms = row.messages;
       if (typeof ms === 'string' && ms.startsWith('ENC:')) { try { ms = await decryptData(ms); } catch (e) { return; } }
       const l = allChats[row.id];
@@ -1137,6 +1149,7 @@ function subscribeRealtime() {
     else if (s === 'CLOSED') setOnlineStatus('connecting');
   });
 }
+
 function syncWithCloud() {
   if (!ENABLE_CLOUD_SYNC || !sbClient) { document.getElementById('syncContent').innerHTML = `<p>⚠️</p>`; document.getElementById('doSyncBtn').style.display = 'none'; }
   else {
@@ -1145,11 +1158,12 @@ function syncWithCloud() {
   }
   document.getElementById('syncModal').classList.add('show');
 }
+
 async function doSync() {
   const b = document.getElementById('doSyncBtn'); b.disabled = true; b.textContent = '⏳...'; const log = [];
   try {
     const lc = Object.values(allChats);
-    if (lc.length > 0) { for (const c of lc) { const ms = encKey ? await encryptData(c.messages) : c.messages; await sbFetch('chats', { method: 'POST', body: JSON.stringify({ id: c.id, device_id: deviceId, title: c.title, pinned: !!c.pinned, timestamp: c.timestamp, messages: ms }) }); } log.push(`✅ ${lc.length}`); }
+    if (lc.length > 0) { for (const c of lc) { const ms = encKey ? await encryptData(c.messages) : c.messages; const row = { id: c.id, device_id: deviceId, title: c.title, pinned: !!c.pinned, timestamp: c.timestamp, messages: ms }; if (currentUserId) row.user_id = currentUserId; await sbFetch('chats', { method: 'POST', body: JSON.stringify(row) }); } log.push(`✅ ${lc.length}`); }
     const cr = await sbFetch('chats?select=*'); log.push(`📥 ${cr.length}`);
     let m = 0, f = 0;
     for (const r of cr) { let ms = r.messages; if (typeof ms === 'string' && ms.startsWith('ENC:')) { try { ms = await decryptData(ms); } catch (e) { f++; continue; } } const l = allChats[r.id]; if (!l || r.timestamp > l.timestamp) { allChats[r.id] = { id: r.id, title: r.title, pinned: r.pinned, timestamp: r.timestamp, messages: ms }; m++; } }
