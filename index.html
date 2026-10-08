@@ -54,6 +54,24 @@
     <button class="new-chat-btn" onclick="createNewChat()"><span>＋</span> محادثة جديدة</button>
     <div class="section-label">المحادثات</div>
     <div id="chatList"></div>
+        <!-- بطاقة المستخدم -->
+    <div class="user-card" id="userCard" style="display:none;">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <div class="user-info">
+        <div class="user-name" id="userName">—</div>
+        <div class="user-email" id="userEmail">—</div>
+      </div>
+      <button class="user-menu-btn" id="userMenuBtn" title="خيارات الحساب">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="1"/>
+          <circle cx="12" cy="5" r="1"/>
+          <circle cx="12" cy="19" r="1"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="quick-settings-btn" onclick="openQuickSettings()">
     <div class="sidebar-footer">
       <button class="quick-settings-btn" onclick="openQuickSettings()">
         <span class="ui-icon-wrap"><i data-lucide="settings-2"></i></span>

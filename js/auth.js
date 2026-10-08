@@ -167,6 +167,7 @@
       window.setCurrentUserId(user.id);
     }
     updateUserUI();
+    updateUserCard(user);  // 🆕 اعرض بطاقة الحساب
     hideAuthScreen();
 
     // أعد المزامنة مع user_id
@@ -288,6 +289,105 @@
     if (typeof toast === 'function') toast('👋 تم تسجيل الخروج');
     setTimeout(() => window.location.reload(), 800);
   };
+
+    // ═══════ USER CARD ═══════
+  function updateUserCard(user) {
+    const card = document.getElementById('userCard');
+    const avatar = document.getElementById('userAvatar');
+    const nameEl = document.getElementById('userName');
+    const emailEl = document.getElementById('userEmail');
+    if (!card || !user) return;
+
+    const meta = user.user_metadata || {};
+    const fullName = meta.full_name || meta.name || user.email?.split('@')[0] || 'مستخدم';
+    const email = user.email || '';
+    const avatarUrl = meta.avatar_url || meta.picture || '';
+
+    // Avatar
+    if (avatarUrl) {
+      avatar.innerHTML = '<img src="' + avatarUrl + '" alt="" />';
+    } else {
+      avatar.textContent = fullName.charAt(0).toUpperCase();
+    }
+
+    nameEl.textContent = fullName;
+    emailEl.textContent = email;
+    card.style.display = 'flex';
+
+    // زر القائمة
+    const menuBtn = document.getElementById('userMenuBtn');
+    if (menuBtn && !menuBtn.__wired) {
+      menuBtn.__wired = true;
+      menuBtn.onclick = (e) => {
+        e.stopPropagation();
+        openUserDropdown(menuBtn, user);
+      };
+    }
+  }
+
+  function openUserDropdown(anchor, user) {
+    // إذا موجود → أغلقه
+    let dd = document.getElementById('userDropdown');
+    if (dd) { dd.remove(); return; }
+
+    const rect = anchor.getBoundingClientRect();
+    dd = document.createElement('div');
+    dd.id = 'userDropdown';
+    dd.className = 'user-dropdown';
+    dd.innerHTML = `
+      <button class="user-dropdown-item" id="ddCopyEmail">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+        <span>نسخ البريد الإلكتروني</span>
+      </button>
+      <button class="user-dropdown-item" id="ddSettings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m10 0h6M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/></svg>
+        <span>الإعدادات</span>
+      </button>
+      <div class="user-dropdown-divider"></div>
+      <button class="user-dropdown-item danger" id="ddLogout">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+        <span>تسجيل الخروج</span>
+      </button>
+    `;
+    document.body.appendChild(dd);
+
+    // الموضع — فوق الزر مباشرة
+    const ddRect = dd.getBoundingClientRect();
+    dd.style.top = Math.max(8, rect.top - ddRect.height - 8) + 'px';
+    dd.style.left = rect.left + 'px';
+
+    requestAnimationFrame(() => dd.classList.add('show'));
+
+    // الأحداث
+    dd.querySelector('#ddCopyEmail').onclick = () => {
+      navigator.clipboard.writeText(user.email || '').then(() => {
+        if (typeof toast === 'function') toast('📋 تم نسخ البريد');
+        dd.remove();
+      });
+    };
+    dd.querySelector('#ddSettings').onclick = () => {
+      dd.remove();
+      if (typeof openSettings === 'function') openSettings();
+    };
+    dd.querySelector('#ddLogout').onclick = () => {
+      dd.remove();
+      window.handleLogout();
+    };
+
+    // إغلاق عند الضغط خارجًا
+    setTimeout(() => {
+      const close = (e) => {
+        if (!dd.contains(e.target) && e.target !== anchor) {
+          dd.classList.remove('show');
+          setTimeout(() => dd.remove(), 250);
+          document.removeEventListener('click', close);
+        }
+      };
+      document.addEventListener('click', close);
+    }, 100);
+  }
+
+  // ═══════ Init ═══════
 
   // ═══════ Init ═══════
   function tryInit(retries = 40) {
