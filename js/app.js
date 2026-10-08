@@ -378,26 +378,9 @@ function openSounds() {
   document.getElementById('soundReceiveToggle').checked = soundSettings.receive;
   document.getElementById('soundClickToggle').checked = soundSettings.click;
   document.getElementById('soundNotifToggle').checked = soundSettings.notif;
-  // 🆕 نطاق المزامنة
-  const scope = localStorage.getItem('syncScope') || 'device';
-  const r1 = document.getElementById('syncScopeDevice');
-  const r2 = document.getElementById('syncScopeAll');
-  if (r1 && r2) {
-    r1.checked = scope === 'device';
-    r2.checked = scope === 'all';
-    r1.onchange = r2.onchange = () => {
-      const val = r1.checked ? 'device' : 'all';
-      localStorage.setItem('syncScope', val);
-      if (typeof toast === 'function') toast(val === 'device' ? '📱 هذا الجهاز فقط' : '🌍 كل الأجهزة');
-      // أعد تشغيل Realtime + اسحب بيانات جديدة
-      setTimeout(() => {
-        if (typeof subscribeRealtime === 'function') subscribeRealtime();
-        if (typeof pullAllFromCloud === 'function') pullAllFromCloud(false);
-      }, 300);
-    };
-  }
   document.getElementById('soundsModal').classList.add('show');
 }
+
 function saveSoundSettings() { soundSettings = { enabled: document.getElementById('soundsEnabledToggle').checked, send: document.getElementById('soundSendToggle').checked, receive: document.getElementById('soundReceiveToggle').checked, click: document.getElementById('soundClickToggle').checked, notif: document.getElementById('soundNotifToggle').checked }; localStorage.setItem('soundSettings', JSON.stringify(soundSettings)); closeModal('soundsModal'); toast('🔊 تم الحفظ'); }
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
 function openLightbox(src) { document.getElementById('lightboxImg').src = src; document.getElementById('lightbox').classList.add('show'); playSound('click'); }
@@ -445,6 +428,66 @@ function showDesktopNotification(title, body, chatId = null, force = false) {
 function markAsRead(id) { if (unreadChats.has(id)) { unreadChats.delete(id); localStorage.setItem('unreadChats', JSON.stringify([...unreadChats])); renderSidebar(); } }
 function markAsUnread(id) { if (id !== currentChatId) { unreadChats.add(id); localStorage.setItem('unreadChats', JSON.stringify([...unreadChats])); renderSidebar(); } }
 setInterval(() => { const n = unreadChats.size; document.title = n > 0 ? `(${n}) مِشكاة` : 'مِشكاة ✨ — مساعدك الذكي'; }, 1000);
+
+function openDevicesModal() {
+  const modal = document.getElementById('devicesModal');
+  if (!modal) return;
+
+  // ⚡ معرّف الجهاز
+  const idEl = document.getElementById('deviceIdDisplay');
+  if (idEl) idEl.textContent = deviceId;
+
+  // ⚡ اختر الحالي
+  const scope = localStorage.getItem('syncScope') || 'device';
+  modal.querySelectorAll('.device-scope-btn').forEach(btn => {
+    const active = btn.dataset.scope === scope;
+    btn.classList.toggle('active', active);
+  });
+
+  // ⚡ تفعيل الأزرار
+  modal.querySelectorAll('.device-scope-btn').forEach(btn => {
+    btn.onclick = () => {
+      const newScope = btn.dataset.scope;
+      if (newScope === scope) return; // لا تغيير
+
+      localStorage.setItem('syncScope', newScope);
+      modal.querySelectorAll('.device-scope-btn').forEach(b => b.classList.toggle('active', b === btn));
+
+      // 🆕 عند التحويل إلى "هذا الجهاز فقط" — احذف محادثات الأجهزة الأخرى
+      if (newScope === 'device') {
+        const before = Object.keys(allChats).length;
+        // احذف المحادثات التي ليست لهذا الجهاز
+        const ownedIds = JSON.parse(localStorage.getItem('ownChatIds') || '[]');
+        Object.keys(allChats).forEach(id => {
+          const c = allChats[id];
+          if (c && c.ownerDevice && c.ownerDevice !== deviceId && !ownedIds.includes(id)) {
+            delete allChats[id];
+          }
+        });
+        const after = Object.keys(allChats).length;
+        if (before !== after) {
+          localStorage.setItem('allChats', JSON.stringify(allChats));
+          renderSidebar();
+          switchChat(Object.keys(allChats)[0] || null);
+          toast(`📱 تم عزل ${before - after} محادثة`);
+        } else {
+          toast('📱 محادثاتك محفوظة على هذا الجهاز فقط');
+        }
+      } else {
+        toast('🌍 سيتم عرض محادثات كل الأجهزة');
+      }
+
+      // أعد تشغيل Realtime + اسحب
+      setTimeout(() => {
+        if (typeof subscribeRealtime === 'function') subscribeRealtime();
+        if (typeof pullAllFromCloud === 'function') pullAllFromCloud(false);
+      }, 400);
+    };
+  });
+
+  modal.classList.add('show');
+}
+window.openDevicesModal = openDevicesModal;
 
 function openSettings() { document.getElementById('systemPromptInput').value = systemPrompt; document.getElementById('settingsModal').classList.add('show'); }
 function saveSettings() {
@@ -568,7 +611,20 @@ function speakMessage(btn, text) {
 function renderSidebar() {
   chatList.innerHTML = '';
   const q = searchInput.value.trim().toLowerCase();
-  let chats = Object.values(allChats);
+  const scope = localStorage.getItem('syncScope') || 'device';
+const ownedIds = JSON.parse(localStorage.getItem('ownChatIds') || '[]');
+let chats = Object.values(allChats).filter(c => {
+  // في وضع "الكل" — اعرض كل شيء
+  if (scope === 'all') return true;
+  // في وضع "الجهاز فقط" — اعرض فقط:
+  // 1) المحادثات من هذا الجهاز (ownerDevice)
+  // 2) أو المحادثات القديمة اللي ملكها لهذا الجهاز
+  if (c.ownerDevice === deviceId) return true;
+  if (ownedIds.includes(c.id)) return true;
+  // 3) محادثات قديمة قبل إضافة ownerDevice (لا نعرف لمن هي)
+  if (!c.ownerDevice && !ownedIds.length) return true;
+  return false;
+});
   if (q) chats = chats.filter(c => (c.title || '').toLowerCase().includes(q) || c.messages.some(m => m.role !== 'system' && (m.content || '').toLowerCase().includes(q)));
   chats.sort((a, b) => { if (!!b.pinned !== !!a.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0); return b.timestamp - a.timestamp; });
   if (chats.length === 0) { chatList.innerHTML = `<div style="text-align:center; padding: 24px 12px; opacity:0.5; font-size:13px;">${q ? 'لا نتائج' : 'ابدأ محادثة'}</div>`; return; }
@@ -603,7 +659,20 @@ function renderSidebar() {
 
 function createNewChat() {
   const id = Date.now().toString();
-  allChats[id] = { id, title: 'محادثة جديدة', timestamp: Date.now(), pinned: false, messages: [{ role: "system", content: systemPrompt }] };
+  allChats[id] = {
+    id,
+    title: 'محادثة جديدة',
+    timestamp: Date.now(),
+    pinned: false,
+    ownerDevice: deviceId, // 🆕 معرّف المالك
+    messages: [{ role: "system", content: systemPrompt }]
+  };
+  // 🆕 سجّل هذه المحادثة كملك لهذا الجهاز
+  const ownedIds = JSON.parse(localStorage.getItem('ownChatIds') || '[]');
+  if (!ownedIds.includes(id)) {
+    ownedIds.push(id);
+    localStorage.setItem('ownChatIds', JSON.stringify(ownedIds));
+  }
   currentChatId = id; saveAllChats(); setReadOnly(false); switchChat(id); input.focus(); playSound('click');
   if (window.innerWidth <= 900) { const sb = document.getElementById('sidebar'); if (sb.classList.contains('open')) toggleSidebar(); }
 }
