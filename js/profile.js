@@ -19,11 +19,18 @@ async function loadProfile() {
 async function updateProfile({ full_name, bio, theme, font }) {
   const supabase = window.sbClient;
   const { data: { user } } = await supabase.auth.getUser();
+  
+  // 1. تحديث جدول profiles
   const { error } = await supabase
     .from('profiles')
     .update({ full_name, bio, theme, font, updated_at: new Date() })
     .eq('id', user.id);
   if (error) throw error;
+
+  // 2. تحديث بيانات المصادقة (user_metadata) لكي تظهر في القائمة الجانبية
+  await supabase.auth.updateUser({
+    data: { full_name: full_name }
+  });
 }
 
 async function uploadAvatar(file) {
@@ -40,8 +47,14 @@ async function uploadAvatar(file) {
   const { data: { publicUrl } } = supabase.storage
     .from('avatars').getPublicUrl(path);
 
+  // 1. تحديث جدول profiles
   await supabase.from('profiles')
     .update({ avatar_url: publicUrl }).eq('id', user.id);
+
+  // 2. تحديث بيانات المصادقة (user_metadata) بالصورة الجديدة
+  await supabase.auth.updateUser({
+    data: { avatar_url: publicUrl }
+  });
 
   return publicUrl;
 }
@@ -99,7 +112,6 @@ function renderProfileModal(profile) {
         </label>
       </div>
       
-      <!-- قسم الأزرار السفلية -->
       <div style="display: flex; gap: 10px; margin-top: 1.5rem;">
         <button id="pfSave" class="btn-primary" style="flex: 1;">💾 حفظ التغييرات</button>
         <button onclick="document.getElementById('profileModalWrapper').remove()" style="background: #4b5563; color: white; border: none; border-radius: 10px; padding: 0.8rem 1.5rem; cursor: pointer; font-weight: bold; font-family: inherit;">إغلاق</button>
@@ -121,33 +133,49 @@ function bindProfileEvents(modalEl, onChange) {
   $('#avatarInput').addEventListener('change', async e => {
     const file = e.target.files[0];
     if (!file) return;
-    const url = await uploadAvatar(file);
-    $('#avatarPreview').src = url;
-    onChange?.({ avatar_url: url });
+    try {
+      const url = await uploadAvatar(file);
+      $('#avatarPreview').src = url;
+      onChange?.({ avatar_url: url });
+    } catch (err) {
+      alert('فشل رفع الصورة: ' + err.message);
+    }
   });
 
   $('#pfSave').addEventListener('click', async () => {
-    await updateProfile({
-      full_name: $('#pfName').value.trim(),
-      bio: $('#pfBio').value.trim(),
-      theme: $('#pfTheme').value,
-      font: $('#pfFont').value
-    });
-    onChange?.({ saved: true });
+    try {
+      await updateProfile({
+        full_name: $('#pfName').value.trim(),
+        bio: $('#pfBio').value.trim(),
+        theme: $('#pfTheme').value,
+        font: $('#pfFont').value
+      });
+      onChange?.({ saved: true });
+    } catch (err) {
+      alert('فشل الحفظ: ' + err.message);
+    }
   });
 
   $('#pfChangePass').addEventListener('click', async () => {
     const pw = prompt('كلمة المرور الجديدة (٦ أحرف على الأقل):');
     if (!pw || pw.length < 6) return;
-    await changePassword(pw);
-    alert('✅ تم تغيير كلمة المرور');
+    try {
+      await changePassword(pw);
+      alert('✅ تم تغيير كلمة المرور');
+    } catch (err) {
+      alert('فشل تغيير كلمة المرور: ' + err.message);
+    }
   });
 
   $('#pfDeleteAcc').addEventListener('click', async () => {
     if (!confirm('⚠️ سيتم حذف كل محادثاتك نهائيًا. متأكد؟')) return;
     if (prompt('اكتب "حذف" للتأكيد:') !== 'حذف') return;
-    await deleteAccount();
-    location.reload();
+    try {
+      await deleteAccount();
+      location.reload();
+    } catch (err) {
+      alert('فشل حذف الحساب: ' + err.message);
+    }
   });
 
   modalEl.querySelector('[data-close]').onclick = () => modalEl.remove();
@@ -160,16 +188,14 @@ window.openProfileModal = async function() {
   if (!profile) return alert('يجب تسجيل الدخول أولاً');
   
   const modal = document.createElement('div');
-  modal.id = 'profileModalWrapper'; // معرف جديد لإغلاق النافذة
+  modal.id = 'profileModalWrapper';
   modal.innerHTML = renderProfileModal(profile);
   document.body.appendChild(modal);
   
-  // إغلاق عند الضغط على الخلفية السوداء
   modal.addEventListener('click', (e) => {
     if (e.target === modal) modal.remove();
   });
 
-  // إغلاق عند الضغط على زر Esc
   const escHandler = (e) => {
     if (e.key === 'Escape') {
       const m = document.getElementById('profileModalWrapper');
@@ -180,10 +206,17 @@ window.openProfileModal = async function() {
   document.addEventListener('keydown', escHandler);
   
   bindProfileEvents(modal, ({ avatar_url, saved }) => {
+    // تحديث الصورة في القائمة الجانبية فوراً
     if (avatar_url) {
-      document.querySelectorAll('.user-avatar, #userAvatar img').forEach(el => el.src = avatar_url);
+      const avatarEl = document.getElementById('userAvatar');
+      if (avatarEl) avatarEl.innerHTML = `<img src="${avatar_url}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" />`;
     }
+    // تحديث الاسم في القائمة الجانبية فوراً
     if (saved) {
+      const nameEl = document.getElementById('userName');
+      const nameInput = document.getElementById('pfName');
+      if (nameEl && nameInput) nameEl.textContent = nameInput.value.trim();
+      
       if (typeof toast === 'function') toast('✅ تم الحفظ بنجاح');
       else alert('✅ تم الحفظ بنجاح');
     }
