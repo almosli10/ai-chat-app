@@ -1,5 +1,5 @@
 // js/profile.js — إدارة الملف الشخصي
-import { supabase } from './auth.js';
+const supabase = window.sbClient;
 
 export async function loadProfile() {
   const { data: { user } } = await supabase.auth.getUser();
