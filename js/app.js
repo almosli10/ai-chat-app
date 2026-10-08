@@ -1273,9 +1273,8 @@ async function generateImage() {
     let englishPrompt = data.choices?.[0]?.message?.content?.trim() || text;
     englishPrompt = englishPrompt.replace(/["'.\n]/g, '').trim();
 
-    // بناء رابط الصورة والمرور عبر بروكسي allorigins
-    const imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishPrompt)}?width=1024&height=1024&nologo=true&seed=${Date.now()}`;
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(imgUrl)}`;
+    // بناء رابط الصورة عبر API الخاص بنا
+    const proxyUrl = `/api/image?prompt=${encodeURIComponent(englishPrompt)}`;
 
     const imgHtml = `
       <div style="text-align: center; margin-top: 8px;">
@@ -1306,7 +1305,7 @@ async function generateImage() {
     cb.className = 'msg-action-btn';
     cb.textContent = '📋';
     cb.title = 'نسخ الرابط';
-    cb.onclick = () => navigator.clipboard.writeText(imgUrl).then(() => { cb.textContent = '✓'; setTimeout(() => cb.textContent = '📋', 1800); });
+    cb.onclick = () => navigator.clipboard.writeText(window.location.origin + proxyUrl).then(() => { cb.textContent = '✓'; setTimeout(() => cb.textContent = '📋', 1800); });
     actions.appendChild(cb);
 
     const db = document.createElement('button');
