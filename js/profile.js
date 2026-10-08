@@ -1,5 +1,33 @@
 // js/profile.js — إدارة الملف الشخصي
 
+// ═══════ دالة تطبيق الخط ═══════
+function applyFont(fontName) {
+  const fontMap = {
+    'cairo': 'Cairo',
+    'tajawal': 'Tajawal',
+    'ibm-plex': 'IBM Plex Sans Arabic'
+  };
+  const fontFamily = fontMap[fontName] || 'Cairo';
+  const linkId = 'dynamic-google-font';
+  
+  // إزالة الرابط القديم إن وجد
+  const oldLink = document.getElementById(linkId);
+  if (oldLink) oldLink.remove();
+  
+  // إضافة رابط الخط الجديد من Google Fonts
+  const link = document.createElement('link');
+  link.id = linkId;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/ /g, '+')}:wght@300;400;500;600;700&display=swap`;
+  document.head.appendChild(link);
+  
+  // تطبيق الخط على كامل الصفحة
+  document.body.style.fontFamily = `'${fontFamily}', sans-serif`;
+  document.documentElement.style.setProperty('--font-main', `'${fontFamily}', sans-serif`);
+  
+  localStorage.setItem('font', fontName);
+}
+
 async function loadProfile() {
   const supabase = window.sbClient;
   if (!supabase) return null;
@@ -27,7 +55,7 @@ async function updateProfile({ full_name, bio, theme, font }) {
     .eq('id', user.id);
   if (error) throw error;
 
-  // 2. تحديث بيانات المصادقة (user_metadata) لكي تظهر في القائمة الجانبية
+  // 2. تحديث بيانات المصادقة (user_metadata) لكي يظهر الاسم في القائمة الجانبية
   await supabase.auth.updateUser({
     data: { full_name: full_name }
   });
@@ -51,7 +79,7 @@ async function uploadAvatar(file) {
   await supabase.from('profiles')
     .update({ avatar_url: publicUrl }).eq('id', user.id);
 
-  // 2. تحديث بيانات المصادقة (user_metadata) بالصورة الجديدة
+  // 2. تحديث بيانات المصادقة بالصورة الجديدة
   await supabase.auth.updateUser({
     data: { avatar_url: publicUrl }
   });
@@ -77,6 +105,10 @@ async function deleteAccount() {
 }
 
 function renderProfileModal(profile) {
+  // تحديد الثيم والخط الحاليين
+  const currentTheme = profile.theme || localStorage.getItem('theme') || 'dark';
+  const currentFont = profile.font || localStorage.getItem('font') || 'cairo';
+
   return `
   <div class="profile-modal" id="profileModal">
     <div class="profile-card">
@@ -98,16 +130,18 @@ function renderProfileModal(profile) {
       <div class="pf-row">
         <label>الثيم
           <select id="pfTheme">
-            <option value="dark">داكن</option>
-            <option value="light">فاتح</option>
-            <option value="blue-night">أزرق ليلي</option>
+            <option value="dark" ${currentTheme === 'dark' ? 'selected' : ''}>داكن</option>
+            <option value="light" ${currentTheme === 'light' ? 'selected' : ''}>فاتح</option>
+            <option value="blue-night" ${currentTheme === 'blue-night' ? 'selected' : ''}>أزرق ليلي</option>
+            <option value="midnight-purple" ${currentTheme === 'midnight-purple' ? 'selected' : ''}>بنفسجي منتصف الليل</option>
+            <option value="ocean-deep" ${currentTheme === 'ocean-deep' ? 'selected' : ''}>محيط عميق</option>
           </select>
         </label>
         <label>الخط
           <select id="pfFont">
-            <option value="cairo">Cairo</option>
-            <option value="tajawal">Tajawal</option>
-            <option value="ibm-plex">IBM Plex Sans Arabic</option>
+            <option value="cairo" ${currentFont === 'cairo' ? 'selected' : ''}>Cairo</option>
+            <option value="tajawal" ${currentFont === 'tajawal' ? 'selected' : ''}>Tajawal</option>
+            <option value="ibm-plex" ${currentFont === 'ibm-plex' ? 'selected' : ''}>IBM Plex Sans Arabic</option>
           </select>
         </label>
       </div>
@@ -144,12 +178,20 @@ function bindProfileEvents(modalEl, onChange) {
 
   $('#pfSave').addEventListener('click', async () => {
     try {
+      const themeVal = $('#pfTheme').value;
+      const fontVal = $('#pfFont').value;
+
       await updateProfile({
         full_name: $('#pfName').value.trim(),
         bio: $('#pfBio').value.trim(),
-        theme: $('#pfTheme').value,
-        font: $('#pfFont').value
+        theme: themeVal,
+        font: fontVal
       });
+
+      // ═══════ تطبيق الثيم والخط فوراً ═══════
+      if (typeof applyTheme === 'function') applyTheme(themeVal);
+      applyFont(fontVal);
+
       onChange?.({ saved: true });
     } catch (err) {
       alert('فشل الحفظ: ' + err.message);
@@ -205,20 +247,30 @@ window.openProfileModal = async function() {
   };
   document.addEventListener('keydown', escHandler);
   
+  // ═══════ تحديث القائمة الجانبية فوراً ═══════
   bindProfileEvents(modal, ({ avatar_url, saved }) => {
-    // تحديث الصورة في القائمة الجانبية فوراً
-    if (avatar_url) {
-      const avatarEl = document.getElementById('userAvatar');
-      if (avatarEl) avatarEl.innerHTML = `<img src="${avatar_url}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" />`;
+    const avatarEl = document.getElementById('userAvatar');
+    
+    // 1. تحديث الصورة في القائمة الجانبية
+    const previewEl = document.getElementById('avatarPreview');
+    if (previewEl && avatarEl) {
+      avatarEl.innerHTML = `<img src="${previewEl.src}" alt="avatar" style="width:100%; height:100%; object-fit:cover; border-radius:50%; display:block;" />`;
     }
-    // تحديث الاسم في القائمة الجانبية فوراً
+
+    // 2. تحديث الاسم في القائمة الجانبية
     if (saved) {
-      const nameEl = document.getElementById('userName');
       const nameInput = document.getElementById('pfName');
+      const nameEl = document.getElementById('userName');
       if (nameEl && nameInput) nameEl.textContent = nameInput.value.trim();
       
-      if (typeof toast === 'function') toast('✅ تم الحفظ بنجاح');
-      else alert('✅ تم الحفظ بنجاح');
+      if (typeof toast === 'function') toast('✅ تم حفظ التغييرات وتطبيقها');
+      else alert('✅ تم حفظ التغييرات وتطبيقها');
     }
   });
 };
+
+// ═══════ تطبيق الخط المحفوظ عند تحميل الصفحة ═══════
+document.addEventListener('DOMContentLoaded', () => {
+  const savedFont = localStorage.getItem('font');
+  if (savedFont) applyFont(savedFont);
+});
