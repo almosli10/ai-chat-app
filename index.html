@@ -101,6 +101,25 @@
   <div class="modal-overlay" id="settingsModal"><div class="modal"><h3>⚙️ إعدادات الذكاء الاصطناعي</h3><p style="margin-bottom: 12px; font-size: 13.5px;">حدد شخصية المساعد (System Prompt):</p><textarea id="systemPromptInput"></textarea><div class="modal-buttons"><button class="cancel" onclick="closeModal('settingsModal')">إلغاء</button><button class="save" onclick="saveSettings()">حفظ</button></div></div></div>
   <div class="modal-overlay" id="themesModal"><div class="modal"><h3>🎨 الثيمات والألوان</h3><p style="font-size: 13px; color: var(--text-secondary);">اختر ثيمًا جاهزًا:</p><div class="theme-grid" id="themeGrid"></div><p style="font-size: 13px; color: var(--text-secondary); margin-top: 20px;">اختر لونًا رئيسيًا:</p><div class="accent-grid" id="accentGrid"></div><div class="modal-buttons"><button class="save" onclick="closeModal('themesModal')">إغلاق</button></div></div></div>
   <div class="modal-overlay" id="soundsModal"><div class="modal"><h3>🔊 إعدادات الأصوات</h3><div class="sound-grid"><div class="sound-row"><label><input type="checkbox" id="soundsEnabledToggle" /> تفعيل الأصوات</label></div><div class="sound-row"><label><input type="checkbox" id="soundSendToggle" /> صوت الإرسال</label><button onclick="playSound('send')">🔊 تجربة</button></div><div class="sound-row"><label><input type="checkbox" id="soundReceiveToggle" /> صوت الاستقبال</label><button onclick="playSound('receive')">🔊 تجربة</button></div><div class="sound-row"><label><input type="checkbox" id="soundClickToggle" /> صوت النقر</label><button onclick="playSound('click')">🔊 تجربة</button></div><div class="sound-row"><label><input type="checkbox" id="soundNotifToggle" /> صوت الإشعارات</label><button onclick="playSound('notif')">🔊 تجربة</button></div></div><div class="modal-buttons"><button class="save" onclick="saveSoundSettings()">حفظ</button></div></div></div>
+        <div class="sync-scope-section" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-light);">
+        <h4 style="margin-bottom: 12px; font-size: 14px;">🌐 نطاق المزامنة بين الأجهزة</h4>
+        <div class="sound-row">
+          <label>
+            <input type="radio" name="syncScope" value="device" id="syncScopeDevice" />
+            📱 هذا الجهاز فقط
+          </label>
+        </div>
+        <div class="sound-row">
+          <label>
+            <input type="radio" name="syncScope" value="all" id="syncScopeAll" />
+            🌍 كل الأجهزة (مشاركة المحادثات)
+          </label>
+        </div>
+        <p style="font-size: 12px; opacity: 0.7; margin-top: 8px; line-height: 1.6;">
+          <strong>هذا الجهاز فقط</strong>: كل محادثاتك تبقى خاصة بهذا الجهاز.<br>
+          <strong>كل الأجهزة</strong>: تظهر نفس المحادثات على كل أجهزتك.
+        </p>
+      </div>
   <div class="modal-overlay" id="personasModal"><div class="modal"><h3>🎭 شخصيات جاهزة</h3><div class="persona-grid" id="personaGrid"></div><textarea id="personaPromptInput" style="margin-top: 16px;"></textarea><div class="modal-buttons"><button class="cancel" onclick="closeModal('personasModal')">إلغاء</button><button class="save" onclick="applyPersona()">تطبيق</button></div></div></div>
   <div class="modal-overlay" id="shortcutsModal"><div class="modal"><h3>⌨️ الاختصارات</h3><ul class="shortcut-list"><li><span>محادثة جديدة</span><kbd>Ctrl + N</kbd></li><li><span>البحث</span><kbd>Ctrl + K</kbd></li><li><span>التركيز على الإدخال</span><kbd>Ctrl + /</kbd></li><li><span>تفعيل/إيقاف الوكيل</span><kbd>Ctrl + B</kbd></li><li><span>إرسال</span><kbd>Enter</kbd></li><li><span>إغلاق النوافذ</span><kbd>Esc</kbd></li></ul><div class="modal-buttons"><button class="save" onclick="closeModal('shortcutsModal')">فهمت</button></div></div></div>
   <div class="modal-overlay" id="syncModal"><div class="modal"><h3>☁️ المزامنة</h3><div id="syncContent"></div><div class="modal-buttons"><button class="cancel" onclick="closeModal('syncModal')">إغلاق</button><button class="save" onclick="doSync()" id="doSyncBtn">🔄 ابدأ</button></div></div></div>

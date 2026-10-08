@@ -9,11 +9,17 @@
   // ═══════════════════════════════════════════════════════
   (function moodSystem() {
     const MOODS = {
-      cheerful: { icon: '😊', name: 'مرح', prompt: '\n\n[المزاج: مرح. أجب بأسلوب خفيف وودود مع إيموجي طبيعية بلا إفراط.]' },
-      academic: { icon: '🎓', name: 'أكاديمي', prompt: '\n\n[المزاج: أكاديمي. أجب بأسلوب رسمي منظم كأستاذ جامعي.]' },
-      calm: { icon: '🧘', name: 'هادئ', prompt: '\n\n[المزاج: هادئ. أجب بأسلوب ناعم متأمل بلا استعجال.]' },
-      fast: { icon: '⚡', name: 'سريع', prompt: '\n\n[المزاج: سريع. أجب بنقاط قصيرة موجزة بلا حشو.]' },
-    };
+  cheerful:   { icon: '😊', name: 'مرح',      prompt: '\n\n[المزاج: مرح. أجب بأسلوب خفيف وودود مع إيموجي طبيعية بلا إفراط.]' },
+  academic:   { icon: '🎓', name: 'أكاديمي',   prompt: '\n\n[المزاج: أكاديمي. أجب بأسلوب رسمي منظم كأستاذ جامعي.]' },
+  calm:       { icon: '🧘', name: 'هادئ',      prompt: '\n\n[المزاج: هادئ. أجب بأسلوب ناعم متأمل بلا استعجال.]' },
+  fast:       { icon: '⚡', name: 'سريع',      prompt: '\n\n[المزاج: سريع. أجب بنقاط قصيرة موجزة بلا حشو.]' },
+  angry:      { icon: '😤', name: 'غاضب',      prompt: '\n\n[المزاج: غاضب قليلاً. أجب بلهجة حازمة صريحة، بلا مجاملة مفرطة، لكن بأدب واحترام. لا تشتم أو تقسو.]' },
+  sad:        { icon: '😢', name: 'حزين',      prompt: '\n\n[المزاج: حزين ومتأمل. أجب بصوت خفيض ونبرة شاعرية، مع تعاطف عميق.]' },
+  enthusiastic: { icon: '🔥', name: 'متحمس',   prompt: '\n\n[المزاج: متحمس جداً. أجب بحيوية وشغف، مع إيموجي معبّرة، وكأنك اكتشفت شيئاً رائعاً.]' },
+  philosophical: { icon: '🤔', name: 'فيلسوف',  prompt: '\n\n[المزاج: فيلسوف. أجب بتأمل عميق، اطرح أسئلة مضادة، واربط الإجابات بمعانٍ أكبر.]' },
+  sarcastic:  { icon: '😏', name: 'ساخر',      prompt: '\n\n[المزاج: ساخر بلطف. أجب بلمسة ساخرة ذكية، لكن دون إيذاء المشاعر، ودون سخرية من المستخدم نفسه.]' },
+  mysterious: { icon: '🌙', name: 'غامض',      prompt: '\n\n[المزاج: غامض وشاعري. أجب بأسلوب ملغز قليلاً، بإشارات ورموز، وكأنك تعرف أكثر مما تقول.]' },
+};
 
     window.currentMood = localStorage.getItem('mishkat_mood') || 'cheerful';
     window.getMoodPrompt = () => MOODS[window.currentMood]?.prompt || '';
@@ -47,7 +53,7 @@
       p.id = 'mood-panel';
       p.className = 'mood-panel';
       p.innerHTML = `
-        <div class="mood-panel-title">مزاج مِشكاة</div>
+          <div class="mood-panel-title">مزاج مِشكاة (${Object.keys(MOODS).length})</div>
         <div class="mood-grid">
           ${Object.entries(MOODS).map(([k, m]) => `
             <button class="mood-btn ${k === window.currentMood ? 'active' : ''}" data-mood="${k}">

@@ -372,7 +372,32 @@ function openThemes() {
   });
   document.getElementById('themesModal').classList.add('show');
 }
-function openSounds() { document.getElementById('soundsEnabledToggle').checked = soundSettings.enabled; document.getElementById('soundSendToggle').checked = soundSettings.send; document.getElementById('soundReceiveToggle').checked = soundSettings.receive; document.getElementById('soundClickToggle').checked = soundSettings.click; document.getElementById('soundNotifToggle').checked = soundSettings.notif; document.getElementById('soundsModal').classList.add('show'); }
+function openSounds() {
+  document.getElementById('soundsEnabledToggle').checked = soundSettings.enabled;
+  document.getElementById('soundSendToggle').checked = soundSettings.send;
+  document.getElementById('soundReceiveToggle').checked = soundSettings.receive;
+  document.getElementById('soundClickToggle').checked = soundSettings.click;
+  document.getElementById('soundNotifToggle').checked = soundSettings.notif;
+  // 🆕 نطاق المزامنة
+  const scope = localStorage.getItem('syncScope') || 'device';
+  const r1 = document.getElementById('syncScopeDevice');
+  const r2 = document.getElementById('syncScopeAll');
+  if (r1 && r2) {
+    r1.checked = scope === 'device';
+    r2.checked = scope === 'all';
+    r1.onchange = r2.onchange = () => {
+      const val = r1.checked ? 'device' : 'all';
+      localStorage.setItem('syncScope', val);
+      if (typeof toast === 'function') toast(val === 'device' ? '📱 هذا الجهاز فقط' : '🌍 كل الأجهزة');
+      // أعد تشغيل Realtime + اسحب بيانات جديدة
+      setTimeout(() => {
+        if (typeof subscribeRealtime === 'function') subscribeRealtime();
+        if (typeof pullAllFromCloud === 'function') pullAllFromCloud(false);
+      }, 300);
+    };
+  }
+  document.getElementById('soundsModal').classList.add('show');
+}
 function saveSoundSettings() { soundSettings = { enabled: document.getElementById('soundsEnabledToggle').checked, send: document.getElementById('soundSendToggle').checked, receive: document.getElementById('soundReceiveToggle').checked, click: document.getElementById('soundClickToggle').checked, notif: document.getElementById('soundNotifToggle').checked }; localStorage.setItem('soundSettings', JSON.stringify(soundSettings)); closeModal('soundsModal'); toast('🔊 تم الحفظ'); }
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
 function openLightbox(src) { document.getElementById('lightboxImg').src = src; document.getElementById('lightbox').classList.add('show'); playSound('click'); }
@@ -996,7 +1021,13 @@ async function deleteChatFromCloud(id) { if (!sbClient) return; try { await sbCl
 async function pullAllFromCloud(silent = false) {
   if (!sbClient) return;
   try {
-    const { data, error } = await sbClient.from('chats').select('*'); if (error) throw error;
+    // 🆕 كل جهاز يرى محادثاته فقط (افتراضي)
+    const scope = localStorage.getItem('syncScope') || 'device';
+    let query = sbClient.from('chats').select('*');
+    if (scope === 'device') {
+      query = query.eq('device_id', deviceId);
+    }
+    const { data, error } = await query; if (error) throw error;
     let m = 0;
     for (const row of (data || [])) {
       let ms = row.messages;
@@ -1011,11 +1042,15 @@ async function pullAllFromCloud(silent = false) {
 function subscribeRealtime() {
   if (!sbClient) return;
   if (realtimeChannel) sbClient.removeChannel(realtimeChannel);
-  realtimeChannel = sbClient.channel('chats-realtime').on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, async (payload) => {
+    realtimeChannel = sbClient.channel('chats-realtime').on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, async (payload) => {
     const row = payload.new || payload.old; if (!row) return;
+            // 🆕 في وضع "الجهاز فقط"، تجاهل الأحداث من أجهزة أخرى
+        const scope = localStorage.getItem('syncScope') || 'device';
+        if (scope === 'device' && row.device_id && row.device_id !== deviceId) return;
     if (payload.eventType === 'DELETE') { delete allChats[row.id]; unreadChats.delete(row.id); localStorage.setItem('allChats', JSON.stringify(allChats)); localStorage.setItem('unreadChats', JSON.stringify([...unreadChats])); renderSidebar(); if (currentChatId === row.id) { const r = Object.keys(allChats); if (r.length > 0) switchChat(r[0]); else createNewChat(); } }
     else {
-      if (row.device_id === deviceId) return;
+              // في وضع "الكل"، تجاهل التحديثات من نفس الجهاز (لتجنب loop)
+        if (scope === 'all' && row.device_id === deviceId) return;
       let ms = row.messages;
       if (typeof ms === 'string' && ms.startsWith('ENC:')) { try { ms = await decryptData(ms); } catch (e) { return; } }
       const l = allChats[row.id];
