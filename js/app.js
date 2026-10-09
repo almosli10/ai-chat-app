@@ -1590,14 +1590,33 @@ async function handleVoiceCallInput(text) {
 function speakVoiceCallResponse(text) {
   return new Promise((resolve) => {
     const clean = text
-      .replace(/```[\s\S]*?```/g, ' [كود] ')
+      .replace(/```[\s\S]*?```/g, ' ')
       .replace(/`([^`]+)`/g, '$1')
-      .replace(/[*_#>\[\]()]/g, '')
+      .replace(/[*_#>\[\]()★✦✨•]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
       .substring(0, 500);
+    
     const u = new SpeechSynthesisUtterance(clean);
     u.lang = 'ar-SA';
-    const av = window.speechSynthesis.getVoices().find(v => v.lang.startsWith('ar'));
-    if (av) u.voice = av;
+    u.rate = 0.95;
+    u.pitch = 1.0;
+    
+    // البحث عن أي صوت عربي متاح
+    const voices = window.speechSynthesis.getVoices();
+    const arabicVoice = 
+      voices.find(v => v.lang === 'ar-SA') ||
+      voices.find(v => v.lang === 'ar-EG') ||
+      voices.find(v => v.lang.startsWith('ar-')) ||
+      voices.find(v => v.lang.includes('ar') || v.name.toLowerCase().includes('arab') || v.name.includes('عرب'));
+    
+    if (arabicVoice) {
+      u.voice = arabicVoice;
+      console.log('🔊 Using Arabic voice:', arabicVoice.name, arabicVoice.lang);
+    } else {
+      console.warn('⚠️ No Arabic voice found. Available voices:', voices.map(v => v.lang + ' - ' + v.name).join(', '));
+    }
+    
     u.onend = resolve;
     u.onerror = resolve;
     window.speechSynthesis.speak(u);
