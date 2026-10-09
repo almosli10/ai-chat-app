@@ -1433,13 +1433,10 @@ async function generateImage() {
       <div style="text-align: center; margin-top: 8px;">
         <img src="${proxyUrl}" 
              alt="${escapeHtml(text)}" 
-             style="max-width: 100%; border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); cursor: pointer; transition: transform 0.2s;" 
-             onclick="openLightbox('${proxyUrl}')" 
-             onmouseover="this.style.transform='scale(1.02)'" 
-             onmouseout="this.style.transform='scale(1)'"
-             onerror="this.parentElement.innerHTML='<p style=\\'color:#ef4444; font-size:14px;\\'>⚠️ فشل تحميل الصورة. حاول مرة أخرى بعد لحظات.</p>'"
+             class="generated-image-thumb"
+             onclick="openImageLightbox('${proxyUrl}', '${escapeHtml(text).replace(/'/g, "\\'")}')" 
              loading="lazy" />
-        <p style="font-size: 12px; opacity: 0.65; margin-top: 8px;">🎨 تم التوليد بواسطة Pollinations.ai</p>
+        <p style="font-size: 12px; opacity: 0.65; margin-top: 8px;">🎨 اضغط على الصورة لعرضها بالحجم الكامل</p>
       </div>
     `;
     bubble.innerHTML = imgHtml;
@@ -2407,6 +2404,133 @@ function injectMobileCSS() {
 // نُشغّل الحقن فوراً
 injectMobileCSS();
 
-init();
+// ═══════ عارض الصور المتقدم (Lightbox with Save/Share) ═══════
+window.openImageLightbox = function(imgSrc, imgAlt = '') {
+  // احذف أي عارض قديم
+  const existing = document.getElementById('imageViewerModal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'imageViewerModal';
+  modal.className = 'image-viewer-modal';
+  modal.innerHTML = `
+    <div class="image-viewer-backdrop" onclick="closeImageLightbox(event)"></div>
+    <div class="image-viewer-content" onclick="event.stopPropagation()">
+      <button class="image-viewer-close" onclick="closeImageLightbox(event)" title="إغلاق">✕</button>
+      <img src="${imgSrc}" alt="${imgAlt}" class="image-viewer-img" id="imageViewerImg" />
+      <div class="image-viewer-actions">
+        <button class="image-viewer-btn save" onclick="saveViewerImage()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          حفظ في الجهاز
+        </button>
+        <button class="image-viewer-btn share" onclick="shareViewerImage()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          مشاركة
+        </button>
+        <button class="image-viewer-btn copy" onclick="copyViewerImageLink()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          نسخ الرابط
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  requestAnimationFrame(() => modal.classList.add('show'));
+  
+  // احفظ الرابط في متغير عام
+  window._viewerImageSrc = imgSrc;
+  window._viewerImageAlt = imgAlt;
+  
+  if (typeof playSound === 'function') playSound('click');
+};
+
+window.closeImageLightbox = function(e) {
+  if (e) e.stopPropagation();
+  const modal = document.getElementById('imageViewerModal');
+  if (modal) {
+    modal.classList.remove('show');
+    setTimeout(() => modal.remove(), 250);
+  }
+};
+
+window.saveViewerImage = async function() {
+  const src = window._viewerImageSrc;
+  if (!src) return;
+  try {
+    // جلب الصورة كـ blob لضمان الحفظ
+    const res = await fetch(src);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mishkat-image-${Date.now()}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if (typeof toast === 'function') toast('💾 تم حفظ الصورة في جهازك');
+  } catch (e) {
+    // fallback: افتح في تبويب جديد
+    window.open(src, '_blank');
+    if (typeof toast === 'function') toast('💾 اضغط مطولاً على الصورة للحفظ');
+  }
+};
+
+window.shareViewerImage = async function() {
+  const src = window._viewerImageSrc;
+  if (!src) return;
+  try {
+    // حاول استخدام Web Share API (يدعم الموبايل)
+    if (navigator.share && navigator.canShare) {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      const file = new File([blob], 'mishkat-image.jpg', { type: blob.type || 'image/jpeg' });
+      
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: '🎨 صورة من مِشكاة',
+          text: window._viewerImageAlt || 'أنشأتها بواسطة مِشكاة'
+        });
+        return;
+      }
+      
+      // fallback: شارك الرابط فقط
+      await navigator.share({
+        title: '🎨 صورة من مِشكاة',
+        text: window._viewerImageAlt || '',
+        url: src
+      });
+      return;
+    }
+    
+    // fallback نهائي: انسخ الرابط
+    await navigator.clipboard.writeText(src);
+    if (typeof toast === 'function') toast('📋 تم نسخ الرابط — شاركه الآن');
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      if (typeof toast === 'function') toast('⚠️ تعذّرت المشاركة');
+    }
+  }
+};
+
+window.copyViewerImageLink = async function() {
+  const src = window._viewerImageSrc;
+  if (!src) return;
+  try {
+    await navigator.clipboard.writeText(src);
+    if (typeof toast === 'function') toast('📋 تم نسخ الرابط');
+  } catch (e) {
+    if (typeof toast === 'function') toast('⚠️ تعذّر النسخ');
+  }
+};
+
+// إغلاق بالضغط على Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const modal = document.getElementById('imageViewerModal');
+    if (modal) closeImageLightbox();
+  }
+});
 
 init();
