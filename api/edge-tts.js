@@ -1,39 +1,30 @@
-// api/edge-tts.js — StreamElements TTS (صوت عربي طبيعي، مجاني)
+// api/tts.js — Google Translate TTS (مجرّب، مجاني، صوت عربي طبيعي)
 export default async function handler(req, res) {
-  const { text } = req.query;
+  const { text, rate } = req.query;
   if (!text) return res.status(400).json({ error: 'text required' });
-
-  const clean = text.substring(0, 500);
   
-  // جرب Zeina (Amazon Polly Arabic) أولاً
-  const voices = ['Zeina', 'Hala'];
+  const clean = text.substring(0, 200);
+  const speed = rate || '0.9';
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(clean)}&tl=ar&client=tw-ob&ttsspeed=${speed}`;
   
-  for (const voice of voices) {
-    try {
-      const url = `https://api.streamelements.com/kappa/v2/speech?voice=${voice}&text=${encodeURIComponent(clean)}`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'audio/mpeg,audio/*;q=0.9,*/*;q=0.8'
-        }
-      });
-      
-      if (!response.ok) {
-        console.log(`Voice ${voice} failed: ${response.status}`);
-        continue;
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://translate.google.com/',
+        'Accept': '*/*'
       }
-      
-      const buffer = Buffer.from(await response.arrayBuffer());
-      if (buffer.length < 100) continue;
-      
-      res.setHeader('Content-Type', 'audio/mpeg');
-      res.setHeader('Cache-Control', 'public, max-age=3600');
-      return res.send(buffer);
-    } catch (err) {
-      console.log(`Voice ${voice} error:`, err.message);
+    });
+    
+    if (!response.ok) {
+      return res.status(response.status).json({ error: `Google TTS ${response.status}` });
     }
+    
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(buffer);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
-  
-  res.status(500).json({ error: 'All TTS voices failed' });
 }

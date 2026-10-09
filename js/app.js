@@ -1840,7 +1840,15 @@ function splitForTTS(text, maxLen) {
 
 function playEdgeTTSChunk(text, voice, rate, pitch) {
   return new Promise((resolve) => {
-    const url = `/api/edge-tts?text=${encodeURIComponent(text)}&voice=${voice}&rate=${encodeURIComponent(rate)}&pitch=${encodeURIComponent(pitch)}`;
+    // تحويل rate من صيغة "+20%" إلى رقم (0.5 = بطيء، 1.5 = سريع)
+    let speed = '0.9';
+    if (rate.includes('+20%')) speed = '1.15';
+    else if (rate.includes('+12%')) speed = '1.05';
+    else if (rate.includes('+5%')) speed = '0.95';
+    else if (rate.includes('-10%')) speed = '0.75';
+    else if (rate.includes('-5%')) speed = '0.85';
+    
+    const url = `/api/tts?text=${encodeURIComponent(text)}&rate=${speed}`;
     const audio = new Audio(url);
     let finished = false;
     const finish = () => {
