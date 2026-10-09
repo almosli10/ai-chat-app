@@ -4152,4 +4152,108 @@ body.has-daily-wallpaper .aurora-bg { opacity: 0.15; }
   border-radius: 3px;
 }
 
+/* ═══════════════════════════════════════════════════════
+   WALLPAPER MODE — خلي الخلفية واضحة تماماً
+   ═══════════════════════════════════════════════════════ */
+
+/* 1) إزالة الضبابية من المحتوى الرئيسي */
+body.has-daily-wallpaper .main-content {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: transparent !important;
+}
+
+/* 2) تخفيف الضبابية من الشريط الجانبي (يجب أن يبقى قليلاً للقراءة) */
+body.has-daily-wallpaper .sidebar {
+  backdrop-filter: blur(16px) saturate(1.3) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.3) !important;
+  background: rgba(10, 5, 25, 0.75) !important;
+}
+
+/* 3) الشريط العلوي — شفافية معتدلة */
+body.has-daily-wallpaper .top-bar {
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+}
+
+/* 4) تخفيف طبقة التعتيم فوق الخلفية */
+body.has-daily-wallpaper::before {
+  background: linear-gradient(180deg, 
+    rgba(0, 0, 0, 0.25) 0%, 
+    rgba(0, 0, 0, 0.35) 50%, 
+    rgba(0, 0, 0, 0.5) 100%) !important;
+}
+
+/* 5) للثيمات الفاتحة — طبقة بيضاء خفيفة */
+body[data-theme="light"].has-daily-wallpaper::before,
+body[data-theme="rose-gold"].has-daily-wallpaper::before,
+body[data-theme="pink"].has-daily-wallpaper::before,
+body[data-theme="royal-green"].has-daily-wallpaper::before,
+body[data-theme="warm-brown"].has-daily-wallpaper::before {
+  background: linear-gradient(180deg, 
+    rgba(255, 255, 255, 0.15) 0%, 
+    rgba(255, 255, 255, 0.3) 100%) !important;
+}
+
+/* 6) الخلفية — جودة عالية بدون تمويه */
+.daily-wallpaper-layer {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: scroll !important; /* ← fixed يسبب مشاكل على الموبايل */
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
+/* 7) عندما تكون الخلفية مفعّلة، اخفي الأورورا الخلفية */
+body.has-daily-wallpaper .aurora-bg {
+  display: none !important;
+}
+
+/* 8) فقاعات المحادثة — تصبح شبه شفافة لترى الخلفية */
+body.has-daily-wallpaper .msg.assistant .msg-bubble {
+  background: rgba(30, 25, 50, 0.82) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+body.has-daily-wallpaper .msg.user .msg-bubble {
+  background: linear-gradient(135deg, 
+    rgba(99, 102, 241, 0.92), 
+    rgba(139, 92, 246, 0.92)) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+/* 9) منطقة الإدخال — شفافية معتدلة */
+body.has-daily-wallpaper .input-wrapper {
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  background: rgba(20, 15, 40, 0.75) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* 10) شاشة الترحيب — بدون ضبابية */
+body.has-daily-wallpaper .welcome {
+  background: rgba(20, 15, 40, 0.55) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border-radius: 24px;
+  padding: 40px 20px;
+}
+
+/* 11) بطاقات الاقتراحات */
+body.has-daily-wallpaper .suggestion-card {
+  background: rgba(30, 25, 50, 0.7) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 12) للثيمات الفاتحة - نصوص واضحة */
+body[data-theme="light"].has-daily-wallpaper .msg.assistant .msg-bubble,
+body[data-theme="rose-gold"].has-daily-wallpaper .msg.assistant .msg-bubble {
+  background: rgba(255, 255, 255, 0.88) !important;
+}
+
     @media (hover: none) { .cursor-glow { display: none; } }
