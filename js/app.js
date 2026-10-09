@@ -2300,4 +2300,113 @@ window.saveCanvasImage = saveCanvasImage;
 window.sendCanvasToChat = sendCanvasToChat;
 window.askMishkatToDraw = askMishkatToDraw;
 
+// ═══════ MOBILE UI FIXES — حقن مباشر (يتجاوز الكاش) ═══════
+function injectMobileCSS() {
+  if (document.getElementById('mobile-fixes-injected')) return;
+  
+  const mobileCSS = `
+    @media (max-width: 768px) {
+      .top-actions { 
+        gap: 4px !important; 
+        overflow-x: auto !important; 
+        overflow-y: hidden !important;
+        scrollbar-width: none !important;
+        padding-bottom: 4px !important;
+        max-width: calc(100vw - 90px) !important;
+        flex-wrap: nowrap !important;
+      }
+      .top-actions::-webkit-scrollbar { display: none !important; }
+      .top-actions button { 
+        padding: 6px 10px !important; 
+        min-width: 38px !important; 
+        flex-shrink: 0 !important; 
+      }
+      .top-actions button .label { display: none !important; }
+      .top-actions button span.label { display: none !important; }
+      
+      .notif-badge, .enc-badge, .offline-badge, .readonly-badge, 
+      .dialect-badge, #incognitoBadge { display: none !important; }
+      
+      .voice-call-overlay {
+        position: fixed !important;
+        top: 0 !important; left: 0 !important;
+        right: 0 !important; bottom: 0 !important;
+        width: 100vw !important; height: 100vh !important;
+        height: 100dvh !important;
+        padding: 20px 16px !important;
+        z-index: 99999 !important;
+      }
+      .voice-call-avatar { 
+        width: 110px !important; height: 110px !important; 
+        font-size: 3rem !important; 
+      }
+      .voice-call-status { font-size: 1.05rem !important; }
+      .voice-call-transcript, .voice-call-response {
+        font-size: 0.9rem !important; padding: 0.6rem 0.8rem !important;
+        max-height: 100px !important;
+      }
+      .voice-call-end { 
+        padding: 0.8rem 1.6rem !important; font-size: 0.95rem !important; 
+      }
+      
+      .input-wrapper { gap: 4px !important; padding: 6px 8px !important; }
+      .input-wrapper input#msg, .input-wrapper input[type="text"] {
+        min-width: 0 !important; font-size: 16px !important;
+      }
+      .send-btn { min-width: 42px !important; padding: 8px 12px !important; }
+      .icon-btn { 
+        padding: 6px !important; min-width: 36px !important; 
+        width: 36px !important; height: 36px !important; 
+      }
+      
+      .sidebar { width: 85vw !important; max-width: 340px !important; }
+      .main-content { padding: 0 !important; height: 100dvh !important; }
+      #chat { padding-bottom: 120px !important; }
+      .top-bar { padding: 8px 10px !important; gap: 6px !important; }
+      .chat-title-display { 
+        font-size: 0.85rem !important; max-width: 120px !important; 
+        overflow: hidden !important; text-overflow: ellipsis !important; 
+        white-space: nowrap !important; 
+      }
+      
+      .canvas-toolbar { gap: 4px !important; padding: 6px !important; }
+      .canvas-tool { 
+        width: 34px !important; height: 34px !important; 
+        font-size: 0.85rem !important; 
+      }
+      .canvas-input-wrap input { font-size: 16px !important; }
+      .canvas-input-wrap button { 
+        padding: 10px 16px !important; font-size: 0.85rem !important; 
+      }
+      
+      .profile-card { padding: 1.2rem !important; max-height: 90vh !important; overflow-y: auto !important; }
+      .modal { padding: 20px !important; max-height: 92vh !important; }
+      .modal h3 { font-size: 16px !important; }
+      .modal-buttons { flex-direction: column !important; }
+      .modal-buttons button { width: 100% !important; }
+      
+      .cmd-palette { max-height: 80vh !important; }
+      .cmd-palette-footer { display: none !important; }
+    }
+    @media (max-width: 400px) {
+      .top-actions button { min-width: 34px !important; padding: 5px 8px !important; }
+      .voice-call-avatar { width: 90px !important; height: 90px !important; font-size: 2.5rem !important; }
+      .voice-call-end { padding: 0.7rem 1.2rem !important; font-size: 0.85rem !important; }
+      .welcome h2 { font-size: 20px !important; }
+      .welcome-logo { width: 60px !important; height: 60px !important; font-size: 28px !important; }
+    }
+  `;
+  
+  const style = document.createElement('style');
+  style.id = 'mobile-fixes-injected';
+  style.textContent = mobileCSS;
+  document.head.appendChild(style);
+  console.log('✅ Mobile CSS injected');
+}
+
+// نُشغّل الحقن فوراً
+injectMobileCSS();
+
+init();
+
 init();
