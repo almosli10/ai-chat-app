@@ -4256,4 +4256,109 @@ body[data-theme="rose-gold"].has-daily-wallpaper .msg.assistant .msg-bubble {
   background: rgba(255, 255, 255, 0.88) !important;
 }
 
+/* ═══════════════════════════════════════════════════════
+   WALLPAPER MODE — إزالة المربع الشفاف من الترحيب
+   ═══════════════════════════════════════════════════════ */
+
+/* 1) شاشة الترحيب — بدون خلفية صندوقية */
+body.has-daily-wallpaper .welcome {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 40px 20px !important;
+  border-radius: 0 !important;
+}
+
+/* 2) إزالة التوهج الدائري حول الترحيب */
+body.has-daily-wallpaper .welcome::before {
+  display: none !important;
+  background: none !important;
+}
+
+/* 3) النص الرئيسي — ظل قوي للوضوح */
+body.has-daily-wallpaper .welcome h2 {
+  text-shadow: 
+    0 2px 12px rgba(0, 0, 0, 0.8),
+    0 4px 24px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(0, 0, 0, 0.5) !important;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.7));
+}
+
+/* 4) نص الترحيب الصغير */
+body.has-daily-wallpaper .welcome-greeting {
+  color: #fbbf24 !important;
+  text-shadow: 
+    0 2px 10px rgba(0, 0, 0, 0.9),
+    0 0 20px rgba(0, 0, 0, 0.7) !important;
+  font-weight: 600 !important;
+}
+
+/* 5) الوصف */
+body.has-daily-wallpaper .welcome p {
+  color: rgba(255, 255, 255, 0.95) !important;
+  text-shadow: 
+    0 2px 10px rgba(0, 0, 0, 0.9),
+    0 0 20px rgba(0, 0, 0, 0.7) !important;
+  font-weight: 500 !important;
+}
+
+/* 6) الشعار (logo) — تحسين التوهج */
+body.has-daily-wallpaper .welcome-logo {
+  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.7)) !important;
+}
+
+/* 7) في الثيمات الفاتحة — ظل داكن للنصوص */
+body[data-theme="light"].has-daily-wallpaper .welcome h2,
+body[data-theme="rose-gold"].has-daily-wallpaper .welcome h2,
+body[data-theme="pink"].has-daily-wallpaper .welcome h2,
+body[data-theme="royal-green"].has-daily-wallpaper .welcome h2,
+body[data-theme="warm-brown"].has-daily-wallpaper .welcome h2 {
+  text-shadow: 
+    0 2px 12px rgba(255, 255, 255, 0.9),
+    0 0 20px rgba(255, 255, 255, 0.7) !important;
+}
+
+body[data-theme="light"].has-daily-wallpaper .welcome p,
+body[data-theme="rose-gold"].has-daily-wallpaper .welcome p,
+body[data-theme="pink"].has-daily-wallpaper .welcome p,
+body[data-theme="royal-green"].has-daily-wallpaper .welcome p,
+body[data-theme="warm-brown"].has-daily-wallpaper .welcome p {
+  color: #1e293b !important;
+  text-shadow: 
+    0 2px 10px rgba(255, 255, 255, 0.95),
+    0 0 20px rgba(255, 255, 255, 0.8) !important;
+}
+
+/* 8) بطاقات الاقتراحات — شفافية أنيقة */
+body.has-daily-wallpaper .suggestion-card {
+  background: rgba(20, 15, 40, 0.72) !important;
+  backdrop-filter: blur(12px) saturate(1.3) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.3) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+}
+
+body.has-daily-wallpaper .suggestion-card:hover {
+  background: rgba(99, 102, 241, 0.25) !important;
+  border-color: rgba(251, 191, 36, 0.6) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.has-daily-wallpaper .suggestion-card span {
+  color: #fff !important;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* 9) في الثيمات الفاتحة — بطاقات بيضاء شفافة */
+body[data-theme="light"].has-daily-wallpaper .suggestion-card,
+body[data-theme="rose-gold"].has-daily-wallpaper .suggestion-card {
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: #1e293b !important;
+}
+body[data-theme="light"].has-daily-wallpaper .suggestion-card span,
+body[data-theme="rose-gold"].has-daily-wallpaper .suggestion-card span {
+  color: #1e293b !important;
+  text-shadow: none;
+}
+
     @media (hover: none) { .cursor-glow { display: none; } }
