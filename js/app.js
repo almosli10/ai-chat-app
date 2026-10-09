@@ -98,6 +98,12 @@ let currentUserId = null;
 let isIncognito = false;
 let incognitoSnapshot = null; // { chatId, messages, title, timestamp }
 
+// ═══════ المكالمة الصوتية ═══════
+let voiceCallActive = false;
+let voiceCallProcessing = false;
+let voiceCallRecognition = null;
+window.ttsSpeaking = false; // ✅ تعريف مسبق
+
 const PROMPT_TEMPLATES = [
   { icon: '📝', name: 'لخّص', text: 'لخّص النص التالي بإيجاز شديد: ' },
   { icon: '💡', name: 'اشرح', text: 'اشرح بأسلوب مبسط جدًا: ' },
@@ -1469,9 +1475,6 @@ window.addEventListener('beforeunload', (e) => {
 });
 
 // ═══════ المكالمة الصوتية ═══════
-let voiceCallActive = false;
-let voiceCallProcessing = false;
-let voiceCallRecognition = null;
 
 function startVoiceCall() {
   if (window.sbClient && !currentUserId) {
@@ -1485,14 +1488,19 @@ function startVoiceCall() {
   }
   voiceCallActive = true;
   voiceCallProcessing = false;
+  window.ttsSpeaking = false;
   
   const overlay = document.getElementById('voiceCallOverlay');
-  // 🔊 تحضير الصوت (يجب أن يحدث داخل نقر المستخدم)
-try {
-  const warmup = new SpeechSynthesisUtterance('');
-  warmup.volume = 0;
-  window.speechSynthesis.speak(warmup);
-} catch (e) {}
+  
+  // 🔊 تحضير الصوت داخل نقرة المستخدم (لتجاوز autoplay policy)
+  try {
+    const warmup = new SpeechSynthesisUtterance('');
+    warmup.volume = 0;
+    window.speechSynthesis.speak(warmup);
+    // تحميل الأصوات مسبقاً
+    window.speechSynthesis.getVoices();
+  } catch (e) {}
+  
   overlay.classList.add('show');
   
   updateVoiceCallStatus('أستمع...', 'listening');
@@ -1507,7 +1515,7 @@ try {
 function startVoiceListening() {
   if (!voiceCallActive) return;
   if (voiceCallProcessing || window.ttsSpeaking) {
-    console.log('⏸️ Listening deferred (processing or TTS active)');
+    console.log('⏸️ Listening deferred');
     return;
   }
   if (voiceCallRecognition) {
@@ -1531,17 +1539,11 @@ function startVoiceListening() {
     if (e.error === 'not-allowed') {
       toast('⚠️ الميكروفون مرفوض');
       endVoiceCall();
-    } else if (e.error === 'no-speech' || e.error === 'aborted') {
-      // تجاهل، سيعيد المحاولة
-    } else {
-      console.warn('Recognition error:', e.error);
     }
   };
   voiceCallRecognition.onend = () => {
     if (!voiceCallActive) return;
-    // 🛡️ لا نستمع أثناء المعالجة أو TTS
     if (voiceCallProcessing || window.ttsSpeaking) return;
-    // انتظر قليلاً قبل إعادة الاستماع
     setTimeout(() => {
       if (voiceCallActive && !voiceCallProcessing && !window.ttsSpeaking) {
         startVoiceListening();
@@ -1553,9 +1555,10 @@ function startVoiceListening() {
 
 async function handleVoiceCallInput(text) {
   voiceCallProcessing = true;
-    // 🛡️ اقفل الميكروفون فوراً
+  // 🛡️ أوقف الميكروفون فوراً
   if (voiceCallRecognition) {
     try { voiceCallRecognition.abort(); } catch (e) {}
+    voiceCallRecognition = null;
   }
   updateVoiceCallTranscript(text);
   updateVoiceCallStatus('أفكر...', 'thinking');
@@ -1601,7 +1604,6 @@ async function handleVoiceCallInput(text) {
     if (voiceCallActive) {
       voiceCallProcessing = false;
       updateVoiceCallStatus('أستمع...', 'listening');
-      // 🛡️ انتظر 1 ثانية بعد TTS قبل إعادة الاستماع
       setTimeout(() => {
         if (voiceCallActive && !voiceCallProcessing && !window.ttsSpeaking) {
           startVoiceListening();
@@ -1622,7 +1624,7 @@ async function handleVoiceCallInput(text) {
 
 function speakVoiceCallResponse(text) {
   return new Promise((resolve) => {
-    // 🛡️ اقفل الميكروفون أولاً
+    // 🛡️ علّم أن TTS يشتغل
     window.ttsSpeaking = true;
     if (voiceCallRecognition) {
       try { voiceCallRecognition.abort(); } catch (e) {}
@@ -1637,22 +1639,24 @@ function speakVoiceCallResponse(text) {
       .trim()
       .substring(0, 500);
 
-    if (!clean) { window.ttsSpeaking = false; resolve(); return; }
-
-    try { window.speechSynthesis.cancel(); } catch (e) {}
-
-    const u = new SpeechSynthesisUtterance(clean);
-    u.lang = 'ar-SA';
-    u.rate = 0.95;
-    u.pitch = 1.0;
-    u.volume = 1.0;
-
-    const finish = () => {
+    if (!clean) {
       window.ttsSpeaking = false;
       resolve();
-    };
+      return;
+    }
 
-    const trySpeak = () => {
+    // إلغاء أي كلام سابق
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+
+    // ⏳ انتظر قليلاً بعد cancel (بعض المتصفحات تحتاج ذلك)
+    setTimeout(() => {
+      const u = new SpeechSynthesisUtterance(clean);
+      u.lang = 'ar-SA';
+      u.rate = 0.95;
+      u.pitch = 1.0;
+      u.volume = 1.0;
+
+      // اختيار أفضل صوت عربي متاح
       const voices = window.speechSynthesis.getVoices();
       const arVoice = 
         voices.find(v => v.lang === 'ar-SA') ||
@@ -1661,30 +1665,34 @@ function speakVoiceCallResponse(text) {
         voices.find(v => /arab|عرب/i.test(v.name));
       if (arVoice) u.voice = arVoice;
 
+      let finished = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        window.ttsSpeaking = false;
+        resolve();
+      };
+
       u.onend = finish;
       u.onerror = finish;
-      window.speechSynthesis.speak(u);
-      // 🛡️ Timeout احتياطي (5 ثوانٍ كحد أقصى إضافي)
-      setTimeout(finish, clean.length * 120 + 3000);
-    };
 
-    if (window.speechSynthesis.getVoices().length > 0) {
-      trySpeak();
-    } else {
-      window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.onvoiceschanged = null;
-        trySpeak();
-      };
-      setTimeout(() => {
-        if (window.speechSynthesis.getVoices().length > 0) trySpeak();
-      }, 500);
-    }
+      try {
+        window.speechSynthesis.speak(u);
+      } catch (e) {
+        console.warn('speak error:', e);
+        finish();
+      }
+
+      // 🛡️ Timeout احتياطي
+      setTimeout(finish, 30000);
+    }, 200);
   });
 }
 
 function endVoiceCall() {
   voiceCallActive = false;
   voiceCallProcessing = false;
+  window.ttsSpeaking = false;
   if (voiceCallRecognition) {
     try { voiceCallRecognition.stop(); } catch (e) {}
     voiceCallRecognition = null;
