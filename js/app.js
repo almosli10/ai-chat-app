@@ -1595,31 +1595,28 @@ function speakVoiceCallResponse(text) {
       .replace(/[*_#>\[\]()★✦✨•]/g, '')
       .replace(/\s+/g, ' ')
       .trim()
-      .substring(0, 500);
-    
-    const u = new SpeechSynthesisUtterance(clean);
-    u.lang = 'ar-SA';
-    u.rate = 0.95;
-    u.pitch = 1.0;
-    
-    // البحث عن أي صوت عربي متاح
-    const voices = window.speechSynthesis.getVoices();
-    const arabicVoice = 
-      voices.find(v => v.lang === 'ar-SA') ||
-      voices.find(v => v.lang === 'ar-EG') ||
-      voices.find(v => v.lang.startsWith('ar-')) ||
-      voices.find(v => v.lang.includes('ar') || v.name.toLowerCase().includes('arab') || v.name.includes('عرب'));
-    
-    if (arabicVoice) {
-      u.voice = arabicVoice;
-      console.log('🔊 Using Arabic voice:', arabicVoice.name, arabicVoice.lang);
-    } else {
-      console.warn('⚠️ No Arabic voice found. Available voices:', voices.map(v => v.lang + ' - ' + v.name).join(', '));
-    }
-    
-    u.onend = resolve;
-    u.onerror = resolve;
-    window.speechSynthesis.speak(u);
+      .substring(0, 200);
+
+    if (!clean) { resolve(); return; }
+
+    // استخدام البروكسي الخاص بنا
+    const url = `/api/tts?text=${encodeURIComponent(clean)}&lang=ar`;
+    const audio = new Audio(url);
+
+    audio.onended = () => resolve();
+    audio.onerror = (e) => {
+      console.warn('TTS proxy failed', e);
+      // Fallback: Web Speech API
+      const u = new SpeechSynthesisUtterance(clean);
+      u.lang = 'ar-SA';
+      const arVoice = window.speechSynthesis.getVoices().find(v => v.lang.startsWith('ar'));
+      if (arVoice) u.voice = arVoice;
+      u.onend = resolve;
+      u.onerror = resolve;
+      window.speechSynthesis.speak(u);
+    };
+
+    audio.play().catch(() => resolve());
   });
 }
 
