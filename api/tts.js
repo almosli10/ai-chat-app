@@ -1,14 +1,24 @@
-// api/tts.js — وسيط لخدمة StreamElements TTS (صوت عربي طبيعي)
+// api/tts.js — وسيط Google Translate TTS (صوت عربي طبيعي، مجاني)
 export default async function handler(req, res) {
   const { text } = req.query;
   if (!text) return res.status(400).json({ error: 'text required' });
   
-  const voice = 'ar-XA-Standard-A'; // صوت عربي أنثوي طبيعي
-  const url = `https://api.streamelements.com/kappa/v2/speech?voice=${voice}&text=${encodeURIComponent(text)}`;
+  const clean = text.substring(0, 200);
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(clean)}&tl=ar&client=tw-ob&ttsspeed=0.9`;
   
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('TTS HTTP ' + response.status);
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://translate.google.com/',
+        'Accept': '*/*'
+      }
+    });
+    
+    if (!response.ok) {
+      console.error('Google TTS error:', response.status);
+      return res.status(response.status).json({ error: `Google TTS ${response.status}` });
+    }
     
     const buffer = Buffer.from(await response.arrayBuffer());
     res.setHeader('Content-Type', 'audio/mpeg');

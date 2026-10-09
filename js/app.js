@@ -1622,61 +1622,62 @@ async function handleVoiceCallInput(text) {
   }
 }
 
-function speakVoiceCallResponse(text) {
+async function speakVoiceCallResponse(text) {
+  window.ttsSpeaking = true;
+  if (voiceCallRecognition) {
+    try { voiceCallRecognition.abort(); } catch (e) {}
+    voiceCallRecognition = null;
+  }
+
+  const clean = text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/[*_#>\[\]()★✦✨•·]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!clean) {
+    window.ttsSpeaking = false;
+    return;
+  }
+
+  // تقسيم النص إلى أجزاء (Google TTS يدعم 200 حرف كحد أقصى)
+  const chunks = [];
+  let remaining = clean.substring(0, 800);
+  while (remaining.length > 0) {
+    if (remaining.length <= 200) {
+      chunks.push(remaining);
+      break;
+    }
+    let cut = remaining.lastIndexOf('،', 200);
+    if (cut < 100) cut = remaining.lastIndexOf('.', 200);
+    if (cut < 100) cut = remaining.lastIndexOf(' ', 200);
+    if (cut < 100) cut = 200;
+    chunks.push(remaining.substring(0, cut + 1).trim());
+    remaining = remaining.substring(cut + 1).trim();
+  }
+
+  for (const chunk of chunks) {
+    if (!chunk || !voiceCallActive) break;
+    await playTTSChunk(chunk);
+  }
+
+  window.ttsSpeaking = false;
+}
+
+function playTTSChunk(text) {
   return new Promise((resolve) => {
-    window.ttsSpeaking = true;
-    if (voiceCallRecognition) {
-      try { voiceCallRecognition.abort(); } catch (e) {}
-      voiceCallRecognition = null;
-    }
-
-    const clean = text
-      .replace(/```[\s\S]*?```/g, ' ')
-      .replace(/`([^`]+)`/g, '$1')
-      .replace(/[*_#>\[\]()★✦✨•·]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .substring(0, 300);
-
-    if (!clean) {
-      window.ttsSpeaking = false;
-      resolve();
-      return;
-    }
-
-    // استخدام StreamElements TTS عبر API الخاص بنا
-    const audio = new Audio(`/api/tts?text=${encodeURIComponent(clean)}`);
-    
+    const audio = new Audio(`/api/tts?text=${encodeURIComponent(text)}`);
     let finished = false;
     const finish = () => {
       if (finished) return;
       finished = true;
-      window.ttsSpeaking = false;
       resolve();
     };
-
     audio.onended = finish;
-    audio.onerror = (e) => {
-      console.warn('StreamElements TTS failed, fallback to Web Speech:', e);
-      // fallback: Web Speech API
-      try { window.speechSynthesis.cancel(); } catch (e) {}
-      const u = new SpeechSynthesisUtterance(clean);
-      u.lang = 'ar-SA';
-      const voices = window.speechSynthesis.getVoices();
-      const arVoice = voices.find(v => v.lang.startsWith('ar'));
-      if (arVoice) u.voice = arVoice;
-      u.onend = finish;
-      u.onerror = finish;
-      window.speechSynthesis.speak(u);
-    };
-
-    audio.play().catch(err => {
-      console.warn('Audio play failed:', err);
-      finish();
-    });
-
-    // حد أقصى 30 ثانية
-    setTimeout(finish, 30000);
+    audio.onerror = finish;
+    audio.play().catch(finish);
+    setTimeout(finish, 15000);
   });
 }
 
