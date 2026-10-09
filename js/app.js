@@ -98,6 +98,7 @@ let currentUserId = null;
 let isIncognito = false;
 let backupChatsBeforeIncognito = null;
 let backupCurrentChatIdBeforeIncognito = null;
+let incognitoChatIds = [];
 
 const PROMPT_TEMPLATES = [
   { icon: '📝', name: 'لخّص', text: 'لخّص النص التالي بإيجاز شديد: ' },
@@ -662,6 +663,7 @@ function createNewChat() {
     ownedIds.push(id);
     localStorage.setItem('ownChatIds', JSON.stringify(ownedIds));
   }
+  if (isIncognito) incognitoChatIds.push(id);
   currentChatId = id; saveAllChats(); setReadOnly(false); switchChat(id); input.focus(); playSound('click');
   if (window.innerWidth <= 900) { const sb = document.getElementById('sidebar'); if (sb.classList.contains('open')) toggleSidebar(); }
 }
@@ -1360,7 +1362,7 @@ window.toggleIncognito = function() {
       '• كل شيء يُمحى عند إغلاق التبويب\n\n' +
       'هل تريد المتابعة؟'
     );
-    if (!ok) return;
+    if (!ok) return; // ← يجب أن يكون قبل أي تعديل
 
     // نسخة احتياطية في الذاكرة
     backupChatsBeforeIncognito = JSON.parse(JSON.stringify(allChats));
@@ -1368,6 +1370,7 @@ window.toggleIncognito = function() {
 
     // تفعيل الوضع
     isIncognito = true;
+    incognitoChatIds = [];
     document.body.classList.add('incognito-mode');
 
     // تفريغ الذاكرة وبدء محادثة جديدة
@@ -1387,11 +1390,22 @@ window.toggleIncognito = function() {
     isIncognito = false;
     document.body.classList.remove('incognito-mode');
 
+    // 🕵️ حذف محادثات وضع التخفي نهائياً من localStorage
+    const savedChats = JSON.parse(localStorage.getItem('allChats') || '{}');
+    incognitoChatIds.forEach(id => { delete savedChats[id]; });
+    localStorage.setItem('allChats', JSON.stringify(savedChats));
+
+    // 🕵️ حذف من قائمة المحادثات المملوكة
+    const ownedIds = JSON.parse(localStorage.getItem('ownChatIds') || '[]');
+    const filteredOwnedIds = ownedIds.filter(id => !incognitoChatIds.includes(id));
+    localStorage.setItem('ownChatIds', JSON.stringify(filteredOwnedIds));
+
     // استعادة النسخة الاحتياطية
     allChats = backupChatsBeforeIncognito || {};
     localStorage.setItem('allChats', JSON.stringify(allChats));
 
     backupChatsBeforeIncognito = null;
+    incognitoChatIds = [];
     updateIncognitoUI();
 
     // الرجوع للمحادثة السابقة أو بدء جديدة
@@ -1414,6 +1428,24 @@ window.toggleIncognito = function() {
     playSound('click');
   }
 };
+
+function updateIncognitoUI() {
+  const btn = document.getElementById('incognitoBtn');
+  if (btn) {
+    btn.classList.toggle('active', isIncognito);
+    btn.innerHTML = isIncognito 
+      ? '🕵️ <span class="label">تخفي ON</span>' 
+      : '🕵️ <span class="label">تخفي</span>';
+  }
+  const badge = document.getElementById('incognitoBadge');
+  if (badge) badge.style.display = isIncognito ? 'inline-flex' : 'none';
+}
+
+window.addEventListener('beforeunload', () => {
+  if (isIncognito) {
+    try { localStorage.removeItem('lastChatId'); } catch (e) {}
+  }
+});
 
 function updateIncognitoUI() {
   const btn = document.getElementById('incognitoBtn');
