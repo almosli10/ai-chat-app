@@ -1624,7 +1624,6 @@ async function handleVoiceCallInput(text) {
 
 function speakVoiceCallResponse(text) {
   return new Promise((resolve) => {
-    // 🛡️ علّم أن TTS يشتغل
     window.ttsSpeaking = true;
     if (voiceCallRecognition) {
       try { voiceCallRecognition.abort(); } catch (e) {}
@@ -1634,10 +1633,10 @@ function speakVoiceCallResponse(text) {
     const clean = text
       .replace(/```[\s\S]*?```/g, ' ')
       .replace(/`([^`]+)`/g, '$1')
-      .replace(/[*_#>\[\]()★✦✨•]/g, '')
+      .replace(/[*_#>\[\]()★✦✨•·]/g, '')
       .replace(/\s+/g, ' ')
       .trim()
-      .substring(0, 500);
+      .substring(0, 300);
 
     if (!clean) {
       window.ttsSpeaking = false;
@@ -1645,47 +1644,39 @@ function speakVoiceCallResponse(text) {
       return;
     }
 
-    // إلغاء أي كلام سابق
-    try { window.speechSynthesis.cancel(); } catch (e) {}
+    // استخدام StreamElements TTS عبر API الخاص بنا
+    const audio = new Audio(`/api/tts?text=${encodeURIComponent(clean)}`);
+    
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      window.ttsSpeaking = false;
+      resolve();
+    };
 
-    // ⏳ انتظر قليلاً بعد cancel (بعض المتصفحات تحتاج ذلك)
-    setTimeout(() => {
+    audio.onended = finish;
+    audio.onerror = (e) => {
+      console.warn('StreamElements TTS failed, fallback to Web Speech:', e);
+      // fallback: Web Speech API
+      try { window.speechSynthesis.cancel(); } catch (e) {}
       const u = new SpeechSynthesisUtterance(clean);
       u.lang = 'ar-SA';
-      u.rate = 0.95;
-      u.pitch = 1.0;
-      u.volume = 1.0;
-
-      // اختيار أفضل صوت عربي متاح
       const voices = window.speechSynthesis.getVoices();
-      const arVoice = 
-        voices.find(v => v.lang === 'ar-SA') ||
-        voices.find(v => v.lang === 'ar-EG') ||
-        voices.find(v => v.lang.startsWith('ar-')) ||
-        voices.find(v => /arab|عرب/i.test(v.name));
+      const arVoice = voices.find(v => v.lang.startsWith('ar'));
       if (arVoice) u.voice = arVoice;
-
-      let finished = false;
-      const finish = () => {
-        if (finished) return;
-        finished = true;
-        window.ttsSpeaking = false;
-        resolve();
-      };
-
       u.onend = finish;
       u.onerror = finish;
+      window.speechSynthesis.speak(u);
+    };
 
-      try {
-        window.speechSynthesis.speak(u);
-      } catch (e) {
-        console.warn('speak error:', e);
-        finish();
-      }
+    audio.play().catch(err => {
+      console.warn('Audio play failed:', err);
+      finish();
+    });
 
-      // 🛡️ Timeout احتياطي
-      setTimeout(finish, 30000);
-    }, 200);
+    // حد أقصى 30 ثانية
+    setTimeout(finish, 30000);
   });
 }
 
