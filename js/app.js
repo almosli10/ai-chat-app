@@ -1768,28 +1768,17 @@ async function speakVoiceCallResponse(text) {
 
   if (!clean) { window.ttsSpeaking = false; return; }
 
-  // 🗣️ اختيار الصوت حسب اللهجة المكتشفة
-  const dialect = localStorage.getItem('detectedDialect');
-  const voiceMap = {
-    'gulf': 'ar-SA-HamedNeural',
-    'egyptian': 'ar-EG-ShakirNeural',
-    'levantine': 'ar-SY-LaithNeural',
-    'maghrebi': 'ar-MA-JamalNeural',
-    'iraqi': 'ar-SA-HamedNeural', // Edge TTS لا يحتوي عراقي، نستخدم سعودي
-    'default': 'ar-SA-HamedNeural'
-  };
-  const voice = voiceMap[dialect] || voiceMap['default'];
-
-  // 🎭 تحليل المشاعر من النص
+  // 🎭 تحليل المشاعر
   const emotion = detectEmotion(clean);
+  console.log('🎭 Emotion detected:', emotion);
   const { rate, pitch } = getVoiceParams(emotion);
 
-  // تقسيم النص (Edge TTS يدعم حتى 500 حرف لكل طلب)
-  const chunks = splitForTTS(clean, 400);
+  // تقسيم النص
+  const chunks = splitForTTS(clean, 180);
 
   for (const chunk of chunks) {
     if (!voiceCallActive) break;
-    await playEdgeTTSChunk(chunk, voice, rate, pitch);
+    await playEdgeTTSChunk(chunk, 'default', rate, pitch);
   }
 
   window.ttsSpeaking = false;
@@ -1840,16 +1829,23 @@ function splitForTTS(text, maxLen) {
 
 function playEdgeTTSChunk(text, voice, rate, pitch) {
   return new Promise((resolve) => {
-    // تحويل rate من صيغة "+20%" إلى رقم (0.5 = بطيء، 1.5 = سريع)
+    // تحويل rate من صيغة "+20%" إلى رقم للـ API
     let speed = '0.9';
-    if (rate.includes('+20%')) speed = '1.15';
-    else if (rate.includes('+12%')) speed = '1.05';
-    else if (rate.includes('+5%')) speed = '0.95';
-    else if (rate.includes('-10%')) speed = '0.75';
-    else if (rate.includes('-5%')) speed = '0.85';
+    let playbackRate = 1.0;
+    
+    if (rate.includes('+20%')) { speed = '1.0'; playbackRate = 1.25; }
+    else if (rate.includes('+12%')) { speed = '1.0'; playbackRate = 1.1; }
+    else if (rate.includes('+5%')) { speed = '0.95'; playbackRate = 1.05; }
+    else if (rate.includes('-10%')) { speed = '0.8'; playbackRate = 0.85; }
+    else if (rate.includes('-5%')) { speed = '0.85'; playbackRate = 0.95; }
     
     const url = `/api/tts?text=${encodeURIComponent(text)}&rate=${speed}`;
     const audio = new Audio(url);
+    
+    // تطبيق سرعة إضافية من جانب المتصفح
+    audio.playbackRate = playbackRate;
+    audio.preservesPitch = false; // يسمح بتغيير النبرة قليلاً مع السرعة
+    
     let finished = false;
     const finish = () => {
       if (finished) return;
