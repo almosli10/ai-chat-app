@@ -3093,4 +3093,80 @@ body.incognito-mode::before {
   box-shadow: inset 0 0 80px rgba(139, 92, 246, 0.15);
 }
 
+/* ═══════ Voice Call Overlay ═══════ */
+.voice-call-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10, 13, 21, 0.96);
+  backdrop-filter: blur(20px);
+  z-index: 10000;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+.voice-call-overlay.show { opacity: 1; pointer-events: auto; }
+.voice-call-content {
+  text-align: center; max-width: 500px; width: 90%;
+  padding: 2rem; display: flex; flex-direction: column;
+  align-items: center; gap: 1.5rem;
+}
+.voice-call-status {
+  font-size: 1.2rem; font-weight: 600;
+  color: #a855f7; min-height: 1.5em;
+  letter-spacing: 0.5px;
+}
+.voice-call-avatar {
+  position: relative; width: 140px; height: 140px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 4rem;
+  box-shadow: 0 0 60px rgba(139, 92, 246, 0.5);
+}
+.voice-call-avatar .voice-pulse {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 2px solid rgba(139, 92, 246, 0.6); opacity: 0;
+}
+.voice-call-avatar.listening .voice-pulse,
+.voice-call-avatar.speaking .voice-pulse {
+  animation: voicePulse 2s ease-out infinite;
+}
+.voice-call-avatar.listening .voice-pulse:nth-child(2) { animation-delay: 0.6s; }
+.voice-call-avatar.listening .voice-pulse:nth-child(3) { animation-delay: 1.2s; }
+.voice-call-avatar.speaking .voice-pulse:nth-child(2) { animation-delay: 0.4s; }
+.voice-call-avatar.speaking .voice-pulse:nth-child(3) { animation-delay: 0.8s; }
+.voice-call-avatar.thinking { animation: voiceThinking 1.5s ease-in-out infinite; }
+@keyframes voicePulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+@keyframes voiceThinking {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+.voice-call-transcript, .voice-call-response {
+  font-size: 1rem; color: rgba(255, 255, 255, 0.9);
+  min-height: 2em; max-width: 100%;
+  padding: 0.7rem 1rem; border-radius: 12px;
+  text-align: right; width: 100%; box-sizing: border-box;
+  border-right: 3px solid #6366f1;
+  background: rgba(255, 255, 255, 0.05);
+}
+.voice-call-response {
+  font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);
+  max-height: 150px; overflow-y: auto;
+  border-right-color: #a855f7;
+  background: rgba(139, 92, 246, 0.08);
+}
+.voice-call-end {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white; border: none;
+  padding: 0.9rem 2rem; border-radius: 50px;
+  font-size: 1rem; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; gap: 0.5rem;
+  box-shadow: 0 8px 30px rgba(239, 68, 68, 0.4);
+  transition: transform 0.2s;
+}
+.voice-call-end:hover { transform: scale(1.05); }
+
     @media (hover: none) { .cursor-glow { display: none; } }

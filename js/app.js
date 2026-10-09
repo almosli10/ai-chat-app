@@ -1468,4 +1468,176 @@ window.addEventListener('beforeunload', (e) => {
   }
 });
 
+// ═══════ المكالمة الصوتية ═══════
+let voiceCallActive = false;
+let voiceCallProcessing = false;
+let voiceCallRecognition = null;
+
+function startVoiceCall() {
+  if (window.sbClient && !currentUserId) {
+    toast('🔒 يرجى تسجيل الدخول أولاً');
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    toast('⚠️ متصفحك لا يدعم المكالمات الصوتية');
+    return;
+  }
+  voiceCallActive = true;
+  voiceCallProcessing = false;
+  
+  const overlay = document.getElementById('voiceCallOverlay');
+  overlay.classList.add('show');
+  
+  updateVoiceCallStatus('أستمع...', 'listening');
+  updateVoiceCallTranscript('');
+  updateVoiceCallResponse('');
+  
+  startVoiceListening();
+  playSound('click');
+  toast('📞 بدأت المكالمة — تكلم الآن');
+}
+
+function startVoiceListening() {
+  if (!voiceCallActive) return;
+  if (voiceCallRecognition) {
+    try { voiceCallRecognition.stop(); } catch (e) {}
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  voiceCallRecognition = new SR();
+  voiceCallRecognition.lang = 'ar-SA';
+  voiceCallRecognition.continuous = false;
+  voiceCallRecognition.interimResults = false;
+  
+  voiceCallRecognition.onresult = (e) => {
+    const text = e.results[0][0].transcript.trim();
+    if (text) handleVoiceCallInput(text);
+  };
+  voiceCallRecognition.onerror = (e) => {
+    if (e.error === 'not-allowed') {
+      toast('⚠️ الميكروفون مرفوض');
+      endVoiceCall();
+    }
+  };
+  voiceCallRecognition.onend = () => {
+    if (voiceCallActive && !voiceCallProcessing) {
+      setTimeout(() => startVoiceListening(), 300);
+    }
+  };
+  try { voiceCallRecognition.start(); } catch (e) {}
+}
+
+async function handleVoiceCallInput(text) {
+  voiceCallProcessing = true;
+  updateVoiceCallTranscript(text);
+  updateVoiceCallStatus('أفكر...', 'thinking');
+  
+  try {
+    if (!currentChatId || !allChats[currentChatId]) createNewChat();
+    const chat = allChats[currentChatId];
+    const umi = chat.messages.length;
+    chat.messages.push({ role: 'user', content: text, displayText: text });
+    addMessage('user', text, false, umi);
+    
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const dateContext = `\n\n[معلومة مهمة: تاريخ اليوم هو ${dateStr}.]${buildMemoryContext()}`;
+    if (chat.messages[0]?.role === 'system') {
+      const base = chat.messages[0].content.split('\n\n[معلومة مهمة:')[0].split('\n\n[معلومات معروفة عن المستخدم]:')[0];
+      chat.messages[0].content = base + dateContext;
+    }
+    
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: chat.messages.map(m => ({ role: m.role, content: m.content })),
+        stream: false
+      })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content || 'لم أستطع الرد';
+    
+    const ai = chat.messages.length;
+    chat.messages.push({ role: 'assistant', content: reply });
+    addMessage('assistant', reply, false, ai);
+    saveAllChats();
+    pushChatToCloud(chat);
+    renderSidebar();
+    
+    updateVoiceCallResponse(reply);
+    updateVoiceCallStatus('أتكلم...', 'speaking');
+    await speakVoiceCallResponse(reply);
+    
+    if (voiceCallActive) {
+      updateVoiceCallStatus('أستمع...', 'listening');
+      voiceCallProcessing = false;
+      startVoiceListening();
+    }
+  } catch (err) {
+    updateVoiceCallResponse('❌ خطأ: ' + err.message);
+    voiceCallProcessing = false;
+    if (voiceCallActive) {
+      setTimeout(() => {
+        updateVoiceCallStatus('أستمع...', 'listening');
+        startVoiceListening();
+      }, 2000);
+    }
+  }
+}
+
+function speakVoiceCallResponse(text) {
+  return new Promise((resolve) => {
+    const clean = text
+      .replace(/```[\s\S]*?```/g, ' [كود] ')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/[*_#>\[\]()]/g, '')
+      .substring(0, 500);
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = 'ar-SA';
+    const av = window.speechSynthesis.getVoices().find(v => v.lang.startsWith('ar'));
+    if (av) u.voice = av;
+    u.onend = resolve;
+    u.onerror = resolve;
+    window.speechSynthesis.speak(u);
+  });
+}
+
+function endVoiceCall() {
+  voiceCallActive = false;
+  voiceCallProcessing = false;
+  if (voiceCallRecognition) {
+    try { voiceCallRecognition.stop(); } catch (e) {}
+    voiceCallRecognition = null;
+  }
+  try { window.speechSynthesis.cancel(); } catch (e) {}
+  document.getElementById('voiceCallOverlay').classList.remove('show');
+  toast('📞 تم إنهاء المكالمة');
+  playSound('click');
+}
+
+function updateVoiceCallStatus(text, state) {
+  const el = document.getElementById('voiceCallStatus');
+  if (el) el.textContent = text;
+  const avatar = document.getElementById('voiceCallAvatar');
+  if (avatar) {
+    avatar.classList.remove('listening', 'thinking', 'speaking');
+    if (state) avatar.classList.add(state);
+  }
+}
+
+function updateVoiceCallTranscript(text) {
+  const el = document.getElementById('voiceCallTranscript');
+  if (el) el.textContent = text;
+}
+
+function updateVoiceCallResponse(text) {
+  const el = document.getElementById('voiceCallResponse');
+  if (el) el.textContent = text.length > 250 ? text.substring(0, 250) + '...' : text;
+}
+
+window.startVoiceCall = startVoiceCall;
+window.endVoiceCall = endVoiceCall;
+
 init();

@@ -192,6 +192,7 @@
         <span id="incognitoBadge" class="incognito-badge" style="display:none;">🕵️ تخفي</span>
         <span id="readonlyBadge" class="readonly-badge" style="display:none;">👁️ قراءة فقط</span>
         <button class="agent-btn" id="agentBtn" onclick="toggleAgentMode()" title="تفعيل وضع الوكيل">🤖 <span class="label">وكيل</span></button>
+        <button class="agent-btn" id="voiceCallBtn" onclick="startVoiceCall()" title="مكالمة صوتية">📞 <span class="label">مكالمة</span></button>
         <button class="agent-btn" id="incognitoBtn" onclick="toggleIncognito()" title="وضع التخفي">🕵️ <span class="label">تخفي</span></button>
         <button onclick="shareCurrentChat()" title="مشاركة">🔗 <span class="label">مشاركة</span></button>
         <button onclick="exportCurrentChat()" title="تصدير MD">📄 <span class="label">تصدير</span></button>
@@ -377,5 +378,22 @@
   <script src="js/tests.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/profile.js"></script>
+  <!-- ═══════ Voice Call Overlay ═══════ -->
+<div class="voice-call-overlay" id="voiceCallOverlay">
+  <div class="voice-call-content">
+    <div class="voice-call-status" id="voiceCallStatus">جاري التحضير...</div>
+    <div class="voice-call-avatar" id="voiceCallAvatar">
+      <div class="voice-pulse"></div>
+      <div class="voice-pulse"></div>
+      <div class="voice-pulse"></div>
+      <span>✨</span>
+    </div>
+    <div class="voice-call-transcript" id="voiceCallTranscript"></div>
+    <div class="voice-call-response" id="voiceCallResponse"></div>
+    <button class="voice-call-end" onclick="endVoiceCall()">
+      <span>📞</span> إنهاء المكالمة
+    </button>
+  </div>
+</div>
 </body>
 </html>
