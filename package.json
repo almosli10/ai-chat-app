@@ -4,6 +4,7 @@
   "private": true,
   "description": "مساعد الذكاء الاصطناعي الاحترافي",
   "dependencies": {
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "ws": "^8.22.0"
   }
 }

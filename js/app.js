@@ -1661,6 +1661,25 @@ function startVoiceListening() {
   try { voiceCallRecognition.start(); } catch (e) {}
 }
 
+function playThinkingSound() {
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(440, now);
+    osc.frequency.linearRampToValueAtTime(660, now + 0.15);
+    osc.frequency.linearRampToValueAtTime(550, now + 0.3);
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    osc.start(now);
+    osc.stop(now + 0.4);
+  } catch (e) {}
+}
+
 async function handleVoiceCallInput(text) {
   voiceCallProcessing = true;
   // 🛡️ أوقف الميكروفون فوراً
@@ -1670,6 +1689,8 @@ async function handleVoiceCallInput(text) {
   }
   updateVoiceCallTranscript(text);
   updateVoiceCallStatus('أفكر...', 'thinking');
+  // 🔔 صوت تفكير قصير
+playThinkingSound();
   
   try {
     if (!currentChatId || !allChats[currentChatId]) createNewChat();
@@ -1737,6 +1758,7 @@ async function speakVoiceCallResponse(text) {
     voiceCallRecognition = null;
   }
 
+  // تنظيف النص
   const clean = text
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/`([^`]+)`/g, '$1')
@@ -1744,33 +1766,93 @@ async function speakVoiceCallResponse(text) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  if (!clean) {
-    window.ttsSpeaking = false;
-    return;
-  }
+  if (!clean) { window.ttsSpeaking = false; return; }
 
-  // تقسيم النص إلى أجزاء (Google TTS يدعم 200 حرف كحد أقصى)
-  const chunks = [];
-  let remaining = clean.substring(0, 800);
-  while (remaining.length > 0) {
-    if (remaining.length <= 200) {
-      chunks.push(remaining);
-      break;
-    }
-    let cut = remaining.lastIndexOf('،', 200);
-    if (cut < 100) cut = remaining.lastIndexOf('.', 200);
-    if (cut < 100) cut = remaining.lastIndexOf(' ', 200);
-    if (cut < 100) cut = 200;
-    chunks.push(remaining.substring(0, cut + 1).trim());
-    remaining = remaining.substring(cut + 1).trim();
-  }
+  // 🗣️ اختيار الصوت حسب اللهجة المكتشفة
+  const dialect = localStorage.getItem('detectedDialect');
+  const voiceMap = {
+    'gulf': 'ar-SA-HamedNeural',
+    'egyptian': 'ar-EG-ShakirNeural',
+    'levantine': 'ar-SY-LaithNeural',
+    'maghrebi': 'ar-MA-JamalNeural',
+    'iraqi': 'ar-SA-HamedNeural', // Edge TTS لا يحتوي عراقي، نستخدم سعودي
+    'default': 'ar-SA-HamedNeural'
+  };
+  const voice = voiceMap[dialect] || voiceMap['default'];
+
+  // 🎭 تحليل المشاعر من النص
+  const emotion = detectEmotion(clean);
+  const { rate, pitch } = getVoiceParams(emotion);
+
+  // تقسيم النص (Edge TTS يدعم حتى 500 حرف لكل طلب)
+  const chunks = splitForTTS(clean, 400);
 
   for (const chunk of chunks) {
-    if (!chunk || !voiceCallActive) break;
-    await playTTSChunk(chunk);
+    if (!voiceCallActive) break;
+    await playEdgeTTSChunk(chunk, voice, rate, pitch);
   }
 
   window.ttsSpeaking = false;
+}
+
+function detectEmotion(text) {
+  const t = text.toLowerCase();
+  // مؤشرات الفرح/الحماس
+  if (/رائع|ممتاز|أحسنت|مذهل|جميل|يا سلام|بالتأكيد|😊|🎉|👏|✨|🔥/.test(t)) return 'happy';
+  // مؤشرات الحزن/التعاطف
+  if (/للأسف|حزين|مؤسف|أعتذر|آسف|😢|😔/.test(t)) return 'sad';
+  // مؤشرات الحماس
+  if (/!!|!{2,}|واو|مثير|مذهل/.test(t)) return 'excited';
+  // مؤشرات الهدوء/الشرح
+  if (/لاحظ|ملاحظة|تعليمات|قواعد|خطوات/.test(t)) return 'calm';
+  // مؤشرات السؤال
+  if (/\?|؟/.test(t)) return 'question';
+  return 'neutral';
+}
+
+function getVoiceParams(emotion) {
+  switch (emotion) {
+    case 'happy':    return { rate: '+12%', pitch: '+15Hz' };
+    case 'excited':  return { rate: '+20%', pitch: '+25Hz' };
+    case 'sad':      return { rate: '-10%', pitch: '-15Hz' };
+    case 'calm':     return { rate: '-5%',  pitch: '0Hz' };
+    case 'question': return { rate: '+5%',  pitch: '+8Hz' };
+    default:         return { rate: '0%',   pitch: '0Hz' };
+  }
+}
+
+function splitForTTS(text, maxLen) {
+  const chunks = [];
+  let remaining = text;
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLen) { chunks.push(remaining); break; }
+    let cut = remaining.lastIndexOf('،', maxLen);
+    if (cut < maxLen / 2) cut = remaining.lastIndexOf('.', maxLen);
+    if (cut < maxLen / 2) cut = remaining.lastIndexOf('!', maxLen);
+    if (cut < maxLen / 2) cut = remaining.lastIndexOf('؟', maxLen);
+    if (cut < maxLen / 2) cut = remaining.lastIndexOf(' ', maxLen);
+    if (cut < maxLen / 2) cut = maxLen;
+    chunks.push(remaining.substring(0, cut + 1).trim());
+    remaining = remaining.substring(cut + 1).trim();
+  }
+  return chunks.filter(c => c.length > 0);
+}
+
+function playEdgeTTSChunk(text, voice, rate, pitch) {
+  return new Promise((resolve) => {
+    const url = `/api/edge-tts?text=${encodeURIComponent(text)}&voice=${voice}&rate=${encodeURIComponent(rate)}&pitch=${encodeURIComponent(pitch)}`;
+    const audio = new Audio(url);
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      resolve();
+    };
+    audio.onended = finish;
+    audio.onerror = finish;
+    audio.play().catch(finish);
+    setTimeout(finish, 30000);
+  });
 }
 
 function playTTSChunk(text) {
