@@ -1830,4 +1830,390 @@ window.endVoiceCall = endVoiceCall;
   const savedDialect = localStorage.getItem('detectedDialect');
   if (savedDialect) updateDialectBadge(savedDialect);
 
+  // ═══════ وضع الرسم (Canvas Mode) ═══════
+let fabricCanvas = null;
+let fabricLoaded = false;
+let currentTool = 'brush';
+let canvasHistory = [];
+
+async function loadFabric() {
+  if (fabricLoaded && window.fabric) return;
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js';
+    script.onload = () => { fabricLoaded = true; resolve(); };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+async function toggleCanvasMode() {
+  if (window.sbClient && !currentUserId) {
+    toast('🔒 يرجى تسجيل الدخول أولاً');
+    return;
+  }
+  const panel = document.getElementById('canvasPanel');
+  if (panel.style.display === 'none' || !panel.style.display) {
+    await openCanvasMode();
+  } else {
+    closeCanvasMode();
+  }
+}
+
+async function openCanvasMode() {
+  try {
+    await loadFabric();
+  } catch (e) {
+    toast('⚠️ فشل تحميل مكتبة الرسم');
+    return;
+  }
+  
+  const panel = document.getElementById('canvasPanel');
+  panel.style.display = 'flex';
+  document.body.classList.add('canvas-mode');
+  
+  // انتظر قليلاً حتى يظهر الـ panel
+  setTimeout(() => {
+    initFabricCanvas();
+    if (typeof playSound === 'function') playSound('click');
+  }, 100);
+}
+
+function closeCanvasMode() {
+  const panel = document.getElementById('canvasPanel');
+  panel.style.display = 'none';
+  document.body.classList.remove('canvas-mode');
+  if (fabricCanvas) {
+    fabricCanvas.dispose();
+    fabricCanvas = null;
+  }
+}
+
+function initFabricCanvas() {
+  const stage = document.querySelector('.canvas-stage');
+  if (!stage) return;
+  const width = stage.clientWidth;
+  const height = stage.clientHeight;
+  
+  const canvasEl = document.getElementById('fabricCanvas');
+  canvasEl.width = width;
+  canvasEl.height = height;
+  
+  fabricCanvas = new fabric.Canvas('fabricCanvas', {
+    isDrawingMode: true,
+    backgroundColor: '#ffffff',
+    width: width,
+    height: height
+  });
+  
+  const brush = new fabric.PencilBrush(fabricCanvas);
+  brush.color = document.getElementById('canvasColor').value;
+  brush.width = parseInt(document.getElementById('canvasSize').value);
+  fabricCanvas.freeDrawingBrush = brush;
+  
+  wireCanvasToolbar();
+  saveCanvasState();
+}
+
+function wireCanvasToolbar() {
+  document.querySelectorAll('.canvas-tool').forEach(btn => {
+    btn.onclick = () => {
+      const tool = btn.dataset.tool;
+      document.querySelectorAll('.canvas-tool').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      setCanvasTool(tool);
+      if (typeof playSound === 'function') playSound('click');
+    };
+  });
+  
+  document.getElementById('canvasColor').oninput = (e) => {
+    if (!fabricCanvas) return;
+    if (fabricCanvas.isDrawingMode && fabricCanvas.freeDrawingBrush) {
+      fabricCanvas.freeDrawingBrush.color = e.target.value;
+    }
+  };
+  
+  document.getElementById('canvasSize').oninput = (e) => {
+    if (!fabricCanvas) return;
+    if (fabricCanvas.isDrawingMode && fabricCanvas.freeDrawingBrush) {
+      fabricCanvas.freeDrawingBrush.width = parseInt(e.target.value);
+    }
+  };
+}
+
+function setCanvasTool(tool) {
+  if (!fabricCanvas) return;
+  currentTool = tool;
+  const color = document.getElementById('canvasColor').value;
+  const size = parseInt(document.getElementById('canvasSize').value);
+  
+  if (tool === 'brush') {
+    fabricCanvas.isDrawingMode = true;
+    fabricCanvas.selection = false;
+    const brush = new fabric.PencilBrush(fabricCanvas);
+    brush.color = color;
+    brush.width = size;
+    fabricCanvas.freeDrawingBrush = brush;
+  } else if (tool === 'eraser') {
+    fabricCanvas.isDrawingMode = true;
+    fabricCanvas.selection = false;
+    const brush = new fabric.PencilBrush(fabricCanvas);
+    brush.color = '#ffffff';
+    brush.width = size * 3;
+    fabricCanvas.freeDrawingBrush = brush;
+  } else {
+    fabricCanvas.isDrawingMode = false;
+    fabricCanvas.selection = false;
+    setupShapeDrawing(tool, color, size);
+  }
+}
+
+function setupShapeDrawing(tool, color, size) {
+  let startX, startY, shape;
+  
+  fabricCanvas.on('mouse:down', (o) => {
+    if (fabricCanvas.isDrawingMode) return;
+    const pointer = fabricCanvas.getPointer(o.e);
+    startX = pointer.x;
+    startY = pointer.y;
+    isDown = true;
+    if (tool === 'line') {
+      shape = new fabric.Line([startX, startY, startX, startY], {
+        stroke: color, strokeWidth: size, selectable: false
+      });
+    } else if (tool === 'rect') {
+      shape = new fabric.Rect({
+        left: startX, top: startY, width: 0, height: 0,
+        fill: 'transparent', stroke: color, strokeWidth: size, selectable: false
+      });
+    } else if (tool === 'circle') {
+      shape = new fabric.Circle({
+        left: startX, top: startY, radius: 0,
+        fill: 'transparent', stroke: color, strokeWidth: size, selectable: false
+      });
+    } else if (tool === 'text') {
+      const text = prompt('اكتب النص:');
+      if (text) {
+        const t = new fabric.IText(text, {
+          left: startX, top: startY, fill: color, fontSize: size * 6
+        });
+        fabricCanvas.add(t);
+        saveCanvasState();
+      }
+      isDown = false;
+      return;
+    }
+    if (shape) fabricCanvas.add(shape);
+  });
+  
+  let isDown = false;
+  fabricCanvas.on('mouse:move', (o) => {
+    if (!isDown || !shape) return;
+    const pointer = fabricCanvas.getPointer(o.e);
+    if (tool === 'line') {
+      shape.set({ x2: pointer.x, y2: pointer.y });
+    } else if (tool === 'rect') {
+      const w = pointer.x - startX;
+      const h = pointer.y - startY;
+      shape.set({
+        left: w < 0 ? pointer.x : startX,
+        top: h < 0 ? pointer.y : startY,
+        width: Math.abs(w),
+        height: Math.abs(h)
+      });
+    } else if (tool === 'circle') {
+      const r = Math.sqrt(Math.pow(pointer.x - startX, 2) + Math.pow(pointer.y - startY, 2));
+      shape.set({ radius: r });
+    }
+    fabricCanvas.requestRenderAll();
+  });
+  
+  fabricCanvas.on('mouse:up', () => {
+    if (isDown && shape) {
+      shape.setCoords();
+      saveCanvasState();
+    }
+    isDown = false;
+    shape = null;
+  });
+}
+
+function saveCanvasState() {
+  if (!fabricCanvas) return;
+  try {
+    canvasHistory.push(JSON.stringify(fabricCanvas.toJSON()));
+    if (canvasHistory.length > 20) canvasHistory.shift();
+  } catch (e) {}
+}
+
+function undoCanvas() {
+  if (!fabricCanvas || canvasHistory.length < 2) {
+    toast('⚠️ لا يوجد ما يمكن التراجع عنه');
+    return;
+  }
+  canvasHistory.pop();
+  const prev = canvasHistory[canvasHistory.length - 1];
+  fabricCanvas.loadFromJSON(prev, () => {
+    fabricCanvas.renderAll();
+  });
+  if (typeof playSound === 'function') playSound('click');
+}
+
+function clearCanvas() {
+  if (!fabricCanvas) return;
+  if (!confirm('مسح اللوحة بالكامل؟')) return;
+  fabricCanvas.clear();
+  fabricCanvas.setBackgroundColor('#ffffff', () => fabricCanvas.renderAll());
+  canvasHistory = [];
+  saveCanvasState();
+  toast('🗑️ تم مسح اللوحة');
+}
+
+function saveCanvasImage() {
+  if (!fabricCanvas) return;
+  const dataURL = fabricCanvas.toDataURL({ format: 'png', quality: 1 });
+  const a = document.createElement('a');
+  a.href = dataURL;
+  a.download = `mishkat-drawing-${Date.now()}.png`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  toast('💾 تم حفظ الصورة');
+}
+
+function sendCanvasToChat() {
+  if (!fabricCanvas) return;
+  const dataURL = fabricCanvas.toDataURL({ format: 'png', quality: 0.8 });
+  closeCanvasMode();
+  
+  // إرسال الصورة كرسالة في المحادثة
+  if (!currentChatId || !allChats[currentChatId]) return;
+  
+  const umi = allChats[currentChatId].messages.length;
+  const text = '🎨 رسمة من وضع الرسم';
+  allChats[currentChatId].messages.push({
+    role: 'user',
+    content: text,
+    displayText: text,
+    attachmentNames: ['رسمة.png'],
+    attachmentsData: [{ name: 'رسمة.png', type: 'image', dataUrl: dataURL }]
+  });
+  addMessage('user', text, false, umi, ['رسمة.png'], [{ type: 'image', dataUrl: dataURL }]);
+  saveAllChats();
+  renderSidebar();
+  toast('📤 تم إرسال الرسمة للمحادثة');
+}
+
+async function askMishkatToDraw() {
+  const promptEl = document.getElementById('canvasPrompt');
+  const userText = promptEl.value.trim();
+  if (!userText) {
+    toast('⚠️ اكتب وصف ما تريد رسمه');
+    return;
+  }
+  if (!fabricCanvas) return;
+  
+  promptEl.value = '';
+  toast('🎨 مشكاة يرسم الآن...');
+  
+  const systemPrompt = `أنت مساعد رسم. عندما يطلب المستخدم رسم شيء، أرجع فقط JSON يحتوي على قائمة الأشكال لرسمها.
+العناصر المتاحة:
+- {"type":"circle","left":N,"top":N,"radius":N,"fill":"#hex","stroke":"#hex","strokeWidth":N}
+- {"type":"rect","left":N,"top":N,"width":N,"height":N,"fill":"#hex","stroke":"#hex","strokeWidth":N}
+- {"type":"line","x1":N,"y1":N,"x2":N,"y2":N,"stroke":"#hex","strokeWidth":N}
+- {"type":"text","text":"string","left":N,"top":N,"fill":"#hex","fontSize":N}
+
+الأبعاد: العرض 800 والطول 600. اجعل الرسم في وسط اللوحة.
+أرجع JSON فقط بدون أي نص أو شرح آخر.`;
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userText }
+        ],
+        stream: false
+      })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    let raw = data.choices?.[0]?.message?.content || '';
+    // إزالة markdown إذا وُجد
+    raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+    const startIdx = raw.indexOf('[');
+    const endIdx = raw.lastIndexOf(']');
+    if (startIdx === -1 || endIdx === -1) throw new Error('لم يتم إرجاع JSON صحيح');
+    const shapes = JSON.parse(raw.substring(startIdx, endIdx + 1));
+    if (!Array.isArray(shapes)) throw new Error('JSON غير صالح');
+    
+    drawShapesOnCanvas(shapes);
+    toast(`✅ مشكاة رسم ${shapes.length} عنصر`);
+  } catch (err) {
+    console.error(err);
+    toast('❌ فشل الرسم: ' + err.message);
+  }
+}
+
+function drawShapesOnCanvas(shapes) {
+  if (!fabricCanvas) return;
+  const stage = document.querySelector('.canvas-stage');
+  const W = stage.clientWidth;
+  const H = stage.clientHeight;
+  // مقياس لو كان الـ AI افترض 800x600
+  const scaleX = W / 800;
+  const scaleY = H / 600;
+  
+  shapes.forEach(s => {
+    try {
+      let obj = null;
+      if (s.type === 'circle') {
+        obj = new fabric.Circle({
+          left: (s.left || 0) * scaleX,
+          top: (s.top || 0) * scaleY,
+          radius: (s.radius || 40) * Math.min(scaleX, scaleY),
+          fill: s.fill || 'transparent',
+          stroke: s.stroke || '#000',
+          strokeWidth: s.strokeWidth || 2
+        });
+      } else if (s.type === 'rect') {
+        obj = new fabric.Rect({
+          left: (s.left || 0) * scaleX,
+          top: (s.top || 0) * scaleY,
+          width: (s.width || 100) * scaleX,
+          height: (s.height || 100) * scaleY,
+          fill: s.fill || 'transparent',
+          stroke: s.stroke || '#000',
+          strokeWidth: s.strokeWidth || 2
+        });
+      } else if (s.type === 'line') {
+        obj = new fabric.Line(
+          [(s.x1 || 0) * scaleX, (s.y1 || 0) * scaleY, (s.x2 || 100) * scaleX, (s.y2 || 100) * scaleY],
+          { stroke: s.stroke || '#000', strokeWidth: s.strokeWidth || 3 }
+        );
+      } else if (s.type === 'text') {
+        obj = new fabric.IText(s.text || '', {
+          left: (s.left || 100) * scaleX,
+          top: (s.top || 100) * scaleY,
+          fill: s.fill || '#000',
+          fontSize: (s.fontSize || 24) * Math.min(scaleX, scaleY)
+        });
+      }
+      if (obj) fabricCanvas.add(obj);
+    } catch (e) { console.warn('Shape error:', e); }
+  });
+  fabricCanvas.renderAll();
+  saveCanvasState();
+}
+
+window.toggleCanvasMode = toggleCanvasMode;
+window.closeCanvasMode = closeCanvasMode;
+window.clearCanvas = clearCanvas;
+window.undoCanvas = undoCanvas;
+window.saveCanvasImage = saveCanvasImage;
+window.sendCanvasToChat = sendCanvasToChat;
+window.askMishkatToDraw = askMishkatToDraw;
+
 init();

@@ -194,6 +194,7 @@
         <span id="dialectBadge" class="dialect-badge" style="display:none;" onclick="clearDialect()" title="اضغط لإعادة الكشف">🗣️</span>
         <button class="agent-btn" id="agentBtn" onclick="toggleAgentMode()" title="تفعيل وضع الوكيل">🤖 <span class="label">وكيل</span></button>
         <button class="agent-btn" id="voiceCallBtn" onclick="startVoiceCall()" title="مكالمة صوتية">📞 <span class="label">مكالمة</span></button>
+        <button class="agent-btn" id="canvasBtn" onclick="toggleCanvasMode()" title="وضع الرسم">🎨 <span class="label">رسم</span></button>
         <button class="agent-btn" id="incognitoBtn" onclick="toggleIncognito()" title="وضع التخفي">🕵️ <span class="label">تخفي</span></button>
         <button onclick="shareCurrentChat()" title="مشاركة">🔗 <span class="label">مشاركة</span></button>
         <button onclick="exportCurrentChat()" title="تصدير MD">📄 <span class="label">تصدير</span></button>
@@ -396,5 +397,35 @@
     </button>
   </div>
 </div>
+
+<!-- ═══════ Canvas Mode Panel ═══════ -->
+<div class="canvas-panel" id="canvasPanel" style="display:none;">
+  <div class="canvas-panel-header">
+    <span>🎨 وضع الرسم</span>
+    <button onclick="closeCanvasMode()" title="إغلاق">✕</button>
+  </div>
+  <div class="canvas-toolbar">
+    <button class="canvas-tool active" data-tool="brush" title="قلم">✏️</button>
+    <button class="canvas-tool" data-tool="eraser" title="ممحاة">🧽</button>
+    <button class="canvas-tool" data-tool="line" title="خط">📏</button>
+    <button class="canvas-tool" data-tool="rect" title="مربع">▭</button>
+    <button class="canvas-tool" data-tool="circle" title="دائرة">◯</button>
+    <button class="canvas-tool" data-tool="text" title="نص">🅰️</button>
+    <input type="color" id="canvasColor" value="#6366f1" title="اللون" />
+    <input type="range" id="canvasSize" min="1" max="30" value="3" title="الحجم" />
+    <button onclick="undoCanvas()" title="تراجع">↶</button>
+    <button onclick="clearCanvas()" title="مسح الكل">🗑️</button>
+    <button onclick="saveCanvasImage()" title="حفظ كصورة">💾</button>
+    <button onclick="sendCanvasToChat()" title="إرسال للمحادثة">📤</button>
+  </div>
+  <div class="canvas-stage">
+    <canvas id="fabricCanvas"></canvas>
+  </div>
+  <div class="canvas-input-wrap">
+    <input type="text" id="canvasPrompt" placeholder="اطلب من مشكاة أن يرسم شيئاً... (مثال: ارسم لي شمس وبيت)" onkeydown="if(event.key==='Enter' && !event.shiftKey) askMishkatToDraw()" />
+    <button onclick="askMishkatToDraw()">✨ ارسم</button>
+  </div>
+</div>
+
 </body>
 </html>
