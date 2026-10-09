@@ -1506,35 +1506,57 @@ try {
 
 function startVoiceListening() {
   if (!voiceCallActive) return;
+  if (voiceCallProcessing || window.ttsSpeaking) {
+    console.log('⏸️ Listening deferred (processing or TTS active)');
+    return;
+  }
   if (voiceCallRecognition) {
-    try { voiceCallRecognition.stop(); } catch (e) {}
+    try { voiceCallRecognition.abort(); } catch (e) {}
+    voiceCallRecognition = null;
   }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   voiceCallRecognition = new SR();
   voiceCallRecognition.lang = 'ar-SA';
   voiceCallRecognition.continuous = false;
   voiceCallRecognition.interimResults = false;
-  
+  voiceCallRecognition.maxAlternatives = 1;
+
   voiceCallRecognition.onresult = (e) => {
     const text = e.results[0][0].transcript.trim();
-    if (text) handleVoiceCallInput(text);
+    if (text && !voiceCallProcessing && !window.ttsSpeaking) {
+      handleVoiceCallInput(text);
+    }
   };
   voiceCallRecognition.onerror = (e) => {
     if (e.error === 'not-allowed') {
       toast('⚠️ الميكروفون مرفوض');
       endVoiceCall();
+    } else if (e.error === 'no-speech' || e.error === 'aborted') {
+      // تجاهل، سيعيد المحاولة
+    } else {
+      console.warn('Recognition error:', e.error);
     }
   };
   voiceCallRecognition.onend = () => {
-    if (voiceCallActive && !voiceCallProcessing) {
-      setTimeout(() => startVoiceListening(), 300);
-    }
+    if (!voiceCallActive) return;
+    // 🛡️ لا نستمع أثناء المعالجة أو TTS
+    if (voiceCallProcessing || window.ttsSpeaking) return;
+    // انتظر قليلاً قبل إعادة الاستماع
+    setTimeout(() => {
+      if (voiceCallActive && !voiceCallProcessing && !window.ttsSpeaking) {
+        startVoiceListening();
+      }
+    }, 500);
   };
   try { voiceCallRecognition.start(); } catch (e) {}
 }
 
 async function handleVoiceCallInput(text) {
   voiceCallProcessing = true;
+    // 🛡️ اقفل الميكروفون فوراً
+  if (voiceCallRecognition) {
+    try { voiceCallRecognition.abort(); } catch (e) {}
+  }
   updateVoiceCallTranscript(text);
   updateVoiceCallStatus('أفكر...', 'thinking');
   
@@ -1577,9 +1599,14 @@ async function handleVoiceCallInput(text) {
     await speakVoiceCallResponse(reply);
     
     if (voiceCallActive) {
-      updateVoiceCallStatus('أستمع...', 'listening');
       voiceCallProcessing = false;
-      startVoiceListening();
+      updateVoiceCallStatus('أستمع...', 'listening');
+      // 🛡️ انتظر 1 ثانية بعد TTS قبل إعادة الاستماع
+      setTimeout(() => {
+        if (voiceCallActive && !voiceCallProcessing && !window.ttsSpeaking) {
+          startVoiceListening();
+        }
+      }, 1000);
     }
   } catch (err) {
     updateVoiceCallResponse('❌ خطأ: ' + err.message);
@@ -1595,6 +1622,13 @@ async function handleVoiceCallInput(text) {
 
 function speakVoiceCallResponse(text) {
   return new Promise((resolve) => {
+    // 🛡️ اقفل الميكروفون أولاً
+    window.ttsSpeaking = true;
+    if (voiceCallRecognition) {
+      try { voiceCallRecognition.abort(); } catch (e) {}
+      voiceCallRecognition = null;
+    }
+
     const clean = text
       .replace(/```[\s\S]*?```/g, ' ')
       .replace(/`([^`]+)`/g, '$1')
@@ -1603,9 +1637,8 @@ function speakVoiceCallResponse(text) {
       .trim()
       .substring(0, 500);
 
-    if (!clean) { resolve(); return; }
+    if (!clean) { window.ttsSpeaking = false; resolve(); return; }
 
-    // إلغاء أي كلام سابق
     try { window.speechSynthesis.cancel(); } catch (e) {}
 
     const u = new SpeechSynthesisUtterance(clean);
@@ -1614,51 +1647,36 @@ function speakVoiceCallResponse(text) {
     u.pitch = 1.0;
     u.volume = 1.0;
 
-    // دالة تشغيل بعد التأكد من تحميل الأصوات
+    const finish = () => {
+      window.ttsSpeaking = false;
+      resolve();
+    };
+
     const trySpeak = () => {
       const voices = window.speechSynthesis.getVoices();
-      console.log('🔊 Voices available:', voices.length);
-      
-      // البحث عن صوت عربي بكل الطرق الممكنة
       const arVoice = 
         voices.find(v => v.lang === 'ar-SA') ||
         voices.find(v => v.lang === 'ar-EG') ||
-        voices.find(v => v.lang === 'ar-AE') ||
         voices.find(v => v.lang.startsWith('ar-')) ||
-        voices.find(v => v.lang.startsWith('ar')) ||
-        voices.find(v => /arab/i.test(v.name)) ||
-        voices.find(v => /عرب/.test(v.name));
+        voices.find(v => /arab|عرب/i.test(v.name));
+      if (arVoice) u.voice = arVoice;
 
-      if (arVoice) {
-        u.voice = arVoice;
-        console.log('✅ Using Arabic voice:', arVoice.name, arVoice.lang);
-      } else {
-        console.warn('⚠️ No Arabic voice. Using default.');
-        // نضع lang رغم عدم وجود voice لكي يختار المتصفح الأفضل
-      }
-
-      u.onend = () => { console.log('✅ TTS finished'); resolve(); };
-      u.onerror = (e) => { console.warn('TTS error:', e); resolve(); };
-
+      u.onend = finish;
+      u.onerror = finish;
       window.speechSynthesis.speak(u);
-
-      // Timeout احتياطي (في حال لم يُستدع onend)
-      setTimeout(() => resolve(), 20000);
+      // 🛡️ Timeout احتياطي (5 ثوانٍ كحد أقصى إضافي)
+      setTimeout(finish, clean.length * 120 + 3000);
     };
 
-    // إذا كانت الأصوات محمّلة بالفعل، شغّل مباشرة
     if (window.speechSynthesis.getVoices().length > 0) {
       trySpeak();
     } else {
-      // انتظر حدث voiceschanged (يحدث مرة واحدة عند تحميل الأصوات)
       window.speechSynthesis.onvoiceschanged = () => {
         window.speechSynthesis.onvoiceschanged = null;
         trySpeak();
       };
-      // احتياط: إذا لم يُستدع الحدث، جرب بعد 500ms
       setTimeout(() => {
-        if (window.speechSynthesis.getVoices().length === 0) return;
-        trySpeak();
+        if (window.speechSynthesis.getVoices().length > 0) trySpeak();
       }, 500);
     }
   });
