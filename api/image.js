@@ -22,7 +22,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         prompt: prompt,
-        num_steps: 4
+        steps: 4
       })
     });
 
