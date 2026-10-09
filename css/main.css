@@ -4015,4 +4015,141 @@ body.has-daily-wallpaper .aurora-bg { opacity: 0.15; }
   .wallpaper-btn { font-size: 12px; padding: 10px; }
 }
 
+/* ═══════ حقل الوصف المخصص ═══════ */
+.wallpaper-custom-input {
+  margin-bottom: 12px;
+}
+.wallpaper-custom-input input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.25);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s;
+}
+.wallpaper-custom-input input:focus {
+  border-color: #fbbf24;
+  background: rgba(0,0,0,0.35);
+  box-shadow: 0 0 0 4px rgba(251,191,36,0.15);
+}
+.wallpaper-custom-input input::placeholder {
+  color: rgba(255,255,255,0.4);
+}
+
+/* صف الأزرار الثاني */
+.wallpaper-panel-actions.second-row {
+  margin-top: 8px;
+}
+.wallpaper-btn.secondary {
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  border-color: transparent;
+  box-shadow: 0 6px 20px rgba(139,92,246,0.35);
+}
+.wallpaper-btn.variations {
+  background: linear-gradient(135deg, #06b6d4, #0891b2);
+  border-color: transparent;
+  box-shadow: 0 6px 20px rgba(6,182,212,0.35);
+}
+
+/* ═══════ شبكة الخيارات ═══════ */
+.wallpaper-variations-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.wallpaper-variation-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: varIn 0.4s cubic-bezier(0.34, 1.3, 0.64, 1) backwards;
+}
+.wallpaper-variation-card:nth-child(2) { animation-delay: 0.1s; }
+.wallpaper-variation-card:nth-child(3) { animation-delay: 0.2s; }
+
+@keyframes varIn {
+  from { opacity: 0; transform: translateY(15px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.wallpaper-variation-img-wrap {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+.wallpaper-variation-card:hover .wallpaper-variation-img-wrap {
+  border-color: #fbbf24;
+}
+.wallpaper-variation-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wallpaper-variation-loader {
+  color: rgba(255,255,255,0.5);
+  font-size: 20px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.wallpaper-variation-select {
+  width: 100%;
+  padding: 6px 4px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #fbbf24, #ec4899);
+  color: #fff;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.wallpaper-variation-select:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+.wallpaper-variation-select:disabled {
+  background: rgba(255,255,255,0.1);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.wallpaper-loading {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 20px;
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@media (max-width: 600px) {
+  .wallpaper-variations-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .wallpaper-variation-select { font-size: 10px; padding: 5px 2px; }
+}
+
+/* ═══════ إضافات للوحة ═══════ */
+.wallpaper-panel {
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(251,191,36,0.4) transparent;
+}
+.wallpaper-panel::-webkit-scrollbar { width: 6px; }
+.wallpaper-panel::-webkit-scrollbar-thumb {
+  background: rgba(251,191,36,0.4);
+  border-radius: 3px;
+}
+
     @media (hover: none) { .cursor-glow { display: none; } }

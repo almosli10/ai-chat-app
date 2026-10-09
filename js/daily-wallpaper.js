@@ -127,7 +127,7 @@
     }
   }
 
-  // ═══ توليد الخلفية ═══
+  // ═══ توليد الخلفية (تلقائي) ═══
   async function generateWallpaper(force = false) {
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached && !force) {
@@ -237,28 +237,59 @@
         <span>🖼️ الخلفية اليومية</span>
         <button onclick="this.closest('.wallpaper-panel').remove()">✕</button>
       </div>
+      
       <div class="wallpaper-panel-preview" id="wallpaperPreview">
         ${data ? `<img src="${data.url}" alt="wallpaper" />` : '<div class="wallpaper-empty">لم تُنشأ خلفية اليوم بعد</div>'}
       </div>
+      
       ${data ? `<div class="wallpaper-panel-info">
         <span>${weatherLabels[data.weather] || data.weather}</span>
         <span>${timeLabels[data.time] || data.time}</span>
         <span>🌡️ ${data.temp}°C</span>
       </div>` : ''}
+      
+      <div class="wallpaper-custom-input">
+        <input type="text" id="wallpaperCustomPrompt" placeholder="✏️ أو اكتب وصفك الخاص... (مثال: جبال في الضباب)" />
+      </div>
+      
       <div class="wallpaper-panel-actions">
         <button class="wallpaper-btn primary" onclick="window.generateDailyWallpaper(true)">
-          ✨ ${data ? 'جدّد' : 'أنشئ'} الخلفية
+          ✨ ${data ? 'جدّد تلقائياً' : 'أنشئ'}
+        </button>
+        <button class="wallpaper-btn secondary" onclick="window.generateCustomWallpaper()">
+          🎨 أنشئ بوصفي
+        </button>
+      </div>
+      
+      <div class="wallpaper-panel-actions second-row">
+        <button class="wallpaper-btn variations" onclick="window.generateVariations()">
+          🎲 3 خيارات
         </button>
         ${data ? `
           <button class="wallpaper-btn" onclick="window.downloadWallpaper()">💾 حفظ</button>
           <button class="wallpaper-btn danger" onclick="window.removeDailyWallpaper()">🗑️ إزالة</button>
         ` : ''}
       </div>
+      
+      <div id="wallpaperVariationsGrid" class="wallpaper-variations-grid"></div>
     `;
     document.body.appendChild(panel);
+    
+    // اضغط Enter في الحقل = أنشئ
+    setTimeout(() => {
+      const inp = document.getElementById('wallpaperCustomPrompt');
+      if (inp) {
+        inp.onkeydown = (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            window.generateCustomWallpaper();
+          }
+        };
+      }
+    }, 100);
   }
 
-  // ═══ الواجهة العامة ═══
+  // ═══ الواجهة العامة: توليد تلقائي ═══
   window.generateDailyWallpaper = async function(force = false) {
     try {
       const data = await generateWallpaper(force);
@@ -272,12 +303,159 @@
     }
   };
 
+  // ═══ الواجهة العامة: توليد بوصف مخصص ═══
+  window.generateCustomWallpaper = async function() {
+    const inp = document.getElementById('wallpaperCustomPrompt');
+    const customPrompt = (inp?.value || '').trim();
+    if (!customPrompt) {
+      if (typeof toast === 'function') toast('✏️ اكتب وصفك أولاً');
+      if (inp) inp.focus();
+      return;
+    }
+    
+    try {
+      if (typeof toast === 'function') toast('🎨 يجهّز صورتك...');
+      
+      const geo = await getLocation();
+      const weather = await fetchWeather(geo.lat, geo.lon);
+      const weatherCond = getWeatherCondition(weather.code);
+      const time = getTimeOfDay();
+      const mood = window.currentMood || 'cheerful';
+      
+      const finalPrompt = `Breathtaking cinematic wallpaper: ${customPrompt}, ${MOOD_STYLE[mood] || ''}, ${TIME_STYLE[time] || ''}, ${WEATHER_STYLE[weatherCond] || ''}, ultra HD, artistic photography, atmospheric lighting, no text, no watermark, no people`;
+      
+      const imageUrl = `/api/image?prompt=${encodeURIComponent(finalPrompt)}`;
+      
+      // انتظر التحميل
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('فشل التحميل'));
+        img.src = imageUrl;
+        setTimeout(() => reject(new Error('انتهت المهلة')), 30000);
+      });
+      
+      // احفظ وطبّق
+      const data = {
+        date: new Date().toDateString(),
+        url: imageUrl,
+        prompt: finalPrompt,
+        weather: weatherCond,
+        time,
+        mood,
+        temp: weather.temp,
+        ts: Date.now()
+      };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+      applyWallpaper(data);
+      
+      if (typeof toast === 'function') toast('✅ جاهزة! خلفيتك الجديدة');
+      const panel = document.getElementById('wallpaperPanel');
+      if (panel) { panel.remove(); openPanel(); }
+    } catch (err) {
+      console.error(err);
+      if (typeof toast === 'function') toast('❌ ' + err.message);
+    }
+  };
+
+  // ═══ الواجهة العامة: 3 خيارات ═══
+  window.generateVariations = async function() {
+    const grid = document.getElementById('wallpaperVariationsGrid');
+    if (!grid) return;
+    
+    const inp = document.getElementById('wallpaperCustomPrompt');
+    const customPrompt = (inp?.value || '').trim();
+    
+    grid.innerHTML = '<div class="wallpaper-loading">🎨 يجهّز 3 خيارات... (10-20 ثانية)</div>';
+    
+    try {
+      const geo = await getLocation();
+      const weather = await fetchWeather(geo.lat, geo.lon);
+      const weatherCond = getWeatherCondition(weather.code);
+      const time = getTimeOfDay();
+      const mood = window.currentMood || 'cheerful';
+      
+      // أنماط مختلفة لكل خيار
+      const variationsStyles = [
+        'cinematic photography, dramatic lighting',
+        'digital painting, artistic masterpiece, painterly',
+        'minimalist aesthetic, clean composition, soft tones'
+      ];
+      
+      const basePrompt = customPrompt 
+        ? customPrompt 
+        : 'vast mystical mountains with mirror lakes';
+      
+      const prompts = variationsStyles.map(style => 
+        `Breathtaking wallpaper: ${basePrompt}, ${MOOD_STYLE[mood] || ''}, ${TIME_STYLE[time] || ''}, ${WEATHER_STYLE[weatherCond] || ''}, ${style}, ultra HD, no text, no watermark, no people`
+      );
+      
+      // ولّد الكل بالتوازي مع seeds مختلفة
+      const urls = prompts.map(p => `/api/image?prompt=${encodeURIComponent(p)}&seed=${Math.floor(Math.random() * 1000000)}`);
+      
+      grid.innerHTML = '';
+      
+      urls.forEach((url, i) => {
+        const card = document.createElement('div');
+        card.className = 'wallpaper-variation-card';
+        card.innerHTML = `
+          <div class="wallpaper-variation-img-wrap">
+            <div class="wallpaper-variation-loader">⏳</div>
+            <img src="${url}" style="display:none" />
+          </div>
+          <button class="wallpaper-variation-select" disabled>انتظر...</button>
+        `;
+        grid.appendChild(card);
+        
+        const img = card.querySelector('img');
+        const loader = card.querySelector('.wallpaper-variation-loader');
+        const btn = card.querySelector('.wallpaper-variation-select');
+        
+        img.onload = () => {
+          loader.style.display = 'none';
+          img.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'اختر هذه';
+        };
+        img.onerror = () => {
+          loader.textContent = '❌';
+          btn.disabled = true;
+          btn.textContent = 'فشل';
+        };
+        
+        btn.onclick = () => {
+          const data = {
+            date: new Date().toDateString(),
+            url,
+            prompt: prompts[i],
+            weather: weatherCond,
+            time,
+            mood,
+            temp: weather.temp,
+            ts: Date.now()
+          };
+          localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+          applyWallpaper(data);
+          if (typeof toast === 'function') toast('✅ تم اختيار الخلفية');
+          const panel = document.getElementById('wallpaperPanel');
+          if (panel) { panel.remove(); openPanel(); }
+        };
+      });
+      
+    } catch (err) {
+      console.error(err);
+      grid.innerHTML = `<div class="wallpaper-loading" style="color:#f87171;">❌ ${err.message}</div>`;
+    }
+  };
+
+  // ═══ إزالة الخلفية ═══
   window.removeDailyWallpaper = function() {
     removeWallpaper();
     const panel = document.getElementById('wallpaperPanel');
     if (panel) { panel.remove(); openPanel(); }
   };
 
+  // ═══ حفظ الخلفية ═══
   window.downloadWallpaper = async function() {
     const cached = localStorage.getItem(CACHE_KEY);
     if (!cached) return;
