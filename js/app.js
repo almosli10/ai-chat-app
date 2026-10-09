@@ -112,7 +112,107 @@ const PROMPT_TEMPLATES = [
   { icon: '✏️', name: 'حسّن', text: 'حسّن صياغة النص التالي: ' },
   { icon: '🎯', name: 'مهام', text: 'استخرج المهام الرئيسية من: ' },
   { icon: '📊', name: 'حلّل', text: 'حلّل التالي بشكل منطقي: ' },
+  
 ];
+
+// ═══════ كشف اللهجة العربية ═══════
+const DIALECT_MARKERS = {
+  gulf: {
+    name: 'خليجية',
+    icon: '🇸🇦',
+    words: ['وش', 'يبه', 'زين', 'حيل', 'ابي', 'أبي', 'مو', 'شنو', 'شلون', 'هالحين', 'قوه', 'ايدك', 'ادري', 'مره', 'شوي'],
+    patterns: [/وش\s/, /شلون/, /ابي\s/, /ادري/]
+  },
+  egyptian: {
+    name: 'مصرية',
+    icon: '🇪🇬',
+    words: ['ازيك', 'إزيك', 'عايز', 'عاوز', 'ايه', 'إيه', 'كده', 'خالص', 'يلا', 'اوي', 'أوي', 'احنا', 'إحنا', 'دلوقتي', 'معاك', 'بحبك', 'بتاع'],
+    patterns: [/ازيك/, /عايز/, /كده/, /اوي/]
+  },
+  levantine: {
+    name: 'شامية',
+    icon: '🇸🇾',
+    words: ['كيفك', 'بدي', 'شو', 'هيك', 'كتير', 'منيح', 'هلق', 'هلأ', 'شلونك', 'تمام', 'يعني', 'شوي'],
+    patterns: [/شو\s/, /بدي\s/, /هيك/, /منيح/]
+  },
+  maghrebi: {
+    name: 'مغاربية',
+    icon: '🇲🇦',
+    words: ['واخا', 'بزاف', 'دابا', 'كيداير', 'شحال', 'علاش', 'واه', 'زعما', 'بصح', 'دغيا'],
+    patterns: [/واخا/, /بزاف/, /دابا/, /كيداير/]
+  },
+  iraqi: {
+    name: 'عراقية',
+    icon: '🇮🇶',
+    words: ['شلونك', 'شنو', 'هواية', 'اشلون', 'زين', 'منو', 'وين', 'هسه', 'اني', 'انت', 'شكو ماكو', 'عيني'],
+    patterns: [/شلونك/, /شنو/, /هسه/, /شكو ماكو/]
+  }
+};
+
+function detectDialect(text) {
+  if (!text || text.length < 3) return null;
+  const normalized = text.toLowerCase();
+  let bestDialect = null;
+  let bestScore = 0;
+  
+  for (const [dialectKey, dialect] of Object.entries(DIALECT_MARKERS)) {
+    let score = 0;
+    for (const word of dialect.words) {
+      if (normalized.includes(word.toLowerCase())) score++;
+    }
+    for (const pattern of dialect.patterns) {
+      if (pattern.test(normalized)) score += 2;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestDialect = dialectKey;
+    }
+  }
+  
+  // نحتاج على الأقل علامتين لكي نعتبر الكشف موثوقاً
+  if (bestScore < 2) return null;
+  return bestDialect;
+}
+
+function buildDialectContext() {
+  const dialect = localStorage.getItem('detectedDialect');
+  if (!dialect) return '';
+  const info = DIALECT_MARKERS[dialect];
+  if (!info) return '';
+  return `\n\n[لهجة المستخدم: ${info.name}. يجب أن ترد بنفس اللهجة بشكل طبيعي وتلقائي — استخدم مفردات وتعبيرات هذه اللهجة دون تكلف أو إشارة صريحة.]`;
+}
+
+function updateDialectFromMessage(text) {
+  const detected = detectDialect(text);
+  if (detected) {
+    const previous = localStorage.getItem('detectedDialect');
+    if (previous !== detected) {
+      localStorage.setItem('detectedDialect', detected);
+      updateDialectBadge(detected);
+      if (typeof toast === 'function') {
+        toast(`🗣️ لهجتك: ${DIALECT_MARKERS[detected].name}`);
+      }
+    }
+  }
+}
+
+function updateDialectBadge(dialectKey) {
+  const badge = document.getElementById('dialectBadge');
+  if (!badge) return;
+  if (!dialectKey || !DIALECT_MARKERS[dialectKey]) {
+    badge.style.display = 'none';
+    return;
+  }
+  const info = DIALECT_MARKERS[dialectKey];
+  badge.textContent = `${info.icon} ${info.name}`;
+  badge.style.display = 'inline-flex';
+}
+
+function clearDialect() {
+  localStorage.removeItem('detectedDialect');
+  updateDialectBadge(null);
+  if (typeof toast === 'function') toast('✅ تم مسح اللهجة');
+}
 
 let deviceId = localStorage.getItem('deviceId');
 if (!deviceId) { deviceId = 'dev_' + Math.random().toString(36).substr(2, 12) + Date.now().toString(36); localStorage.setItem('deviceId', deviceId); }
@@ -892,8 +992,16 @@ async function send() {
   const now = new Date();
   const dateStr = now.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const timeStr = now.toLocaleTimeString('ar-EG');
-  const dateContext = `\n\n[معلومة مهمة: تاريخ اليوم هو ${dateStr}، والوقت الآن ${timeStr}.]${buildMemoryContext()}`;
-  if (allChats[currentChatId].messages[0]?.role === 'system') { const base = allChats[currentChatId].messages[0].content.split('\n\n[معلومة مهمة:')[0].split('\n\n[معلومات معروفة عن المستخدم]:')[0]; allChats[currentChatId].messages[0].content = base + dateContext; }
+  // 🗣️ كشف اللهجة من رسالة المستخدم
+updateDialectFromMessage(text);
+const dateContext = `\n\n[معلومة مهمة: تاريخ اليوم هو ${dateStr}، والوقت الآن ${timeStr}.]${buildMemoryContext()}${buildDialectContext()}`;
+if (allChats[currentChatId].messages[0]?.role === 'system') { 
+  const base = allChats[currentChatId].messages[0].content
+    .split('\n\n[معلومة مهمة:')[0]
+    .split('\n\n[معلومات معروفة عن المستخدم]:')[0]
+    .split('\n\n[لهجة المستخدم:')[0]; 
+  allChats[currentChatId].messages[0].content = base + dateContext; 
+}
   sendBtn.classList.add('shake'); setTimeout(() => sendBtn.classList.remove('shake'), 350);
   playSound('send');
   const fs = [...attachedFiles]; const an = fs.map(f => f.name);
@@ -1717,5 +1825,9 @@ function updateVoiceCallResponse(text) {
 
 window.startVoiceCall = startVoiceCall;
 window.endVoiceCall = endVoiceCall;
+
+  // 🗣️ عرض شارة اللهجة المحفوظة
+  const savedDialect = localStorage.getItem('detectedDialect');
+  if (savedDialect) updateDialectBadge(savedDialect);
 
 init();
