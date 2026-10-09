@@ -96,9 +96,7 @@ let currentUserId = null;
 
 // ═══════ وضع التخفي ═══════
 let isIncognito = false;
-let backupChatsBeforeIncognito = null;
-let backupCurrentChatIdBeforeIncognito = null;
-let incognitoChatIds = [];
+let incognitoSnapshot = null; // { chatId, messages, title, timestamp }
 
 const PROMPT_TEMPLATES = [
   { icon: '📝', name: 'لخّص', text: 'لخّص النص التالي بإيجاز شديد: ' },
@@ -489,11 +487,6 @@ function openDevicesModal() {
 window.openDevicesModal = openDevicesModal;
 
 function openSettings() { document.getElementById('systemPromptInput').value = systemPrompt; document.getElementById('settingsModal').classList.add('show'); }
-function saveAllChats() { 
-  if (allChats[currentChatId]) allChats[currentChatId].timestamp = Date.now(); 
-  if (isIncognito) return; // 🕵️ لا تحفظ في وضع التخفي
-  localStorage.setItem('allChats', JSON.stringify(allChats)); 
-}
 
 const PERSONAS = {
   programmer: { icon: '💻', name: 'مبرمج', desc: 'كود نظيف', prompt: 'أنت مهندس برمجيات خبير.' },
@@ -649,6 +642,22 @@ function renderSidebar() {
 }
 
 function createNewChat() {
+  // 🕵️ إذا كان وضع التخفي مفعّلاً → ألغِه أولاً
+  if (isIncognito && incognitoSnapshot) {
+    const snap = incognitoSnapshot;
+    const chat = allChats[snap.chatId];
+    if (chat) {
+      chat.messages = snap.messages;
+      chat.title = snap.title;
+      chat.timestamp = snap.timestamp;
+    }
+    incognitoSnapshot = null;
+    isIncognito = false;
+    document.body.classList.remove('incognito-mode');
+    if (typeof updateIncognitoUI === 'function') updateIncognitoUI();
+    if (typeof toast === 'function') toast('🕵️ تم إيقاف وضع التخفي');
+  }
+  
   const id = Date.now().toString();
   allChats[id] = {
     id,
@@ -663,7 +672,6 @@ function createNewChat() {
     ownedIds.push(id);
     localStorage.setItem('ownChatIds', JSON.stringify(ownedIds));
   }
-  if (isIncognito) incognitoChatIds.push(id);
   currentChatId = id; saveAllChats(); setReadOnly(false); switchChat(id); input.focus(); playSound('click');
   if (window.innerWidth <= 900) { const sb = document.getElementById('sidebar'); if (sb.classList.contains('open')) toggleSidebar(); }
 }
@@ -685,6 +693,23 @@ function setReadOnly(v) {
   if (tb) tb.style.display = v ? 'none' : 'flex';
 }
 function switchChat(id) {
+  // 🕵️ إذا كان وضع التخفي مفعّلاً وننتقل لمحادثة أخرى → ألغِ الوضع واستعد الحالة الأصلية
+  if (isIncognito && incognitoSnapshot && incognitoSnapshot.chatId !== id) {
+    const snap = incognitoSnapshot;
+    const chat = allChats[snap.chatId];
+    if (chat) {
+      chat.messages = snap.messages;
+      chat.title = snap.title;
+      chat.timestamp = snap.timestamp;
+      localStorage.setItem('allChats', JSON.stringify(allChats));
+    }
+    incognitoSnapshot = null;
+    isIncognito = false;
+    document.body.classList.remove('incognito-mode');
+    if (typeof updateIncognitoUI === 'function') updateIncognitoUI();
+    if (typeof toast === 'function') toast('🕵️ تم إيقاف وضع التخفي تلقائياً');
+  }
+  
   chatInner.style.opacity = '0';
   setTimeout(() => {
     currentChatId = id; localStorage.setItem('lastChatId', id); markAsRead(id);
@@ -698,7 +723,11 @@ function switchChat(id) {
     chatInner.style.opacity = '1';
   }, 100);
 }
-function saveAllChats() { if (allChats[currentChatId]) allChats[currentChatId].timestamp = Date.now(); localStorage.setItem('allChats', JSON.stringify(allChats)); }
+function saveAllChats() { 
+  if (isIncognito) return; // 🕵️ لا تحفظ في وضع التخفي
+  if (allChats[currentChatId]) allChats[currentChatId].timestamp = Date.now(); 
+  localStorage.setItem('allChats', JSON.stringify(allChats)); 
+}
 
 function addMessage(role, text, isStreaming = false, messageIndex = -1, attachmentNames = null, attachmentsData = null, rating = null, reactions = null, toolLog = null) {
   const w = chatInner.querySelector('.welcome'); if (w) w.remove();
@@ -845,7 +874,7 @@ function stopAgent() { if (agentAbortController) agentAbortController.abort(); a
 
 async function send() {
   if (isReadOnly) { toast('⚠️'); return; }
-      // 🔒 منع الإرسال بدون تسجيل دخول
+    // 🔒 منع الإرسال بدون تسجيل دخول
     if (window.sbClient && !currentUserId) {
       if (typeof toast === 'function') toast('🔒 يرجى تسجيل الدخول أولًا');
       const authEl = document.getElementById('authScreen');
@@ -1087,11 +1116,7 @@ function setOnlineStatus(status) {
 }
 
 async function pushChatToCloud(c) {
-  async function pushChatToCloud(c) {
   if (isIncognito) return; // 🕵️
-  if (!sbClient || !c) return;
-  // ... باقي الكود كما هو
-}
   if (!sbClient || !c) return;
   try {
     const ms = encKey ? await encryptData(c.messages) : c.messages;
@@ -1112,11 +1137,7 @@ async function pushChatToCloud(c) {
 async function deleteChatFromCloud(id) { if (!sbClient) return; try { await sbClient.from('chats').delete().eq('id', id); } catch (e) {} }
 
 async function pullAllFromCloud(silent = false) {
-  async function pullAllFromCloud(silent = false) {
   if (isIncognito) return; // 🕵️
-  if (!sbClient) return;
-  // ... باقي الكود كما هو
-}
   if (!sbClient) return;
   try {
     let query = sbClient.from('chats').select('*');
@@ -1143,11 +1164,7 @@ async function pullAllFromCloud(silent = false) {
 }
 
 function subscribeRealtime() {
-  function subscribeRealtime() {
   if (isIncognito) return; // 🕵️
-  if (!sbClient) return;
-  // ... باقي الكود كما هو
-}
   if (!sbClient) return;
   if (realtimeChannel) sbClient.removeChannel(realtimeChannel);
   realtimeChannel = sbClient.channel('chats-realtime').on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, async (payload) => {
@@ -1352,83 +1369,85 @@ async function generateImage() {
 
 // ═══════ وضع التخفي — Toggle ═══════
 window.toggleIncognito = function() {
-  if (!isIncognito) {
-    // === التفعيل ===
+  if (isIncognito) {
+    // === الإيقاف اليدوي ===
+    const snapChatId = incognitoSnapshot?.chatId;
+    const snapshotCount = incognitoSnapshot ? 
+      (allChats[incognitoSnapshot.chatId]?.messages.length - incognitoSnapshot.messages.length) : 0;
+    
     const ok = confirm(
-      '🕵️ وضع التخفي\n\n' +
-      '• لن تُحفظ المحادثات الجديدة\n' +
-      '• لن يُرفع شيء للسحابة\n' +
-      '• ستُخفى محادثاتك القديمة مؤقتاً\n' +
-      '• كل شيء يُمحى عند إغلاق التبويب\n\n' +
-      'هل تريد المتابعة؟'
+      '🕵️ إيقاف وضع التخفي؟\n\n' +
+      (snapshotCount > 0 ? `سيتم محو ${snapshotCount} رسالة أُرسلت في وضع التخفي.\n` : '') +
+      'سيعود سجل المحادثة كما كان قبل التفعيل.'
     );
-    if (!ok) return; // ← يجب أن يكون قبل أي تعديل
-
-    // نسخة احتياطية في الذاكرة
-    backupChatsBeforeIncognito = JSON.parse(JSON.stringify(allChats));
-    backupCurrentChatIdBeforeIncognito = currentChatId;
-
-    // تفعيل الوضع
-    isIncognito = true;
-    incognitoChatIds = [];
-    document.body.classList.add('incognito-mode');
-
-    // تفريغ الذاكرة وبدء محادثة جديدة
-    allChats = {};
-    currentChatId = null;
-
-    updateIncognitoUI();
-    createNewChat();
-    toast('🕵️ وضع التخفي مُفعّل — لن يُحفظ شيء');
-    playSound('click');
-
-  } else {
-    // === الإيقاف ===
-    const ok = confirm('إيقاف وضع التخفي؟\n\nسيتم استعادة محادثاتك السابقة، وسيُمحى كل ما كتبته في وضع التخفي.');
     if (!ok) return;
-
-    isIncognito = false;
-    document.body.classList.remove('incognito-mode');
-
-    // 🕵️ حذف محادثات وضع التخفي نهائياً من localStorage
-    const savedChats = JSON.parse(localStorage.getItem('allChats') || '{}');
-    incognitoChatIds.forEach(id => { delete savedChats[id]; });
-    localStorage.setItem('allChats', JSON.stringify(savedChats));
-
-    // 🕵️ حذف من قائمة المحادثات المملوكة
-    const ownedIds = JSON.parse(localStorage.getItem('ownChatIds') || '[]');
-    const filteredOwnedIds = ownedIds.filter(id => !incognitoChatIds.includes(id));
-    localStorage.setItem('ownChatIds', JSON.stringify(filteredOwnedIds));
-
-    // استعادة النسخة الاحتياطية
-    allChats = backupChatsBeforeIncognito || {};
-    localStorage.setItem('allChats', JSON.stringify(allChats));
-
-    backupChatsBeforeIncognito = null;
-    incognitoChatIds = [];
-    updateIncognitoUI();
-
-    // الرجوع للمحادثة السابقة أو بدء جديدة
-    if (backupCurrentChatIdBeforeIncognito && allChats[backupCurrentChatIdBeforeIncognito]) {
-      switchChat(backupCurrentChatIdBeforeIncognito);
-    } else {
-      const ids = Object.keys(allChats);
-      if (ids.length > 0) switchChat(ids[0]);
-      else createNewChat();
+    
+    restoreIncognitoSnapshot();
+    if (snapChatId && currentChatId === snapChatId) {
+      switchChat(snapChatId);
     }
-    backupCurrentChatIdBeforeIncognito = null;
-
-    // إعادة الاتصال بالسحابة
-    if (sbClient) {
-      pullAllFromCloud(true);
-      subscribeRealtime();
-    }
-
     toast('✅ تم إيقاف وضع التخفي');
     playSound('click');
+    
+  } else {
+    // === التفعيل ===
+    activateIncognito();
   }
 };
 
+function activateIncognito() {
+  if (!currentChatId || !allChats[currentChatId]) {
+    toast('⚠️ لا توجد محادثة نشطة');
+    return;
+  }
+  
+  const ok = confirm(
+    '🕵️ وضع التخفي\n\n' +
+    '• الرسائل الجديدة في هذه المحادثة لن تُحفظ\n' +
+    '• لن تُرفع للسحابة\n' +
+    '• عند الإيقاف أو تغيير المحادثة، ستعود المحادثة كما كانت قبل التفعيل\n' +
+    '• كل الرسائل الجديدة تُمحى نهائياً\n\n' +
+    'هل تريد المتابعة؟'
+  );
+  if (!ok) return;
+  
+  const chat = allChats[currentChatId];
+  
+  // حفظ لقطة من الحالة الحالية
+  incognitoSnapshot = {
+    chatId: currentChatId,
+    messages: JSON.parse(JSON.stringify(chat.messages)),
+    title: chat.title,
+    timestamp: chat.timestamp
+  };
+  
+  isIncognito = true;
+  document.body.classList.add('incognito-mode');
+  updateIncognitoUI();
+  toast('🕵️ وضع التخفي مُفعّل — الرسائل الجديدة لن تُحفظ');
+  playSound('click');
+}
+
+function restoreIncognitoSnapshot() {
+  if (!isIncognito || !incognitoSnapshot) return;
+  
+  const snap = incognitoSnapshot;
+  const chat = allChats[snap.chatId];
+  
+  if (chat) {
+    // استعادة الحالة الأصلية (تختفي رسائل التخفي)
+    chat.messages = snap.messages;
+    chat.title = snap.title;
+    chat.timestamp = snap.timestamp;
+    localStorage.setItem('allChats', JSON.stringify(allChats));
+  }
+  
+  incognitoSnapshot = null;
+  isIncognito = false;
+  document.body.classList.remove('incognito-mode');
+  updateIncognitoUI();
+}
+
 function updateIncognitoUI() {
   const btn = document.getElementById('incognitoBtn');
   if (btn) {
@@ -1441,30 +1460,11 @@ function updateIncognitoUI() {
   if (badge) badge.style.display = isIncognito ? 'inline-flex' : 'none';
 }
 
-window.addEventListener('beforeunload', () => {
+// 🕵️ تحذير عند إغلاق التبويب
+window.addEventListener('beforeunload', (e) => {
   if (isIncognito) {
-    try { localStorage.removeItem('lastChatId'); } catch (e) {}
-  }
-});
-
-function updateIncognitoUI() {
-  const btn = document.getElementById('incognitoBtn');
-  if (btn) {
-    btn.classList.toggle('active', isIncognito);
-    btn.innerHTML = isIncognito 
-      ? '🕵️ <span class="label">تخفي ON</span>' 
-      : '🕵️ <span class="label">تخفي</span>';
-  }
-  const badge = document.getElementById('incognitoBadge');
-  if (badge) badge.style.display = isIncognito ? 'inline-flex' : 'none';
-}
-
-// 🕵️ تأكيد إضافي: محو أي أثر عند إغلاق التبويب
-window.addEventListener('beforeunload', () => {
-  if (isIncognito) {
-    try {
-      localStorage.removeItem('lastChatId');
-    } catch (e) {}
+    e.preventDefault();
+    e.returnValue = '';
   }
 });
 
