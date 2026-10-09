@@ -1829,22 +1829,20 @@ function splitForTTS(text, maxLen) {
 
 function playEdgeTTSChunk(text, voice, rate, pitch) {
   return new Promise((resolve) => {
-    // تحويل rate من صيغة "+20%" إلى رقم للـ API
-    let speed = '0.9';
-    let playbackRate = 1.0;
-    
-    if (rate.includes('+20%')) { speed = '1.0'; playbackRate = 1.25; }
-    else if (rate.includes('+12%')) { speed = '1.0'; playbackRate = 1.1; }
-    else if (rate.includes('+5%')) { speed = '0.95'; playbackRate = 1.05; }
-    else if (rate.includes('-10%')) { speed = '0.8'; playbackRate = 0.85; }
-    else if (rate.includes('-5%')) { speed = '0.85'; playbackRate = 0.95; }
-    
-    const url = `/api/tts?text=${encodeURIComponent(text)}&rate=${speed}`;
+    // استخدم سرعة Google الثابتة
+    const url = `/api/tts?text=${encodeURIComponent(text)}&rate=0.9`;
     const audio = new Audio(url);
     
-    // تطبيق سرعة إضافية من جانب المتصفح
+    // 🎭 تطبيق المشاعر عبر تغيير السرعة والنبرة
+    let playbackRate = 1.0;
+    if (rate.includes('+20%')) playbackRate = 1.35;        // حماس شديد
+    else if (rate.includes('+12%')) playbackRate = 1.2;    // فرح
+    else if (rate.includes('+5%')) playbackRate = 1.08;    // سؤال
+    else if (rate.includes('-10%')) playbackRate = 0.8;    // حزن
+    else if (rate.includes('-5%')) playbackRate = 0.9;     // هدوء
+    
     audio.playbackRate = playbackRate;
-    audio.preservesPitch = false; // يسمح بتغيير النبرة قليلاً مع السرعة
+    audio.preservesPitch = false; // ← هذا المهم: يغير النبرة مع السرعة
     
     let finished = false;
     const finish = () => {
