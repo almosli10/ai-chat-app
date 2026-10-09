@@ -1487,6 +1487,12 @@ function startVoiceCall() {
   voiceCallProcessing = false;
   
   const overlay = document.getElementById('voiceCallOverlay');
+  // 🔊 تحضير الصوت (يجب أن يحدث داخل نقر المستخدم)
+try {
+  const warmup = new SpeechSynthesisUtterance('');
+  warmup.volume = 0;
+  window.speechSynthesis.speak(warmup);
+} catch (e) {}
   overlay.classList.add('show');
   
   updateVoiceCallStatus('أستمع...', 'listening');
@@ -1595,28 +1601,66 @@ function speakVoiceCallResponse(text) {
       .replace(/[*_#>\[\]()★✦✨•]/g, '')
       .replace(/\s+/g, ' ')
       .trim()
-      .substring(0, 200);
+      .substring(0, 500);
 
     if (!clean) { resolve(); return; }
 
-    // استخدام البروكسي الخاص بنا
-    const url = `/api/tts?text=${encodeURIComponent(clean)}&lang=ar`;
-    const audio = new Audio(url);
+    // إلغاء أي كلام سابق
+    try { window.speechSynthesis.cancel(); } catch (e) {}
 
-    audio.onended = () => resolve();
-    audio.onerror = (e) => {
-      console.warn('TTS proxy failed', e);
-      // Fallback: Web Speech API
-      const u = new SpeechSynthesisUtterance(clean);
-      u.lang = 'ar-SA';
-      const arVoice = window.speechSynthesis.getVoices().find(v => v.lang.startsWith('ar'));
-      if (arVoice) u.voice = arVoice;
-      u.onend = resolve;
-      u.onerror = resolve;
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = 'ar-SA';
+    u.rate = 0.95;
+    u.pitch = 1.0;
+    u.volume = 1.0;
+
+    // دالة تشغيل بعد التأكد من تحميل الأصوات
+    const trySpeak = () => {
+      const voices = window.speechSynthesis.getVoices();
+      console.log('🔊 Voices available:', voices.length);
+      
+      // البحث عن صوت عربي بكل الطرق الممكنة
+      const arVoice = 
+        voices.find(v => v.lang === 'ar-SA') ||
+        voices.find(v => v.lang === 'ar-EG') ||
+        voices.find(v => v.lang === 'ar-AE') ||
+        voices.find(v => v.lang.startsWith('ar-')) ||
+        voices.find(v => v.lang.startsWith('ar')) ||
+        voices.find(v => /arab/i.test(v.name)) ||
+        voices.find(v => /عرب/.test(v.name));
+
+      if (arVoice) {
+        u.voice = arVoice;
+        console.log('✅ Using Arabic voice:', arVoice.name, arVoice.lang);
+      } else {
+        console.warn('⚠️ No Arabic voice. Using default.');
+        // نضع lang رغم عدم وجود voice لكي يختار المتصفح الأفضل
+      }
+
+      u.onend = () => { console.log('✅ TTS finished'); resolve(); };
+      u.onerror = (e) => { console.warn('TTS error:', e); resolve(); };
+
       window.speechSynthesis.speak(u);
+
+      // Timeout احتياطي (في حال لم يُستدع onend)
+      setTimeout(() => resolve(), 20000);
     };
 
-    audio.play().catch(() => resolve());
+    // إذا كانت الأصوات محمّلة بالفعل، شغّل مباشرة
+    if (window.speechSynthesis.getVoices().length > 0) {
+      trySpeak();
+    } else {
+      // انتظر حدث voiceschanged (يحدث مرة واحدة عند تحميل الأصوات)
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.onvoiceschanged = null;
+        trySpeak();
+      };
+      // احتياط: إذا لم يُستدع الحدث، جرب بعد 500ms
+      setTimeout(() => {
+        if (window.speechSynthesis.getVoices().length === 0) return;
+        trySpeak();
+      }, 500);
+    }
   });
 }
 
