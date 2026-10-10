@@ -92,11 +92,9 @@
   async function logUsage(type, tokens = 0) {
     if (!window.sbClient || !window.currentUserId) return;
     
-    // زد العداد محلياً (فوري)
     usageCache[type] = (usageCache[type] || 0) + 1;
     updateUsageBadge();
     
-    // احفظ في Supabase (في الخلفية)
     try {
       await window.sbClient.from('usage_logs').insert({
         user_id: window.currentUserId,
@@ -195,6 +193,37 @@
     }
   }
 
+  // ═══ بناء قسم الترقية (منفصل لتجنب تداخل template literals) ═══
+  function buildUpgradeSection() {
+    if (currentPlan === 'vip') {
+      return '<div style="text-align:center; padding:16px; font-size:12px; opacity:0.7;">👑 أنت في الباقة الخاصة — بلا حدود!</div>';
+    }
+    
+    return [
+      '<div class="usage-upgrade-cta">',
+      '  <div style="font-size:13px; font-weight:700; margin-bottom:12px;">🚀 ترقَّ لباقة أعلى</div>',
+      '  <div class="plans-grid">',
+      '    <button class="plan-card" onclick="window.upgradeToPlan(\'pro\')">',
+      '      <div class="plan-icon">⭐</div>',
+      '      <div class="plan-name">احترافي</div>',
+      '      <div class="plan-price">$5 / شهر</div>',
+      '      <div class="plan-features">500 رسالة<br>50 صورة<br>60 دقيقة مكالمة</div>',
+      '      <div class="plan-cta">اشترك الآن</div>',
+      '    </button>',
+      '    <button class="plan-card featured" onclick="window.upgradeToPlan(\'premium\')">',
+      '      <div class="plan-badge-best">الأفضل</div>',
+      '      <div class="plan-icon">💎</div>',
+      '      <div class="plan-name">بريميوم</div>',
+      '      <div class="plan-price">$15 / شهر</div>',
+      '      <div class="plan-features">2000 رسالة<br>200 صورة<br>300 دقيقة مكالمة</div>',
+      '      <div class="plan-cta">اشترك الآن</div>',
+      '    </button>',
+      '  </div>',
+      '  <div style="font-size:11px; opacity:0.6; margin-top:12px; text-align:center;">💰 الدفع بـ USDT (TRC20) عبر NOWPayments</div>',
+      '</div>'
+    ].join('\n');
+  }
+
   // ═══ نافذة الاستهلاك والباقات ═══
   function openUsagePanel() {
     let panel = document.getElementById('usagePanel');
@@ -216,58 +245,47 @@
       const percent = isUnlimited ? 0 : Math.min(100, Math.round((used / limit) * 100));
       const color = percent >= 90 ? '#ef4444' : percent >= 70 ? '#f59e0b' : '#10b981';
       
-      return `
-        <div class="usage-stat-row">
-          <div class="usage-stat-head">
-            <span>${s.icon} ${s.name}</span>
-            <span class="usage-stat-num">${isUnlimited ? '∞' : `${used} / ${limit}`}</span>
-          </div>
-          ${!isUnlimited ? `
-            <div class="usage-progress">
-              <div class="usage-progress-fill" style="width:${percent}%; background:${color};"></div>
-            </div>
-          ` : ''}
-        </div>
-      `;
+      let progressHtml = '';
+      if (!isUnlimited) {
+        progressHtml = '<div class="usage-progress"><div class="usage-progress-fill" style="width:' + percent + '%; background:' + color + ';"></div></div>';
+      }
+      
+      return [
+        '<div class="usage-stat-row">',
+        '  <div class="usage-stat-head">',
+        '    <span>' + s.icon + ' ' + s.name + '</span>',
+        '    <span class="usage-stat-num">' + (isUnlimited ? '∞' : (used + ' / ' + limit)) + '</span>',
+        '  </div>',
+        progressHtml,
+        '</div>'
+      ].join('');
     }).join('');
+    
+    const upgradeHtml = buildUpgradeSection();
     
     panel = document.createElement('div');
     panel.id = 'usagePanel';
     panel.className = 'usage-panel';
-    panel.innerHTML = `
-      <div class="usage-panel-header">
-        <span>📊 استهلاكك اليومي</span>
-        <button onclick="this.closest('.usage-panel').remove()">✕</button>
-      </div>
-      
-      <div class="usage-plan-info">
-        <div class="usage-plan-current">
-          <span style="font-size:32px;">${plan.icon}</span>
-          <div>
-            <div style="font-size:16px; font-weight:800; color:#fbbf24;">باقة ${plan.name}</div>
-            <div style="font-size:11px; opacity:0.65;">تتجدد الحدود كل يوم عند منتصف الليل</div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="usage-stats">${statsHtml}</div>
-      
-      ${currentPlan !== 'vip' ? `
-        <div class="usage-upgrade-cta">
-          <div style="font-size:13px; font-weight:700; margin-bottom:8px;">🚀 ترقَّ لباقة أعلى</div>
-          <div style="font-size:11.5px; opacity:0.7; margin-bottom:12px; line-height:1.6;">
-            احصل على رسائل أكثر، صور أكثر، ومكالمات أطول بدون حدود.
-          </div>
-          <button class="usage-upgrade-btn" onclick="alert('قريباً! 🚀')">
-            💎 عرض الباقات
-          </button>
-        </div>
-      ` : `
-        <div style="text-align:center; padding:16px; font-size:12px; opacity:0.7;">
-          👑 أنت في الباقة الخاصة — بلا حدود!
-        </div>
-      `}
-    `;
+    
+    const headerHtml = '<div class="usage-panel-header"><span>📊 استهلاكك اليومي</span><button onclick="this.closest(\'.usage-panel\').remove()">✕</button></div>';
+    
+    const planInfoHtml = [
+      '<div class="usage-plan-info">',
+      '  <div class="usage-plan-current">',
+      '    <span style="font-size:32px;">' + plan.icon + '</span>',
+      '    <div>',
+      '      <div style="font-size:16px; font-weight:800; color:#fbbf24;">باقة ' + plan.name + '</div>',
+      '      <div style="font-size:11px; opacity:0.65;">تتجدد الحدود كل يوم عند منتصف الليل</div>',
+      '    </div>',
+      '  </div>',
+      '</div>'
+    ].join('');
+    
+    panel.innerHTML = headerHtml 
+      + planInfoHtml 
+      + '<div class="usage-stats">' + statsHtml + '</div>' 
+      + upgradeHtml;
+    
     document.body.appendChild(panel);
   }
 
@@ -278,19 +296,14 @@
       if (!orig || orig.__usageHooked) return false;
       
       window[name] = function() {
-        // فحص فوري (synchronous)
         const check = checkLimit(type);
         if (!check.allowed) {
           showLimitModal(type, check);
           return;
         }
         
-        // استدعِ الدالة الأصلية مباشرة (بدون انتظار)
         const result = orig.apply(this, arguments);
-        
-        // سجّل الاستخدام في الخلفية (لا يعطل الإرسال)
         setTimeout(() => logUsage(type), 50);
-        
         return result;
       };
       window[name].__usageHooked = true;
@@ -319,31 +332,59 @@
     modal = document.createElement('div');
     modal.id = 'limitModal';
     modal.className = 'limit-modal-overlay';
-    modal.innerHTML = `
-      <div class="limit-modal">
-        <div class="limit-modal-icon">🚫</div>
-        <h3>انتهى رصيدك اليومي</h3>
-        <p>لقد استهلكت كل الـ <b>${check.limit}</b> ${typeNames[type] || type} المتاحة لك اليوم.</p>
-        <p style="font-size:12px; opacity:0.7; margin-top:8px;">
-          ⏰ تتجدد الحدود تلقائياً غداً في الساعة 12:00 صباحاً
-        </p>
-        <div class="limit-modal-actions">
-          <button class="limit-btn primary" onclick="alert('قريباً! 🚀');">
-            💎 ترقَّ للباقة الاحترافية
-          </button>
-          <button class="limit-btn" onclick="document.getElementById('limitModal').remove()">
-            حسناً
-          </button>
-        </div>
-      </div>
-    `;
+    modal.innerHTML = [
+      '<div class="limit-modal">',
+      '  <div class="limit-modal-icon">🚫</div>',
+      '  <h3>انتهى رصيدك اليومي</h3>',
+      '  <p>لقد استهلكت كل الـ <b>' + check.limit + '</b> ' + (typeNames[type] || type) + ' المتاحة لك اليوم.</p>',
+      '  <p style="font-size:12px; opacity:0.7; margin-top:8px;">⏰ تتجدد الحدود تلقائياً غداً في الساعة 12:00 صباحاً</p>',
+      '  <div class="limit-modal-actions">',
+      '    <button class="limit-btn primary" onclick="document.getElementById(\'limitModal\').remove(); window.usageLimits.openPanel();">💎 ترقَّ لباقة أعلى</button>',
+      '    <button class="limit-btn" onclick="document.getElementById(\'limitModal\').remove()">حسناً</button>',
+      '  </div>',
+      '</div>'
+    ].join('');
+    
     document.body.appendChild(modal);
     requestAnimationFrame(() => modal.classList.add('show'));
   }
 
+  // ═══ الترقية عبر NOWPayments ═══
+  window.upgradeToPlan = async function(plan) {
+    if (!window.currentUserId) {
+      if (typeof toast === 'function') toast('🔒 يرجى تسجيل الدخول أولاً');
+      return;
+    }
+
+    if (typeof toast === 'function') toast('⏳ يجهّز صفحة الدفع...');
+
+    try {
+      const userRes = await window.sbClient.auth.getUser();
+      const email = userRes?.data?.user?.email || '';
+      
+      const res = await fetch('/api/nowpayments-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan: plan,
+          userId: window.currentUserId,
+          email: email
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Payment failed');
+
+      window.open(data.invoice_url, '_blank');
+      if (typeof toast === 'function') toast('💳 أكمل الدفع في النافذة الجديدة');
+    } catch (err) {
+      console.error('Upgrade error:', err);
+      if (typeof toast === 'function') toast('❌ ' + err.message);
+    }
+  };
+
   // ═══ التهيئة ═══
   async function init() {
-    // انتظر حتى يُحمّل المستخدم
     await new Promise(resolve => {
       const check = (r = 60) => {
         if (window.currentUserId) return resolve();
@@ -357,14 +398,12 @@
     await loadUsage();
     hookFunctions();
     
-    // 🔥 استدعاء قسري بعد التهيئة
     setTimeout(() => {
       updateUsageBadge();
       updatePlanBadge();
       console.log('🔄 Badges refreshed');
     }, 1000);
     
-    // كل 5 دقائق — أعد التحميل
     setInterval(async () => {
       await loadPlan();
       await loadUsage();

@@ -4631,4 +4631,78 @@ body[data-theme="rose-gold"].has-daily-wallpaper .suggestion-card span {
   }
 }
 
+/* ═══════ شبكة الباقات ═══════ */
+.plans-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.plan-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 16px 12px;
+  color: #fff;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.25s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.plan-card:hover {
+  transform: translateY(-3px);
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.08);
+  box-shadow: 0 12px 30px -8px rgba(251, 191, 36, 0.4);
+}
+
+.plan-card.featured {
+  border-color: #fbbf24;
+  background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(236,72,153,0.08));
+}
+
+.plan-badge-best {
+  position: absolute;
+  top: -8px;
+  right: 8px;
+  padding: 3px 10px;
+  background: linear-gradient(135deg, #fbbf24, #ec4899);
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 800;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(251, 191, 36, 0.5);
+}
+
+.plan-icon { font-size: 26px; }
+.plan-name { font-size: 14px; font-weight: 800; }
+.plan-price { font-size: 12px; color: #fbbf24; font-weight: 700; }
+.plan-features {
+  font-size: 10.5px;
+  line-height: 1.7;
+  text-align: center;
+  opacity: 0.75;
+  margin: 4px 0;
+}
+.plan-cta {
+  width: 100%;
+  padding: 8px;
+  background: linear-gradient(135deg, #fbbf24, #ec4899);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 10px;
+  margin-top: 6px;
+}
+
+@media (max-width: 480px) {
+  .plans-grid { grid-template-columns: 1fr; }
+}
+
     @media (hover: none) { .cursor-glow { display: none; } }
