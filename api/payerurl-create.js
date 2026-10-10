@@ -19,7 +19,7 @@ export default async function handler(req, res) {
   const orderId = `${userId}_${plan}_${Date.now()}`;
 
   try {
-    const response = await fetch('https://api.payerurl.com/v1/payment', {
+    const response = await fetch('https://api-v2.payerurl.com/api/payment', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -55,9 +55,9 @@ export default async function handler(req, res) {
     }
 
     return res.json({
-      invoice_url: data.payment_url,
-      invoice_id: data.invoice_id
-    });
+  invoice_url: data.redirect_to,
+  invoice_id: data.invoice_id
+});
   } catch (error) {
     console.error('Create payment error:', error);
     return res.status(500).json({ error: error.message });
