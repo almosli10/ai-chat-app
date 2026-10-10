@@ -71,16 +71,9 @@
     updateUsageBadge();
   }
 
-  // ═══ فحص الحد قبل العملية ═══
-  async function checkLimit(type) {
-    // VIP = بلا حدود
+  // ═══ فحص الحد — سريع (بدون انتظار) ═══
+  function checkLimit(type) {
     if (currentPlan === 'vip') return { allowed: true, remaining: Infinity };
-    
-    // أعد التحميل إذا تغيّر اليوم
-    const today = new Date().toDateString();
-    if (cacheDate !== today) {
-      await loadUsage();
-    }
     
     const limit = PLAN_LIMITS[currentPlan]?.[type] || PLAN_LIMITS.free[type];
     const used = usageCache[type] || 0;
@@ -99,11 +92,11 @@
   async function logUsage(type, tokens = 0) {
     if (!window.sbClient || !window.currentUserId) return;
     
-    // زد العداد محلياً
+    // زد العداد محلياً (فوري)
     usageCache[type] = (usageCache[type] || 0) + 1;
     updateUsageBadge();
     
-    // احفظ في Supabase
+    // احفظ في Supabase (في الخلفية)
     try {
       await window.sbClient.from('usage_logs').insert({
         user_id: window.currentUserId,
@@ -119,7 +112,6 @@
   function updatePlanBadge() {
     const plan = PLAN_LIMITS[currentPlan] || PLAN_LIMITS.free;
     
-    // احذف أي شارة قديمة
     const oldBadge = document.getElementById('planBadge');
     if (oldBadge) oldBadge.remove();
     
@@ -134,7 +126,7 @@
     userCard.appendChild(badge);
   }
 
-  // ═══ عرض شارة الاستهلاك — عائمة ثابتة (مع styles مضمّنة) ═══
+  // ═══ عرض شارة الاستهلاك — عائمة ثابتة ═══
   function updateUsageBadge() {
     let badge = document.getElementById('usageBadge');
     
@@ -144,7 +136,6 @@
       badge.className = 'usage-float-badge';
       badge.title = 'الاستهلاك اليومي';
       badge.onclick = openUsagePanel;
-      // ستايلات مضمّنة لضمان الظهور دائماً
       badge.style.cssText = [
         'position: fixed',
         'top: 80px',
@@ -280,20 +271,26 @@
     document.body.appendChild(panel);
   }
 
-  // ═══ ربط مع دوال الإرسال ═══
+  // ═══ ربط مع دوال الإرسال — بدون تأخير ═══
   function hookFunctions() {
     const tryHook = (name, type) => {
       const orig = window[name];
       if (!orig || orig.__usageHooked) return false;
       
-      window[name] = async function() {
-        const check = await checkLimit(type);
+      window[name] = function() {
+        // فحص فوري (synchronous)
+        const check = checkLimit(type);
         if (!check.allowed) {
           showLimitModal(type, check);
           return;
         }
-        const result = await orig.apply(this, arguments);
-        logUsage(type);
+        
+        // استدعِ الدالة الأصلية مباشرة (بدون انتظار)
+        const result = orig.apply(this, arguments);
+        
+        // سجّل الاستخدام في الخلفية (لا يعطل الإرسال)
+        setTimeout(() => logUsage(type), 50);
+        
         return result;
       };
       window[name].__usageHooked = true;
