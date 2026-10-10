@@ -362,7 +362,7 @@
       const userRes = await window.sbClient.auth.getUser();
       const email = userRes?.data?.user?.email || '';
       
-      const res = await fetch('/api/nowpayments-create', {
+      const res = await fetch('/api/payerurl-create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
