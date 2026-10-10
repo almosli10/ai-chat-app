@@ -4721,4 +4721,183 @@ body[data-theme="rose-gold"].has-daily-wallpaper .suggestion-card span {
   animation: pulse 2s ease-in-out infinite;
 }
 
+/* ═══════════════════════════════════════════════════════
+   MOBILE MASTER FIX — إصلاح شامل للموبايل
+   ═══════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+
+  /* ═══ 1) لوحة المزاجات — 4 أعمدة مصغرة ═══ */
+  .mood-panel {
+    min-width: 92vw !important;
+    max-width: 96vw !important;
+    padding: 14px !important;
+    border-radius: 18px !important;
+  }
+  .mood-panel-title { font-size: 13px !important; margin-bottom: 12px !important; }
+  .mood-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 6px !important; }
+  .mood-btn { padding: 8px 2px !important; min-height: 66px !important; border-radius: 12px !important; }
+  .mood-icon { font-size: 20px !important; }
+  .mood-name { font-size: 9.5px !important; }
+  .mood-indicator { width: 22px !important; height: 22px !important; font-size: 11px !important; }
+
+  /* ═══ 2) لوحة الخلفية اليومية ═══ */
+  .wallpaper-panel {
+    width: 94vw !important;
+    max-width: 94vw !important;
+    padding: 16px !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+  .wallpaper-panel-preview { aspect-ratio: 16 / 10 !important; }
+  .wallpaper-custom-input input { font-size: 14px !important; padding: 10px 14px !important; }
+  .wallpaper-panel-actions { flex-direction: column !important; }
+  .wallpaper-btn { width: 100% !important; padding: 10px !important; font-size: 12px !important; }
+  .wallpaper-panel-info { font-size: 10.5px !important; gap: 6px !important; }
+  .wallpaper-panel-info span { padding: 3px 8px !important; }
+  .wallpaper-variations-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 5px !important; }
+  .wallpaper-variation-select { font-size: 9.5px !important; padding: 5px 2px !important; }
+
+  /* ═══ 3) نافذة الاستهلاك والباقات ═══ */
+  .usage-panel {
+    width: 94vw !important;
+    max-width: 94vw !important;
+    padding: 18px !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+  .usage-panel-header { font-size: 14px !important; }
+  .usage-stat-head { font-size: 12px !important; }
+  .usage-stat-num { font-size: 12px !important; }
+  .usage-progress { height: 6px !important; }
+  .plans-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+  .plan-card { padding: 14px 10px !important; min-height: auto !important; }
+  .plan-icon { font-size: 22px !important; }
+  .plan-name { font-size: 13px !important; }
+  .plan-price { font-size: 11px !important; }
+  .plan-features { font-size: 10.5px !important; line-height: 1.6 !important; }
+  .plan-cta { font-size: 11px !important; padding: 7px !important; }
+
+  /* ═══ 4) شارة الاستهلاك العائمة ═══ */
+  .usage-float-badge {
+    top: 74px !important;
+    right: 8px !important;
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+  }
+
+  /* ═══ 5) شارة الباقة في بطاقة المستخدم ═══ */
+  .plan-badge {
+    top: -4px !important;
+    left: -4px !important;
+    padding: 2px 8px !important;
+    font-size: 9.5px !important;
+  }
+
+  /* ═══ 6) نافذة "انتهى الرصيد" ═══ */
+  .limit-modal {
+    padding: 24px 18px !important;
+    max-width: 92vw !important;
+  }
+  .limit-modal-icon { font-size: 44px !important; }
+  .limit-modal h3 { font-size: 17px !important; }
+  .limit-modal p { font-size: 13px !important; }
+  .limit-modal-actions { gap: 6px !important; }
+  .limit-btn { padding: 10px !important; font-size: 12.5px !important; }
+
+  /* ═══ 7) نافذة المكالمة الصوتية ═══ */
+  .voice-call-overlay { padding: 12px !important; }
+  .voice-call-content { padding: 0.8rem !important; gap: 0.8rem !important; }
+  .voice-call-avatar { width: 100px !important; height: 100px !important; font-size: 2.6rem !important; }
+  .voice-call-status { font-size: 0.95rem !important; }
+  .voice-call-transcript,
+  .voice-call-response {
+    font-size: 0.85rem !important;
+    padding: 0.55rem 0.7rem !important;
+    max-height: 80px !important;
+  }
+  .voice-call-end { padding: 0.75rem 1.4rem !important; font-size: 0.9rem !important; }
+
+  /* ═══ 8) وضع الرسم (Canvas) ═══ */
+  .canvas-panel { padding: 8px !important; gap: 6px !important; }
+  .canvas-panel-header { padding: 8px 12px !important; font-size: 13px !important; }
+  .canvas-toolbar { gap: 4px !important; padding: 6px !important; }
+  .canvas-tool { width: 32px !important; height: 32px !important; font-size: 0.8rem !important; border-radius: 8px !important; }
+  .canvas-toolbar input[type="color"] { width: 32px !important; height: 32px !important; }
+  .canvas-toolbar input[type="range"] { width: 60px !important; }
+  .canvas-input-wrap { padding: 6px !important; gap: 6px !important; }
+  .canvas-input-wrap input { font-size: 16px !important; padding: 10px 12px !important; }
+  .canvas-input-wrap button { padding: 10px 14px !important; font-size: 0.8rem !important; }
+
+  /* ═══ 9) عارض الصور المتقدم ═══ */
+  .image-viewer-content { max-width: 96vw !important; gap: 10px !important; }
+  .image-viewer-img { max-width: 96vw !important; max-height: 60vh !important; border-radius: 12px !important; }
+  .image-viewer-close { top: -44px !important; width: 36px !important; height: 36px !important; font-size: 16px !important; }
+  .image-viewer-actions { padding: 8px !important; gap: 6px !important; width: 100% !important; justify-content: center !important; }
+  .image-viewer-btn { padding: 8px 12px !important; font-size: 11px !important; flex: 1 !important; min-width: 0 !important; justify-content: center !important; }
+  .image-viewer-btn svg { width: 16px !important; height: 16px !important; }
+
+  /* ═══ 10) الصور المولّدة في المحادثة ═══ */
+  .generated-image-thumb { max-width: 78vw !important; max-height: 240px !important; }
+
+  /* ═══ 11) النوافذ المنبثقة العامة ═══ */
+  .modal-overlay { padding: 12px !important; }
+  .modal { padding: 18px !important; max-height: 92vh !important; border-radius: 18px !important; }
+  .modal h3 { font-size: 16px !important; }
+  .modal textarea { min-height: 100px !important; font-size: 15px !important; }
+  .modal-buttons { flex-direction: column !important; gap: 8px !important; }
+  .modal-buttons button { width: 100% !important; padding: 12px !important; }
+
+  /* ═══ 12) شريط الأزرار العلوي ═══ */
+  .top-actions {
+    gap: 4px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    padding-bottom: 4px !important;
+    max-width: calc(100vw - 90px) !important;
+    flex-wrap: nowrap !important;
+  }
+  .top-actions::-webkit-scrollbar { display: none !important; }
+  .top-actions button { padding: 6px 9px !important; min-width: 36px !important; flex-shrink: 0 !important; }
+  .top-actions button .label { display: none !important; }
+  .top-actions button span.label { display: none !important; }
+  .notif-badge, .enc-badge, .offline-badge, .readonly-badge,
+  .dialect-badge, #incognitoBadge { display: none !important; }
+
+  /* ═══ 13) حقل الإدخال ═══ */
+  .input-wrapper { gap: 4px !important; padding: 6px 8px !important; }
+  .input-wrapper input#msg, .input-wrapper input[type="text"] {
+    min-width: 0 !important;
+    font-size: 16px !important;
+  }
+  .send-btn { min-width: 42px !important; padding: 8px 12px !important; }
+  .icon-btn { padding: 6px !important; min-width: 36px !important; width: 36px !important; height: 36px !important; }
+
+  /* ═══ 14) الشريط العلوي والجانبي ═══ */
+  .top-bar { padding: 8px 10px !important; gap: 6px !important; }
+  .chat-title-display { font-size: 0.85rem !important; max-width: 110px !important; }
+  .sidebar { width: 85vw !important; max-width: 340px !important; }
+  .main-content { padding: 0 !important; height: 100dvh !important; }
+  #chat { padding-bottom: 120px !important; }
+
+  /* ═══ 15) شاشة الترحيب ═══ */
+  .welcome-logo { width: 64px !important; height: 64px !important; font-size: 28px !important; }
+  .welcome h2 { font-size: 22px !important; }
+  .suggestions { grid-template-columns: 1fr !important; gap: 8px !important; }
+  .suggestion-card { padding: 12px 14px !important; font-size: 13px !important; }
+}
+
+/* ═══ شاشات صغيرة جداً ═══ */
+@media (max-width: 400px) {
+  .usage-float-badge { top: 70px !important; padding: 5px 8px !important; font-size: 10px !important; }
+  .voice-call-avatar { width: 85px !important; height: 85px !important; font-size: 2.2rem !important; }
+  .mood-icon { font-size: 18px !important; }
+  .mood-btn { min-height: 60px !important; }
+  .mood-name { font-size: 9px !important; }
+  .plan-icon { font-size: 20px !important; }
+  .canvas-tool { width: 28px !important; height: 28px !important; }
+  .top-actions button { min-width: 32px !important; padding: 5px 7px !important; }
+}
+
     @media (hover: none) { .cursor-glow { display: none; } }
