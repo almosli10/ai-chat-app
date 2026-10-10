@@ -220,6 +220,7 @@ if (!deviceId) { deviceId = 'dev_' + Math.random().toString(36).substr(2, 12) + 
 // ═══════ AUTH INTEGRATION ═══════
 window.setCurrentUserId = function (uid) {
   currentUserId = uid;
+  window.currentUserId = uid; // ← أضفنا هذا السطر فقط
   console.log('👤 User ID set:', uid);
 };
 
