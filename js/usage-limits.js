@@ -134,31 +134,35 @@
   }
 
   // ═══ عرض شارة الاستهلاك في الشريط العلوي ═══
+  // ═══ عرض شارة الاستهلاك — عائمة ثابتة ═══
   function updateUsageBadge() {
     let badge = document.getElementById('usageBadge');
-    const topActions = document.querySelector('.top-actions');
-    if (!topActions) return;
     
     if (!badge) {
-      badge = document.createElement('button');
+      badge = document.createElement('div');
       badge.id = 'usageBadge';
-      badge.className = 'agent-btn';
+      badge.className = 'usage-float-badge';
       badge.title = 'الاستهلاك اليومي';
       badge.onclick = openUsagePanel;
-      topActions.insertBefore(badge, topActions.firstChild);
+      document.body.appendChild(badge);
     }
     
-    // اعرض أهم مؤشر: الرسائل
     const plan = PLAN_LIMITS[currentPlan] || PLAN_LIMITS.free;
     const used = usageCache.chat || 0;
     const limit = plan.chat;
     
     if (limit === Infinity) {
-      badge.innerHTML = '👑 <span class="label">بلا حدود</span>';
+      badge.innerHTML = `<span class="usage-badge-icon">👑</span><span class="usage-badge-text">بلا حدود</span>`;
+      badge.classList.add('unlimited');
     } else {
       const percent = Math.round((used / limit) * 100);
-      const color = percent >= 90 ? '#ef4444' : percent >= 70 ? '#f59e0b' : '#10b981';
-      badge.innerHTML = `📊 <span class="label" style="color:${color};">${used}/${limit}</span>`;
+      let colorClass = 'good';
+      if (percent >= 90) colorClass = 'danger';
+      else if (percent >= 70) colorClass = 'warning';
+      
+      badge.classList.remove('unlimited');
+      badge.classList.add(colorClass);
+      badge.innerHTML = `<span class="usage-badge-icon">📊</span><span class="usage-badge-text">${used}/${limit}</span>`;
     }
   }
 
