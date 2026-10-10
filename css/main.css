@@ -4705,4 +4705,20 @@ body[data-theme="rose-gold"].has-daily-wallpaper .suggestion-card span {
   .plans-grid { grid-template-columns: 1fr; }
 }
 
+/* ═══════ حالة الدفع قيد المراجعة ═══════ */
+.payment-pending-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(236,72,153,0.1));
+  border: 1px solid rgba(251,191,36,0.4);
+  border-radius: 12px;
+  color: #fbbf24;
+  font-size: 11.5px;
+  font-weight: 700;
+  margin-top: 10px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
     @media (hover: none) { .cursor-glow { display: none; } }

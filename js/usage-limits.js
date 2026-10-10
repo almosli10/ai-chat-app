@@ -194,10 +194,12 @@
   }
 
   // ═══ بناء قسم الترقية (منفصل لتجنب تداخل template literals) ═══
-  function buildUpgradeSection() {
+    function buildUpgradeSection() {
     if (currentPlan === 'vip') {
       return '<div style="text-align:center; padding:16px; font-size:12px; opacity:0.7;">👑 أنت في الباقة الخاصة — بلا حدود!</div>';
     }
+    
+    const wallet = 'TNatT4u4utHqv8qBUNjWNG4NrJpuk222T';
     
     return [
       '<div class="usage-upgrade-cta">',
@@ -219,7 +221,10 @@
       '      <div class="plan-cta">اشترك الآن</div>',
       '    </button>',
       '  </div>',
-      '  <div style="font-size:11px; opacity:0.6; margin-top:12px; text-align:center;">💰 الدفع بـ USDT (TRC20) عبر NOWPayments</div>',
+      '  <div style="font-size:11px; opacity:0.6; margin-top:12px; text-align:center; line-height:1.7;">',
+      '    💰 الدفع بـ USDT (TRC20) مباشرة<br>',
+      '    📋 <b>سيتم التحقق يدوياً خلال 24 ساعة</b>',
+      '  </div>',
       '</div>'
     ].join('\n');
   }
@@ -350,24 +355,39 @@
   }
 
   // ═══ الترقية عبر NOWPayments ═══
+    // ═══ الترقية عبر الدفع اليدوي ═══
   window.upgradeToPlan = async function(plan) {
     if (!window.currentUserId) {
       if (typeof toast === 'function') toast('🔒 يرجى تسجيل الدخول أولاً');
       return;
     }
 
-    if (typeof toast === 'function') toast('⏳ يجهّز صفحة الدفع...');
+    // اسأل عن TX ID
+    const txId = prompt(
+      `💳 للاشتراك في الباقة الـ${plan === 'pro' ? 'احترافية' : 'بريميوم'}:\n\n` +
+      `1. أرسل ${plan === 'pro' ? '$5' : '$15'} USDT (TRC20) إلى:\n` +
+      `TNatT4u4utHqv8qBUNjWNG4NrJpuk222T\n\n` +
+      `2. انسخ TX ID من محفظتك والصقه هنا:`
+    );
+
+    if (!txId || txId.trim().length < 10) {
+      if (typeof toast === 'function') toast('⚠️ TX ID مطلوب');
+      return;
+    }
+
+    if (typeof toast === 'function') toast('⏳ يتم إرسال الطلب...');
 
     try {
       const userRes = await window.sbClient.auth.getUser();
       const email = userRes?.data?.user?.email || '';
-      
-      const res = await fetch('/api/payerurl-create', {
+
+      const res = await fetch('/api/manual-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           plan: plan,
           userId: window.currentUserId,
+          txId: txId.trim(),
           email: email
         })
       });
@@ -375,8 +395,14 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Payment failed');
 
-      window.open(data.invoice_url, '_blank');
-      if (typeof toast === 'function') toast('💳 أكمل الدفع في النافذة الجديدة');
+      if (typeof toast === 'function') {
+        toast('✅ تم استلام طلبك! سيتم التحقق خلال 24 ساعة');
+      }
+      
+      // أغلق لوحة الاستهلاك
+      const panel = document.getElementById('usagePanel');
+      if (panel) panel.remove();
+      
     } catch (err) {
       console.error('Upgrade error:', err);
       if (typeof toast === 'function') toast('❌ ' + err.message);
