@@ -115,26 +115,26 @@
     }
   }
 
-  // ═══ عرض شارة الباقة في الشريط الجانبي ═══
+  // ═══ عرض شارة الباقة في بطاقة المستخدم ═══
   function updatePlanBadge() {
-    let badge = document.getElementById('planBadge');
+    const plan = PLAN_LIMITS[currentPlan] || PLAN_LIMITS.free;
+    
+    // احذف أي شارة قديمة
+    const oldBadge = document.getElementById('planBadge');
+    if (oldBadge) oldBadge.remove();
+    
     const userCard = document.getElementById('userCard');
     if (!userCard) return;
     
-    if (!badge) {
-      badge = document.createElement('div');
-      badge.id = 'planBadge';
-      badge.className = 'plan-badge';
-      userCard.appendChild(badge);
-    }
-    
-    const plan = PLAN_LIMITS[currentPlan] || PLAN_LIMITS.free;
+    const badge = document.createElement('div');
+    badge.id = 'planBadge';
+    badge.className = 'plan-badge';
     badge.innerHTML = `${plan.icon} <span>${plan.name}</span>`;
     badge.onclick = openUsagePanel;
+    userCard.appendChild(badge);
   }
 
-  // ═══ عرض شارة الاستهلاك في الشريط العلوي ═══
-  // ═══ عرض شارة الاستهلاك — عائمة ثابتة ═══
+  // ═══ عرض شارة الاستهلاك — عائمة ثابتة (مع styles مضمّنة) ═══
   function updateUsageBadge() {
     let badge = document.getElementById('usageBadge');
     
@@ -144,7 +144,32 @@
       badge.className = 'usage-float-badge';
       badge.title = 'الاستهلاك اليومي';
       badge.onclick = openUsagePanel;
+      // ستايلات مضمّنة لضمان الظهور دائماً
+      badge.style.cssText = [
+        'position: fixed',
+        'top: 80px',
+        'right: 16px',
+        'z-index: 900',
+        'display: flex',
+        'align-items: center',
+        'gap: 6px',
+        'padding: 7px 12px',
+        'border-radius: 999px',
+        'background: rgba(15, 23, 42, 0.88)',
+        'backdrop-filter: blur(14px)',
+        '-webkit-backdrop-filter: blur(14px)',
+        'border: 1px solid rgba(16, 185, 129, 0.6)',
+        'color: #fff',
+        'font-family: inherit',
+        'font-size: 12px',
+        'font-weight: 700',
+        'cursor: pointer',
+        'box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4)',
+        'font-variant-numeric: tabular-nums',
+        'transition: all 0.25s'
+      ].join(';');
       document.body.appendChild(badge);
+      console.log('✅ Usage badge created');
     }
     
     const plan = PLAN_LIMITS[currentPlan] || PLAN_LIMITS.free;
@@ -152,17 +177,30 @@
     const limit = plan.chat;
     
     if (limit === Infinity) {
-      badge.innerHTML = `<span class="usage-badge-icon">👑</span><span class="usage-badge-text">بلا حدود</span>`;
-      badge.classList.add('unlimited');
+      badge.innerHTML = `<span style="font-size:14px;">👑</span><span>بلا حدود</span>`;
+      badge.style.borderColor = 'rgba(251, 191, 36, 0.7)';
+      badge.style.color = '#fbbf24';
+      badge.style.background = 'linear-gradient(135deg, rgba(251,191,36,0.15), rgba(236,72,153,0.1))';
     } else {
       const percent = Math.round((used / limit) * 100);
-      let colorClass = 'good';
-      if (percent >= 90) colorClass = 'danger';
-      else if (percent >= 70) colorClass = 'warning';
+      let borderColor = 'rgba(16, 185, 129, 0.6)';
+      let textColor = '#fff';
+      let bg = 'rgba(15, 23, 42, 0.88)';
       
-      badge.classList.remove('unlimited');
-      badge.classList.add(colorClass);
-      badge.innerHTML = `<span class="usage-badge-icon">📊</span><span class="usage-badge-text">${used}/${limit}</span>`;
+      if (percent >= 90) {
+        borderColor = 'rgba(239, 68, 68, 0.8)';
+        textColor = '#fca5a5';
+        bg = 'rgba(60, 15, 15, 0.88)';
+      } else if (percent >= 70) {
+        borderColor = 'rgba(245, 158, 11, 0.7)';
+        textColor = '#fbbf24';
+        bg = 'rgba(60, 45, 15, 0.88)';
+      }
+      
+      badge.style.borderColor = borderColor;
+      badge.style.color = textColor;
+      badge.style.background = bg;
+      badge.innerHTML = `<span style="font-size:14px;">📊</span><span>${used}/${limit}</span>`;
     }
   }
 
@@ -244,7 +282,6 @@
 
   // ═══ ربط مع دوال الإرسال ═══
   function hookFunctions() {
-    // hook send (محادثة عادية + وكيل)
     const tryHook = (name, type) => {
       const orig = window[name];
       if (!orig || orig.__usageHooked) return false;
@@ -256,7 +293,6 @@
           return;
         }
         const result = await orig.apply(this, arguments);
-        // نسجل فقط إذا نجحت العملية (بدون خطأ)
         logUsage(type);
         return result;
       };
@@ -264,7 +300,6 @@
       return true;
     };
     
-    // إذا كانت الدوال موجودة، اربطها
     const hooked = [];
     if (tryHook('send', 'chat')) hooked.push('send');
     if (tryHook('generateImage', 'image')) hooked.push('generateImage');
@@ -325,7 +360,14 @@
     await loadUsage();
     hookFunctions();
     
-    // كل 5 دقائق — أعد التحميل (لتحديث العدادات إذا استخدم جهاز آخر)
+    // 🔥 استدعاء قسري بعد التهيئة
+    setTimeout(() => {
+      updateUsageBadge();
+      updatePlanBadge();
+      console.log('🔄 Badges refreshed');
+    }, 1000);
+    
+    // كل 5 دقائق — أعد التحميل
     setInterval(async () => {
       await loadPlan();
       await loadUsage();
