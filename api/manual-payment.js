@@ -1,4 +1,5 @@
 // api/manual-payment.js — طلب دفع يدوي (USDT TRC20)
+import { sendAdminEmail, buildNewPaymentEmail } from '../lib/send-email.js';
 import { createClient } from '@supabase/supabase-js';
 
 const WALLET_ADDRESS = 'TNatT4u4utHqv8qBUNjWNG4NrJpuk222T';
@@ -74,6 +75,17 @@ export default async function handler(req, res) {
     });
 
     if (dbError) {
+
+    // 📧 إرسال إشعار بالبريد (في الخلفية، بدون انتظار)
+    const emailTemplate = buildNewPaymentEmail({
+      plan,
+      amount: PRICES[plan],
+      email: email || 'غير معروف',
+      txId: txId.trim(),
+      orderId
+    });
+    sendAdminEmail(emailTemplate).catch(e => console.warn('Email failed:', e));
+
       console.error('DB insert error:', dbError);
       return res.status(500).json({ 
         error: 'Database error',

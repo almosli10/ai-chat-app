@@ -2,6 +2,7 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { verifyTransaction } from '../lib/tron-verify.js';
+import { sendAdminEmail, buildPaymentConfirmedEmail } from '../lib/send-email.js';
 
 const WALLET = 'TNatT4u4utHqv8qBUNjWNG4NrJpuk222T';
 
@@ -181,6 +182,14 @@ export default async function handler(req, res) {
         details: { payment_id: paymentId, tx_id: payment.tx_id }
       }).then(() => {}).catch(() => {});
 
+            // 📧 إشعار بالبريد
+      const emailTemplate = buildPaymentConfirmedEmail({
+        plan: payment.plan,
+        amount: payment.amount_usd,
+        email: payment.email || 'غير معروف'
+      });
+      sendAdminEmail(emailTemplate).catch(e => console.warn('Email failed:', e));
+
       return res.json({ success: true, message: `تم ترقية المستخدم إلى ${payment.plan}` });
     }
 
@@ -212,25 +221,29 @@ export default async function handler(req, res) {
   }
 }
 
-// ═══ بناء بيانات الرسم البياني ═══
+// ═══ بناء بيانات الرسم البياني (مع مراعاة المنطقة الزمنية) ═══
 function buildChartData(confirmedPayments) {
   const days = 30;
   const labels = [];
   const data = [];
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-
+  
+  const now = new Date();
+  
   for (let i = days - 1; i >= 0; i--) {
-    const day = new Date(today);
+    const day = new Date(now);
     day.setDate(day.getDate() - i);
     day.setHours(0, 0, 0, 0);
-
+    
     const nextDay = new Date(day);
     nextDay.setDate(nextDay.getDate() + 1);
-
+    
     const dayTotal = confirmedPayments
       .filter(p => {
-        const d = new Date(p.confirmed_at || p.created_at);
+        // حوّل التاريخ إلى محلي أولاً
+        const rawDate = p.confirmed_at || p.created_at;
+        if (!rawDate) return false;
+        const d = new Date(rawDate);
+        // قارن بـ local time
         return d >= day && d < nextDay;
       })
       .reduce((sum, p) => sum + Number(p.amount_usd || 0), 0);

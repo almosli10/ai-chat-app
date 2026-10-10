@@ -190,34 +190,17 @@
     const canvas = document.getElementById('revenueChart');
     if (!canvas || !window.Chart) return;
 
-    // احسب الإيرادات آخر 30 يوم
-    const days = 30;
-    const labels = [];
-    const dataPoints = [];
-    const confirmed = dataCache.subscriptions || [];
-
-    // نحتاج نداء API لجلب payments
-    // لكن نصنع بيانات توضيحية من البيانات المتاحة
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dayStr = date.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
-      labels.push(dayStr);
-      dataPoints.push(0);
-    }
-
-    // املأ البيانات من pending_payments المؤكدة (من الـ API)
-    // (سنستخدم dataCache.pending كتقدير)
+    const chart = dataCache.chartData || { labels: [], data: [] };
 
     if (revenueChart) revenueChart.destroy();
 
     revenueChart = new Chart(canvas, {
       type: 'line',
       data: {
-        labels,
+        labels: chart.labels,
         datasets: [{
           label: 'الإيرادات ($)',
-          data: dataPoints,
+          data: chart.data,
           borderColor: '#fbbf24',
           backgroundColor: 'rgba(251, 191, 36, 0.15)',
           tension: 0.4,
@@ -225,7 +208,7 @@
           pointBackgroundColor: '#fbbf24',
           pointBorderColor: '#0d0819',
           pointBorderWidth: 2,
-          pointRadius: 4,
+          pointRadius: 3,
           pointHoverRadius: 7
         }]
       },
@@ -250,11 +233,12 @@
         scales: {
           x: {
             grid: { color: 'rgba(255, 255, 255, 0.05)' },
-            ticks: { color: '#64748b', font: { size: 10 } }
+            ticks: { color: '#64748b', font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }
           },
           y: {
             grid: { color: 'rgba(255, 255, 255, 0.05)' },
-            ticks: { color: '#64748b', font: { size: 11 }, callback: (v) => '$' + v }
+            ticks: { color: '#64748b', font: { size: 11 }, callback: (v) => '$' + v },
+            beginAtZero: true
           }
         }
       }
