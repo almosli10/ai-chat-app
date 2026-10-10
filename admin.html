@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/admin.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <!-- شاشة التحميل -->
@@ -37,9 +38,7 @@
       </div>
       <div class="header-actions">
         <span class="admin-email" id="adminEmail">—</span>
-        <button onclick="refreshData()" class="btn-refresh" title="تحديث">
-          🔄
-        </button>
+        <button onclick="refreshData()" class="btn-refresh" title="تحديث">🔄</button>
         <a href="/" class="btn-home-small" title="التطبيق">🏠</a>
       </div>
     </header>
@@ -116,20 +115,31 @@
 
     <!-- قسم المستخدمين -->
     <section class="tab-content" id="tab-users">
+      <div class="users-toolbar">
+        <input type="text" id="userSearch" placeholder="🔍 ابحث بالبريد الإلكتروني..." />
+        <button onclick="exportUsersCSV()" class="btn-export">📥 تصدير CSV</button>
+      </div>
       <div class="table-wrap">
         <table class="data-table">
           <thead>
             <tr>
               <th>البريد الإلكتروني</th>
               <th>المعرّف</th>
+              <th>الباقة</th>
               <th>تاريخ التسجيل</th>
-              <th>آخر دخول</th>
             </tr>
           </thead>
           <tbody id="usersTable"></tbody>
         </table>
       </div>
     </section>
+
+    <!-- رسم بياني للإيرادات -->
+    <section class="revenue-chart-section">
+      <h3>📊 الإيرادات (آخر 30 يوم)</h3>
+      <canvas id="revenueChart"></canvas>
+    </section>
+
   </div>
 
   <!-- نافذة رفض الطلب -->

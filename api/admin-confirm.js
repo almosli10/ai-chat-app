@@ -50,6 +50,23 @@ export default async function handler(req, res) {
 
     if (subErr) throw subErr;
 
+        // ✅ التحقق التلقائي قبل التأكيد
+    const { verifyTransaction } = await import('../lib/tron-verify.js');
+    const WALLET = 'TNatT4u4utHqv8qBUNjWNG4NrJpuk222T';
+    
+    const verification = await verifyTransaction(
+      payment.tx_id, 
+      WALLET, 
+      Number(payment.amount_usd)
+    );
+
+    if (!verification.ok) {
+      return res.status(400).json({ 
+        error: 'فشل التحقق التلقائي: ' + verification.error,
+        verification 
+      });
+    }
+
     // 2) تحديث حالة الطلب
     const { error: updErr } = await supabase
       .from('pending_payments')
