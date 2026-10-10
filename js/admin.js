@@ -42,7 +42,7 @@
 
   async function loadData() {
     const token = currentSession.access_token;
-    const res = await fetch('/api/admin-list', {
+    const res = await fetch('/api/admin?action=list', {
       method: 'GET',
       headers: { 'Authorization': 'Bearer ' + token }
     });
@@ -266,7 +266,7 @@
     try {
       showToast('🔍 جاري التحقق من البلوكتشين...', 'success');
       
-      const res = await fetch('/api/admin-verify', {
+      const res = await fetch('/api/admin?action=verify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -294,7 +294,7 @@
   window.confirmPayment = async function(paymentId) {
     if (!confirm('تأكيد الدفع وترقية المستخدم؟')) return;
     try {
-      const res = await fetch('/api/admin-confirm', {
+      const res = await fetch('/api/admin?action=confirm', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -326,7 +326,7 @@
     if (!rejectPaymentId) return;
     const reason = document.getElementById('rejectReason').value.trim();
     try {
-      const res = await fetch('/api/admin-reject', {
+      const res = await fetch('/api/admin?action=reject', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
