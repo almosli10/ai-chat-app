@@ -1,5 +1,5 @@
 // api/admin-confirm.js — تأكيد دفع وترقية المستخدم
-import { verifyAdmin } from './admin-auth.js';
+import { verifyAdmin } from '../lib/admin-auth.js';
 
 const PRICES = { pro: 30, premium: 30 }; // مدة الاشتراك بالأيام
 

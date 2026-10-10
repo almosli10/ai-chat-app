@@ -1,5 +1,5 @@
 // api/admin-list.js — جلب بيانات لوحة التحكم
-import { verifyAdmin } from './admin-auth.js';
+import { verifyAdmin } from '../lib/admin-auth.js';
 
 export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
