@@ -186,20 +186,68 @@
       <button class="menu-btn" onclick="toggleSidebar()">☰</button>
       <div class="chat-title-display" id="chatTitleDisplay">محادثة جديدة</div>
       <div class="top-actions">
-        <span id="notifBadge" class="notif-badge" style="display:none;">🔔 مفعّل</span>
-        <span id="encBadge" class="enc-badge" style="display:none;">🔐 مشفّر</span>
-        <span id="offlineBadge" class="offline-badge" style="display:none;">📴 أوفلاين</span>
-        <span id="incognitoBadge" class="incognito-badge" style="display:none;">🕵️ تخفي</span>
-        <span id="readonlyBadge" class="readonly-badge" style="display:none;">👁️ قراءة فقط</span>
-        <span id="dialectBadge" class="dialect-badge" style="display:none;" onclick="clearDialect()" title="اضغط لإعادة الكشف">🗣️</span>
-        <button class="agent-btn" id="agentBtn" onclick="toggleAgentMode()" title="تفعيل وضع الوكيل">🤖 <span class="label">وكيل</span></button>
-        <button class="agent-btn" id="voiceCallBtn" onclick="startVoiceCall()" title="مكالمة صوتية">📞 <span class="label">مكالمة</span></button>
-        <button class="agent-btn" id="canvasBtn" onclick="toggleCanvasMode()" title="وضع الرسم">🎨 <span class="label">رسم</span></button>
-        <button class="agent-btn" id="incognitoBtn" onclick="toggleIncognito()" title="وضع التخفي">🕵️ <span class="label">تخفي</span></button>
-        <button onclick="shareCurrentChat()" title="مشاركة">🔗 <span class="label">مشاركة</span></button>
-        <button onclick="exportCurrentChat()" title="تصدير MD">📄 <span class="label">تصدير</span></button>
-      </div>
-    </div>
+  <span id="notifBadge" class="notif-badge" style="display:none;">🔔</span>
+  <span id="incognitoBadge" class="incognito-badge" style="display:none;">🕵️</span>
+  
+  <!-- زر الوكيل (الأكثر استخداماً) -->
+  <button class="agent-btn" id="agentBtn" onclick="toggleAgentMode()" title="تفعيل وضع الوكيل">
+    🤖 <span class="label">وكيل</span>
+  </button>
+
+  <!-- زر القائمة المنسدلة -->
+  <button class="more-menu-btn" id="moreMenuBtn" onclick="toggleMoreMenu(event)" title="المزيد">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="12" cy="5" r="2"/>
+      <circle cx="12" cy="12" r="2"/>
+      <circle cx="12" cy="19" r="2"/>
+    </svg>
+  </button>
+
+  <!-- القائمة المنسدلة -->
+  <div class="more-menu" id="moreMenu" style="display:none;">
+    <div class="more-menu-header">الميزات</div>
+    
+    <button class="more-menu-item" onclick="startVoiceCall(); closeMoreMenu();">
+      <span class="mm-icon">📞</span>
+      <span class="mm-text">مكالمة صوتية</span>
+      <span class="mm-shortcut">Ctrl+Shift+V</span>
+    </button>
+    
+    <button class="more-menu-item" onclick="toggleCanvasMode(); closeMoreMenu();">
+      <span class="mm-icon">🎨</span>
+      <span class="mm-text">وضع الرسم</span>
+    </button>
+    
+    <button class="more-menu-item" onclick="openWallpaperPanel(); closeMoreMenu();">
+      <span class="mm-icon">🖼️</span>
+      <span class="mm-text">الخلفية اليومية</span>
+    </button>
+    
+    <button class="more-menu-item" onclick="toggleIncognito(); closeMoreMenu();">
+      <span class="mm-icon">🕵️</span>
+      <span class="mm-text">وضع التخفي</span>
+    </button>
+
+    <div class="more-menu-divider"></div>
+
+    <button class="more-menu-item" onclick="shareCurrentChat(); closeMoreMenu();">
+      <span class="mm-icon">🔗</span>
+      <span class="mm-text">مشاركة المحادثة</span>
+    </button>
+
+    <button class="more-menu-item" onclick="exportCurrentChat(); closeMoreMenu();">
+      <span class="mm-icon">📄</span>
+      <span class="mm-text">تصدير كـ Markdown</span>
+    </button>
+
+    <div class="more-menu-divider"></div>
+
+    <button class="more-menu-item" onclick="window.usageLimits && window.usageLimits.openPanel(); closeMoreMenu();">
+      <span class="mm-icon">📊</span>
+      <span class="mm-text">الاستهلاك اليومي</span>
+    </button>
+  </div>
+</div>
     <div id="chat"><div class="chat-inner" id="chatInner"></div></div>
     <div class="input-area">
       <div class="templates-bar" id="templatesBar"></div>

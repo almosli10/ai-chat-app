@@ -2534,4 +2534,49 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// ═══════ MORE MENU — القائمة المنسدلة ═══════
+window.toggleMoreMenu = function(event) {
+  if (event) event.stopPropagation();
+  
+  const menu = document.getElementById('moreMenu');
+  const btn = document.getElementById('moreMenuBtn');
+  if (!menu) return;
+  
+  const isOpen = menu.style.display !== 'none';
+  
+  if (isOpen) {
+    closeMoreMenu();
+  } else {
+    menu.style.display = 'block';
+    btn?.classList.add('active');
+    
+    // أغلق عند الضغط خارج القائمة
+    setTimeout(() => {
+      const close = (e) => {
+        if (!menu.contains(e.target) && e.target !== btn) {
+          closeMoreMenu();
+          document.removeEventListener('click', close);
+        }
+      };
+      document.addEventListener('click', close);
+    }, 50);
+  }
+};
+
+window.closeMoreMenu = function() {
+  const menu = document.getElementById('moreMenu');
+  const btn = document.getElementById('moreMenuBtn');
+  if (menu) {
+    menu.style.display = 'none';
+    btn?.classList.remove('active');
+  }
+};
+
+// أغلق بـ Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeMoreMenu();
+});
+
+
+
 init();

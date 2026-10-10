@@ -196,16 +196,11 @@
   }
 
   // ═══ زر في الشريط العلوي ═══
+    // ═══ زر في الشريط العلوي — معطّل (انتقل للقائمة) ═══
   function addButton() {
-    const topActions = document.querySelector('.top-actions');
-    if (!topActions || document.getElementById('wallpaperBtn')) return;
-    const btn = document.createElement('button');
-    btn.id = 'wallpaperBtn';
-    btn.className = 'agent-btn';
-    btn.innerHTML = '🖼️ <span class="label">خلفية</span>';
-    btn.title = 'الخلفية اليومية من مشكاة';
-    btn.onclick = openPanel;
-    topActions.insertBefore(btn, topActions.firstChild);
+    // الزر انتقل إلى القائمة المنسدلة (More Menu)
+    // لا نفعل شيئاً هنا
+    return;
   }
 
   // ═══ اللوحة ═══
@@ -493,4 +488,8 @@
   } else {
     setTimeout(init, 1500);
   }
+
+  // ═══ الواجهة العامة ═══
+  window.openWallpaperPanel = openPanel;
+
 })();
