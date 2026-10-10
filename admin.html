@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة تحكم مِشكاة</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <!-- شاشة التحميل -->
+  <div id="loadingScreen" class="loading-screen">
+    <div class="spinner"></div>
+    <p>جاري التحقق...</p>
+  </div>
+
+  <!-- شاشة رفض الدخول -->
+  <div id="accessDenied" class="access-denied" style="display:none;">
+    <div class="denied-card">
+      <div class="denied-icon">🚫</div>
+      <h1>غير مصرّح</h1>
+      <p>هذه الصفحة مخصصة للمشرف فقط.</p>
+      <a href="/" class="btn-home">العودة للتطبيق</a>
+    </div>
+  </div>
+
+  <!-- لوحة التحكم -->
+  <div id="adminPanel" class="admin-panel" style="display:none;">
+    
+    <!-- الشريط العلوي -->
+    <header class="admin-header">
+      <div class="brand">
+        <span class="brand-icon">✨</span>
+        <h1>لوحة تحكم مِشكاة</h1>
+      </div>
+      <div class="header-actions">
+        <span class="admin-email" id="adminEmail">—</span>
+        <button onclick="refreshData()" class="btn-refresh" title="تحديث">
+          🔄
+        </button>
+        <a href="/" class="btn-home-small" title="التطبيق">🏠</a>
+      </div>
+    </header>
+
+    <!-- الإحصائيات -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-value" id="statRevenue">$0.00</div>
+        <div class="stat-label">إجمالي الإيرادات</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-value" id="statPending">0</div>
+        <div class="stat-label">طلبات معلقة</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-icon">⭐</div>
+        <div class="stat-value" id="statPro">0</div>
+        <div class="stat-label">احترافي</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-icon">💎</div>
+        <div class="stat-value" id="statPremium">0</div>
+        <div class="stat-label">بريميوم</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-value" id="statUsers">0</div>
+        <div class="stat-label">إجمالي المستخدمين</div>
+      </div>
+    </section>
+
+    <!-- التبويبات -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="pending">
+        ⏳ الطلبات المعلقة
+        <span class="badge" id="pendingBadge">0</span>
+      </button>
+      <button class="tab" data-tab="subscriptions">
+        📋 الاشتراكات
+      </button>
+      <button class="tab" data-tab="users">
+        👥 المستخدمون
+      </button>
+    </nav>
+
+    <!-- قسم الطلبات المعلقة -->
+    <section class="tab-content active" id="tab-pending">
+      <div class="empty-state" id="pendingEmpty">
+        <div class="empty-icon">✅</div>
+        <p>لا توجد طلبات معلقة حالياً</p>
+      </div>
+      <div class="payments-list" id="paymentsList"></div>
+    </section>
+
+    <!-- قسم الاشتراكات -->
+    <section class="tab-content" id="tab-subscriptions">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>البريد الإلكتروني</th>
+              <th>الباقة</th>
+              <th>الحالة</th>
+              <th>البداية</th>
+              <th>الانتهاء</th>
+            </tr>
+          </thead>
+          <tbody id="subscriptionsTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- قسم المستخدمين -->
+    <section class="tab-content" id="tab-users">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>البريد الإلكتروني</th>
+              <th>المعرّف</th>
+              <th>تاريخ التسجيل</th>
+              <th>آخر دخول</th>
+            </tr>
+          </thead>
+          <tbody id="usersTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- نافذة رفض الطلب -->
+  <div class="modal-overlay" id="rejectModal" style="display:none;">
+    <div class="modal">
+      <h3>رفض الطلب</h3>
+      <p>سيتم رفض الطلب مع إمكانية إضافة سبب (اختياري).</p>
+      <textarea id="rejectReason" placeholder="سبب الرفض..."></textarea>
+      <div class="modal-actions">
+        <button onclick="closeRejectModal()" class="btn-cancel">إلغاء</button>
+        <button onclick="confirmReject()" class="btn-danger">تأكيد الرفض</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>

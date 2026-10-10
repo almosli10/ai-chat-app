@@ -1,0 +1,395 @@
+/* css/admin.css — تصميم لوحة تحكم المشرف */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+  background: linear-gradient(160deg, #0d0819 0%, #1a0f33 100%);
+  color: #e2e8f0;
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* ═══ شاشة التحميل ═══ */
+.loading-screen {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 20px; z-index: 100;
+}
+.spinner {
+  width: 50px; height: 50px;
+  border: 4px solid rgba(251,191,36,0.2);
+  border-top-color: #fbbf24;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══ رفض الدخول ═══ */
+.access-denied {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.denied-card {
+  text-align: center;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 24px;
+  padding: 40px 30px;
+  max-width: 400px;
+}
+.denied-icon { font-size: 60px; margin-bottom: 16px; }
+.denied-card h1 { font-size: 24px; color: #fca5a5; margin-bottom: 12px; }
+.denied-card p { color: #94a3b8; margin-bottom: 24px; }
+.btn-home {
+  display: inline-block;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #fbbf24, #ec4899);
+  color: #fff; text-decoration: none;
+  border-radius: 12px; font-weight: 700;
+}
+
+/* ═══ اللوحة ═══ */
+.admin-panel {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ═══ الهيدر ═══ */
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, rgba(26,15,51,0.9), rgba(13,8,25,0.9));
+  border: 1px solid rgba(251,191,36,0.25);
+  border-radius: 20px;
+  margin-bottom: 24px;
+  backdrop-filter: blur(20px);
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-icon { font-size: 28px; }
+.brand h1 {
+  font-size: 20px;
+  background: linear-gradient(135deg, #fef3c7, #fbbf24, #ec4899);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.header-actions { display: flex; align-items: center; gap: 10px; }
+.admin-email {
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 6px 12px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 999px;
+}
+.btn-refresh, .btn-home-small {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: rgba(251,191,36,0.15);
+  border: 1px solid rgba(251,191,36,0.3);
+  color: #fbbf24;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.btn-refresh:hover, .btn-home-small:hover {
+  background: rgba(251,191,36,0.25);
+  transform: scale(1.08);
+}
+
+/* ═══ الإحصائيات ═══ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 18px 16px;
+  text-align: center;
+  transition: all 0.25s;
+}
+.stat-card:hover { transform: translateY(-3px); border-color: rgba(251,191,36,0.4); }
+.stat-card.warning { border-color: rgba(245,158,11,0.3); }
+.stat-card.success { border-color: rgba(16,185,129,0.3); }
+.stat-card.purple { border-color: rgba(168,85,247,0.3); }
+.stat-icon { font-size: 24px; margin-bottom: 8px; }
+.stat-value { font-size: 26px; font-weight: 800; color: #fbbf24; }
+.stat-label { font-size: 11.5px; color: #94a3b8; margin-top: 4px; }
+
+/* ═══ التبويبات ═══ */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.tab {
+  padding: 10px 20px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #94a3b8;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+.tab:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.tab.active {
+  background: linear-gradient(135deg, #fbbf24, #ec4899);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(251,191,36,0.4);
+}
+.badge {
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* ═══ محتوى التبويبات ═══ */
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ═══ الحالة الفارغة ═══ */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: rgba(16,185,129,0.05);
+  border: 1px dashed rgba(16,185,129,0.3);
+  border-radius: 20px;
+}
+.empty-icon { font-size: 50px; margin-bottom: 12px; }
+.empty-state p { color: #94a3b8; }
+
+/* ═══ قائمة الطلبات ═══ */
+.payments-list { display: flex; flex-direction: column; gap: 14px; }
+
+.payment-card {
+  background: linear-gradient(135deg, rgba(26,15,51,0.95), rgba(13,8,25,0.95));
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 18px;
+  padding: 18px;
+  transition: all 0.25s;
+}
+.payment-card:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,0.5); }
+.payment-card.pro { border-color: rgba(251,191,36,0.4); }
+.payment-card.premium { border-color: rgba(168,85,247,0.4); }
+
+.payment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.payment-plan { font-size: 15px; font-weight: 800; }
+.payment-amount {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fbbf24;
+}
+
+.payment-body { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.payment-row { display: flex; gap: 12px; font-size: 13px; }
+.payment-row .label { color: #94a3b8; min-width: 70px; }
+.payment-row .value { color: #e2e8f0; word-break: break-all; }
+.mono { font-family: 'Courier New', monospace; font-size: 12px; }
+
+.payment-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.payment-actions button {
+  flex: 1;
+  min-width: 110px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-confirm {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(16,185,129,0.35);
+}
+.btn-confirm:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(16,185,129,0.5); }
+
+.btn-reject {
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.4) !important;
+  color: #fca5a5;
+}
+.btn-reject:hover { background: rgba(239,68,68,0.25); }
+
+.btn-view {
+  background: rgba(99,102,241,0.15);
+  border: 1px solid rgba(99,102,241,0.4) !important;
+  color: #a5b4fc;
+}
+.btn-view:hover { background: rgba(99,102,241,0.25); }
+
+/* ═══ الجداول ═══ */
+.table-wrap {
+  background: rgba(26,15,51,0.7);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  overflow-x: auto;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.data-table thead {
+  background: rgba(251,191,36,0.08);
+}
+.data-table th {
+  padding: 14px 16px;
+  text-align: right;
+  font-weight: 700;
+  color: #fbbf24;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.data-table td {
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  color: #cbd5e1;
+}
+.data-table tr:hover td { background: rgba(255,255,255,0.02); }
+.empty-cell { text-align: center; padding: 40px; color: #64748b; }
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.status-badge.green { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+.status-badge.red { background: rgba(239,68,68,0.2); color: #fca5a5; }
+
+/* ═══ نافذة الرفض ═══ */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.modal {
+  background: linear-gradient(160deg, #1a0f33, #0d0819);
+  border: 1px solid rgba(251,191,36,0.3);
+  border-radius: 20px;
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+}
+.modal h3 { font-size: 18px; margin-bottom: 12px; color: #fbbf24; }
+.modal p { font-size: 13px; color: #94a3b8; margin-bottom: 16px; }
+.modal textarea {
+  width: 100%;
+  padding: 12px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  min-height: 80px;
+  resize: vertical;
+}
+.modal textarea:focus { outline: none; border-color: #fbbf24; }
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+.modal-actions button {
+  flex: 1;
+  padding: 11px;
+  border: none;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-cancel {
+  background: rgba(255,255,255,0.08);
+  color: #cbd5e1;
+}
+.btn-cancel:hover { background: rgba(255,255,255,0.15); }
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+}
+
+/* ═══ Toast ═══ */
+.admin-toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-120%);
+  padding: 14px 24px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  font-weight: 700;
+  z-index: 2000;
+  transition: transform 0.4s cubic-bezier(0.34, 1.3, 0.64, 1);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  max-width: 90vw;
+  text-align: center;
+}
+.admin-toast.show { transform: translateX(-50%) translateY(0); }
+.admin-toast.success {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+}
+.admin-toast.error {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+}
+
+/* ═══ الموبايل ═══ */
+@media (max-width: 600px) {
+  .admin-panel { padding: 12px; }
+  .admin-header { padding: 12px 16px; border-radius: 16px; }
+  .brand h1 { font-size: 16px; }
+  .admin-email { display: none; }
+  .stat-value { font-size: 20px; }
+  .tab { padding: 8px 14px; font-size: 12px; }
+  .payment-actions button { min-width: 90px; }
+  .data-table { font-size: 12px; }
+  .data-table th, .data-table td { padding: 10px 8px; }
+}
