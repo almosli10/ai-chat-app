@@ -502,7 +502,7 @@
     panel.id = 'usagePanel';
     panel.className = 'usage-panel';
     
-    const headerHtml = '<div class="usage-panel-header"><span>📊 استهلاكك اليومي</span><button onclick="this.closest(\'.usage-panel\').remove()">✕</button></div>';
+    const headerHtml = '<div class="usage-panel-header"><span>📊 استهلاكك اليومي</span><div style="display:flex; gap:6px; align-items:center;"><button class="usage-stats-btn" onclick="window.usageLimits.openWeeklyStats()" title="إحصائيات الأسبوع">📈</button><button onclick="this.closest(\'.usage-panel\').remove()">✕</button></div></div>';
     
     const planInfoHtml = [
       '<div class="usage-plan-info">',
@@ -561,6 +561,201 @@
     const tokens = Math.max(1, Math.ceil(chars / 3));
     logUsage('tokens', tokens);
   };
+
+    // ═══ لوحة الإحصائيات الأسبوعية ═══
+  async function openWeeklyStats() {
+    // احذف أي نسخة سابقة
+    const existing = document.getElementById('weeklyStatsPanel');
+    if (existing) { existing.remove(); return; }
+    
+    if (!window.sbClient || !window.currentUserId) {
+      if (typeof toast === 'function') toast('🔒 يرجى تسجيل الدخول أولاً');
+      return;
+    }
+    
+    // اعرض النافذة مع حالة تحميل
+    const overlay = document.createElement('div');
+    overlay.id = 'weeklyStatsPanel';
+    overlay.className = 'weekly-stats-overlay show';
+    overlay.innerHTML = `
+      <div class="weekly-stats-modal">
+        <div class="weekly-stats-header">
+          <h3>📊 إحصائيات الأسبوع</h3>
+          <button onclick="document.getElementById('weeklyStatsPanel').remove()">✕</button>
+        </div>
+        <div id="weeklyStatsBody" style="text-align:center; padding:40px 20px; color:rgba(255,255,255,0.5);">
+          <div style="font-size:32px; margin-bottom:12px;">⏳</div>
+          <div>جاري تحميل الإحصائيات...</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    // اجلب البيانات
+    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+      sevenDaysAgo.setHours(0, 0, 0, 0);
+      
+      const { data, error } = await window.sbClient
+        .from('usage_logs')
+        .select('type, tokens, created_at')
+        .eq('user_id', window.currentUserId)
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      
+      // نظّم البيانات حسب اليوم
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        d.setHours(0, 0, 0, 0);
+        days.push({
+          date: d,
+          label: d.toLocaleDateString('ar-EG', { weekday: 'short' }),
+          tokens: 0,
+          images: 0,
+          voice: 0,
+          agent: 0
+        });
+      }
+      
+      (data || []).forEach(r => {
+        const rowDate = new Date(r.created_at);
+        rowDate.setHours(0, 0, 0, 0);
+        const day = days.find(d => d.date.getTime() === rowDate.getTime());
+        if (!day) return;
+        
+        if (r.type === 'tokens') day.tokens += Number(r.tokens) || 0;
+        else if (r.type === 'bonus') day.tokens -= Number(r.tokens) || 0;
+        else if (r.type === 'image') day.images++;
+        else if (r.type === 'voice') day.voice++;
+        else if (r.type === 'agent') day.agent++;
+      });
+      
+      // احسب الإجماليات
+      const totalTokens = days.reduce((s, d) => s + Math.max(0, d.tokens), 0);
+      const totalImages = days.reduce((s, d) => s + d.images, 0);
+      const totalVoice = days.reduce((s, d) => s + d.voice, 0);
+      const totalAgent = days.reduce((s, d) => s + d.agent, 0);
+      const maxDay = days.reduce((max, d) => d.tokens > max.tokens ? d : max, days[0]);
+      
+      // ارسم الرسم البياني (SVG)
+      const chartWidth = 500;
+      const chartHeight = 180;
+      const maxTokens = Math.max(...days.map(d => Math.max(0, d.tokens)), 1);
+      const barWidth = chartWidth / days.length;
+      
+      const svg = `
+        <svg viewBox="0 0 ${chartWidth} ${chartHeight + 40}" class="weekly-chart">
+          <defs>
+            <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#fbbf24"/>
+              <stop offset="100%" stop-color="#ec4899"/>
+            </linearGradient>
+            <linearGradient id="barGradDim" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgba(251,191,36,0.3)"/>
+              <stop offset="100%" stop-color="rgba(236,72,153,0.15)"/>
+            </linearGradient>
+          </defs>
+          ${days.map((d, i) => {
+            const val = Math.max(0, d.tokens);
+            const barH = (val / maxTokens) * chartHeight;
+            const x = i * barWidth + barWidth * 0.2;
+            const w = barWidth * 0.6;
+            const y = chartHeight - barH + 20;
+            const isMax = d === maxDay;
+            return `
+              <rect x="${x}" y="${y}" width="${w}" height="${barH}" 
+                    rx="6" fill="${isMax ? 'url(#barGrad)' : 'url(#barGradDim)'}"
+                    class="weekly-bar" style="animation-delay: ${i * 80}ms">
+                <title>${d.label}: ${val.toLocaleString('ar-EG')} توكن</title>
+              </rect>
+              <text x="${x + w/2}" y="${chartHeight + 45}" text-anchor="middle" 
+                    fill="rgba(255,255,255,${isMax ? '0.95' : '0.55'})" 
+                    font-size="12" font-weight="${isMax ? '700' : '500'}"
+                    font-family="IBM Plex Sans Arabic">
+                ${d.label}
+              </text>
+              ${val > 0 ? `<text x="${x + w/2}" y="${y - 6}" text-anchor="middle" 
+                    fill="rgba(251,191,36,${isMax ? '1' : '0.6'})" 
+                    font-size="10" font-weight="600"
+                    font-family="IBM Plex Sans Arabic">
+                ${val >= 1000 ? (val/1000).toFixed(1) + 'K' : val}
+              </text>` : ''}
+            `;
+          }).join('')}
+        </svg>
+      `;
+      
+      // اعرض المحتوى
+      const body = document.getElementById('weeklyStatsBody');
+      if (!body) return;
+      
+      body.style.padding = '0';
+      body.style.textAlign = 'right';
+      body.style.color = '#fff';
+      
+      body.innerHTML = `
+        <!-- الرسم البياني -->
+        <div class="weekly-chart-wrap">
+          ${svg}
+        </div>
+        
+        <!-- الإجماليات -->
+        <div class="weekly-totals">
+          <div class="weekly-total-card">
+            <div class="weekly-total-icon">⚡</div>
+            <div class="weekly-total-value">${totalTokens.toLocaleString('ar-EG')}</div>
+            <div class="weekly-total-label">إجمالي التوكنات</div>
+          </div>
+          <div class="weekly-total-card">
+            <div class="weekly-total-icon">🖼️</div>
+            <div class="weekly-total-value">${totalImages}</div>
+            <div class="weekly-total-label">صورة</div>
+          </div>
+          <div class="weekly-total-card">
+            <div class="weekly-total-icon">📞</div>
+            <div class="weekly-total-value">${totalVoice}</div>
+            <div class="weekly-total-label">دقيقة مكالمة</div>
+          </div>
+          <div class="weekly-total-card">
+            <div class="weekly-total-icon">🤖</div>
+            <div class="weekly-total-value">${totalAgent}</div>
+            <div class="weekly-total-label">استخدام وكيل</div>
+          </div>
+        </div>
+        
+        <!-- أكثر يوم استخدامًا -->
+        ${maxDay.tokens > 0 ? `
+        <div class="weekly-highlight">
+          <div style="font-size:12px; opacity:0.7; margin-bottom:6px;">🏆 أكثر يوم استخدامًا</div>
+          <div style="font-size:18px; font-weight:800; color:#fbbf24;">
+            ${maxDay.date.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </div>
+          <div style="font-size:13px; opacity:0.75; margin-top:4px;">
+            ${Math.max(0, maxDay.tokens).toLocaleString('ar-EG')} توكن
+          </div>
+        </div>
+        ` : '<div class="weekly-empty">لا يوجد استخدام هذا الأسبوع</div>'}
+      `;
+      
+    } catch (err) {
+      console.error('Weekly stats error:', err);
+      const body = document.getElementById('weeklyStatsBody');
+      if (body) {
+        body.innerHTML = `
+          <div style="padding:30px 20px; color:#f87171;">
+            <div style="font-size:36px; margin-bottom:10px;">❌</div>
+            <div>فشل تحميل الإحصائيات</div>
+            <div style="font-size:11px; opacity:0.7; margin-top:8px;">${err.message}</div>
+          </div>
+        `;
+      }
+    }
+  }
 
   // ═══ نافذة "انتهى الرصيد" ═══
   function showLimitModal(type, check) {
@@ -718,15 +913,182 @@
     getPlan: () => currentPlan,
     getUsage: () => ({ ...usageCache }),
     openPanel: openUsagePanel,
+    openWeeklyStats: openWeeklyStats,
     startStreaming: startStreamingBadge,
     stopStreaming: stopStreamingBadge,
-    // 🧪 أداة اختبار (يمكن حذفها لاحقًا)
     _testSetUsage: (tokens) => {
       usageCache.tokens = tokens;
       updateUsageBadge();
       checkUsageWarnings();
     }
   };
+
+    // ═══ CSS للإحصائيات الأسبوعية ═══
+  (function injectWeeklyStatsCSS() {
+    if (document.getElementById('weekly-stats-css')) return;
+    const style = document.createElement('style');
+    style.id = 'weekly-stats-css';
+    style.textContent = `
+      .weekly-stats-overlay {
+        position: fixed; inset: 0; z-index: 100001;
+        background: rgba(0,0,0,0.75);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        display: flex; align-items: center; justify-content: center;
+        padding: 20px;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      .weekly-stats-overlay.show { opacity: 1; }
+      
+      .weekly-stats-modal {
+        background: linear-gradient(160deg, #1a0f33, #0d0819);
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        border-radius: 24px;
+        padding: 22px;
+        width: 100%;
+        max-width: 560px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 40px 100px -20px rgba(0,0,0,0.85),
+                    0 0 60px -15px rgba(251, 191, 36, 0.2);
+        animation: weeklyPop 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+        color: #fff;
+        font-family: 'IBM Plex Sans Arabic', sans-serif;
+        direction: rtl;
+      }
+      @keyframes weeklyPop {
+        from { opacity: 0; transform: scale(0.9) translateY(20px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+      }
+      
+      .weekly-stats-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 18px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid rgba(251,191,36,0.2);
+      }
+      .weekly-stats-header h3 {
+        font-size: 16px;
+        font-weight: 800;
+        color: #fbbf24;
+        margin: 0;
+      }
+      .weekly-stats-header button {
+        background: none;
+        border: none;
+        color: #94a3b8;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-family: inherit;
+        transition: all 0.2s;
+      }
+      .weekly-stats-header button:hover {
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+      }
+      
+      .weekly-chart-wrap {
+        background: linear-gradient(135deg, rgba(251,191,36,0.05), rgba(168,85,247,0.03));
+        border: 1px solid rgba(251,191,36,0.15);
+        border-radius: 16px;
+        padding: 14px 8px 6px;
+        margin-bottom: 16px;
+      }
+      .weekly-chart {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .weekly-bar {
+        transform-origin: bottom;
+        animation: barGrow 0.6s cubic-bezier(0.34, 1.3, 0.64, 1) backwards;
+      }
+      @keyframes barGrow {
+        from { transform: scaleY(0); opacity: 0; }
+        to { transform: scaleY(1); opacity: 1; }
+      }
+      
+      .weekly-totals {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .weekly-total-card {
+        background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        padding: 12px 6px;
+        text-align: center;
+        transition: all 0.2s;
+      }
+      .weekly-total-card:hover {
+        border-color: rgba(251,191,36,0.4);
+        transform: translateY(-2px);
+      }
+      .weekly-total-icon {
+        font-size: 22px;
+        margin-bottom: 6px;
+      }
+      .weekly-total-value {
+        font-size: 18px;
+        font-weight: 800;
+        color: #fbbf24;
+        font-variant-numeric: tabular-nums;
+        margin-bottom: 2px;
+      }
+      .weekly-total-label {
+        font-size: 10.5px;
+        opacity: 0.65;
+      }
+      
+      .weekly-highlight {
+        background: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(236,72,153,0.08));
+        border: 1px solid rgba(251,191,36,0.3);
+        border-radius: 16px;
+        padding: 16px;
+        text-align: center;
+        margin-top: 4px;
+      }
+      .weekly-empty {
+        text-align: center;
+        padding: 30px 20px;
+        color: rgba(255,255,255,0.4);
+        font-size: 13px;
+      }
+      
+      .usage-stats-btn {
+        background: linear-gradient(135deg, #fbbf24, #ec4899) !important;
+        color: #fff !important;
+        border: none !important;
+        padding: 4px 10px !important;
+        border-radius: 8px !important;
+        cursor: pointer;
+        font-size: 14px !important;
+        font-family: inherit;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(251, 191, 36, 0.35);
+      }
+      .usage-stats-btn:hover {
+        transform: scale(1.08);
+        box-shadow: 0 6px 18px rgba(251, 191, 36, 0.5);
+      }
+      
+      @media (max-width: 480px) {
+        .weekly-stats-modal { padding: 16px; border-radius: 20px; }
+        .weekly-totals { grid-template-columns: repeat(2, 1fr); }
+        .weekly-total-value { font-size: 15px; }
+        .weekly-total-icon { font-size: 18px; }
+        .weekly-total-label { font-size: 9.5px; }
+      }
+    `;
+    document.head.appendChild(style);
+  })();
 
     // ═══ CSS لإشعار المكافأة ═══
   (function injectBonusCSS() {
