@@ -866,7 +866,13 @@ function addMessage(role, text, isStreaming = false, messageIndex = -1, attachme
   const body = document.createElement('div'); body.className = 'msg-body';
   const bubble = document.createElement('div'); bubble.className = 'msg-bubble';
   if (role === 'assistant') {
-    bubble.innerHTML = marked.parse(text);
+    // ✅ كشف HTML خام (مثل الصور المولّدة) وتجنب parse كـ markdown
+    const isRawHtml = /^\s*<div[\s>]/i.test(text) || /<img\s+src=/i.test(text.substring(0, 300));
+    if (isRawHtml) {
+      bubble.innerHTML = text;
+    } else {
+      bubble.innerHTML = marked.parse(text);
+    }
     if (!isStreaming) addCopyButtons(bubble);
     if (!isStreaming && text.length > 200) {
       const rd = document.createElement('button');
@@ -1012,6 +1018,17 @@ async function send() {
       return;
     }
   const text = input.value.trim(); if (!text && attachedFiles.length === 0) return;
+  
+  // 🎨 إذا بدأت الرسالة بإيموجي صورة → وجّهها لتوليد الصور (مع فحص الحد)
+  const IMAGE_EMOJIS = ['🎨', '🖼️', '🖌️', '📸'];
+  if (!attachedFiles.length && IMAGE_EMOJIS.some(e => text.startsWith(e))) {
+    const prompt = text.replace(/^[🎨🖼️🖌️📸]\s*/u, '').trim();
+    if (prompt) {
+      input.value = prompt;
+      await generateImage();
+      return;
+    }
+  }
   const now = new Date();
   const dateStr = now.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const timeStr = now.toLocaleTimeString('ar-EG');
