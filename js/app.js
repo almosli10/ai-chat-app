@@ -1042,6 +1042,11 @@ if (allChats[currentChatId].messages[0]?.role === 'system') {
 async function runAgentConversation() {
   agentRunning = true; sendBtn.disabled = false; sendBtn.classList.add('stop'); sendBtn.textContent = '⏹'; sendBtn.onclick = sendOrStop;
   agentAbortController = new AbortController();
+  
+  // ⚡ ابدأ وضع البث
+  if (window.usageLimits && window.usageLimits.startStreaming) {
+    window.usageLimits.startStreaming();
+  }
   const originalSystem = allChats[currentChatId].messages[0]?.content;
   if (allChats[currentChatId].messages[0]?.role === 'system') {
     const dateMatch = originalSystem.match(/\n\n\[معلومة مهمة:[\s\S]*\]$/); const datePart = dateMatch ? dateMatch[0] : '';
@@ -1091,6 +1096,11 @@ async function runAgentConversation() {
     
     saveAllChats(); pushChatToCloud(allChats[currentChatId]); renderSidebar();
   } else { toast('⚠️ لم يحصل الوكيل على إجابة'); }
+  
+  // ⚡ أوقف وضع البث
+  if (window.usageLimits && window.usageLimits.stopStreaming) {
+    window.usageLimits.stopStreaming();
+  }
 }
 
 async function streamResponse() {
@@ -1101,10 +1111,16 @@ async function streamResponse() {
   sendBtn.textContent = '⏹';
   sendBtn.onclick = sendOrStop;
 
+  // ⚡ ابدأ وضع البث في الشارة
+  if (window.usageLimits && window.usageLimits.startStreaming) {
+    window.usageLimits.startStreaming();
+  }
+
   const { bubble: lb } = addMessage('assistant', '', true);
   lb.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
   let full = '';
   let aborted = false;
+  let lastBadgeUpdate = 0;  // ⚡ توقيت آخر تحديث للشارة
 
   try {
     const res = await fetch(API_URL, {
@@ -1137,6 +1153,15 @@ async function streamResponse() {
               full += content;
               lb.innerHTML = marked.parse(full);
               chatContainer.scrollTop = chatContainer.scrollHeight;
+              
+              // ⚡ حدّث الشارة كل ~500ms
+              const now = Date.now();
+              if (now - lastBadgeUpdate > 500) {
+                lastBadgeUpdate = now;
+                if (window.usageLimits_updateStreaming) {
+                  window.usageLimits_updateStreaming(full.length);
+                }
+              }
             }
           } catch (e) {}
         }
@@ -1214,6 +1239,11 @@ async function streamResponse() {
     sendBtn.disabled = false;
     sendBtn.onclick = sendOrStop;
     input.focus();
+    
+    // ⚡ أوقف وضع البث وأعد الشارة للحالة الطبيعية
+    if (window.usageLimits && window.usageLimits.stopStreaming) {
+      window.usageLimits.stopStreaming();
+    }
   }
 }
 

@@ -184,6 +184,50 @@
     userCard.appendChild(badge);
   }
 
+  // ═══ وضع البث: الشارة تنبض أثناء الرد ═══
+  let isStreaming = false;
+  
+  function startStreamingBadge() {
+    if (isStreaming) return;
+    isStreaming = true;
+    const badge = document.getElementById('usageBadge');
+    if (badge) {
+      badge.classList.add('streaming');
+    }
+  }
+  
+  function stopStreamingBadge() {
+    isStreaming = false;
+    const badge = document.getElementById('usageBadge');
+    if (badge) {
+      badge.classList.remove('streaming');
+    }
+  }
+
+  // ═══ تحديث مباشر أثناء البث (يُستدعى من app.js) ═══
+  window.usageLimits_updateStreaming = function(chars) {
+    if (!chars || chars <= 0) return;
+    const estimatedTokens = Math.ceil(chars / 3);
+    const badge = document.getElementById('usageBadge');
+    if (!badge) return;
+    
+    const plan = PLAN_LIMITS[currentPlan] || PLAN_LIMITS.free;
+    if (plan.tokens === Infinity) return;
+    
+    const currentUsed = usageCache.tokens || 0;
+    const projectedUsed = currentUsed + estimatedTokens;
+    
+    // تنسيق مختصر
+    const fmt = (n) => {
+      if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+      return String(n);
+    };
+    
+    // اعرض الرقم المُتوقَّع مؤقتًا (بشفافية)
+    badge.innerHTML = `<span style="font-size:14px;">⚡</span><span style="opacity:0.7;">${fmt(projectedUsed)}/${fmt(plan.tokens)}</span>`;
+  };
+
   // ═══ عرض شارة الاستهلاك — عائمة ثابتة ═══
   function updateUsageBadge() {
     let badge = document.getElementById('usageBadge');
@@ -608,6 +652,8 @@
     getPlan: () => currentPlan,
     getUsage: () => ({ ...usageCache }),
     openPanel: openUsagePanel,
+    startStreaming: startStreamingBadge,
+    stopStreaming: stopStreamingBadge,
     // 🧪 أداة اختبار (يمكن حذفها لاحقًا)
     _testSetUsage: (tokens) => {
       usageCache.tokens = tokens;
@@ -615,6 +661,25 @@
       checkUsageWarnings();
     }
   };
+
+    // ═══ CSS للنبض أثناء البث ═══
+  (function injectStreamingCSS() {
+    if (document.getElementById('usage-streaming-css')) return;
+    const style = document.createElement('style');
+    style.id = 'usage-streaming-css';
+    style.textContent = `
+      .usage-float-badge.streaming {
+        animation: usagePulse 1.2s ease-in-out infinite !important;
+        border-color: rgba(139, 92, 246, 0.8) !important;
+        box-shadow: 0 6px 24px rgba(139, 92, 246, 0.5) !important;
+      }
+      @keyframes usagePulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.06); }
+      }
+    `;
+    document.head.appendChild(style);
+  })();
 
     // ═══ CSS لبطاقات الترقية ═══
   (function injectPlanCardsCSS() {
