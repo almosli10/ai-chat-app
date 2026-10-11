@@ -74,11 +74,11 @@
       });
       
       // 🔄 إذا تغير اليوم، أعد تعيين الإشعارات
-      const today = new Date().toDateString();
-      if (cacheDate && cacheDate !== today) {
+      const todayStr = new Date().toDateString();
+      if (cacheDate && cacheDate !== todayStr) {
         resetWarnings();
       }
-      cacheDate = today;
+      cacheDate = todayStr;
       console.log('📊 Usage loaded:', usageCache);
     } catch (e) {
       console.warn('Usage load failed:', e);
