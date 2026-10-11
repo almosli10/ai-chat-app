@@ -802,6 +802,12 @@ function createNewChat() {
 function deleteChat(id) {
   if (!confirm('حذف؟')) return;
   delete allChats[id]; unreadChats.delete(id);
+  
+  // 🧹 امسح من ownChatIds
+  let ownedIds = JSON.parse(localStorage.getItem('ownChatIds') || '[]');
+  ownedIds = ownedIds.filter(x => x !== id);
+  localStorage.setItem('ownChatIds', JSON.stringify(ownedIds));
+  
   localStorage.setItem('unreadChats', JSON.stringify([...unreadChats]));
   localStorage.setItem('allChats', JSON.stringify(allChats));
   deleteChatFromCloud(id);
@@ -1467,13 +1473,31 @@ async function init() {
   await initEncryption();
   updateNotifUI();
 
+  // 🧹 نظّف المحادثات الشبح (بلا ownerDevice وبلا user_id)
+  let cleanedCount = 0;
   Object.keys(allChats).forEach(id => {
     const c = allChats[id];
+    // احذف المحادثات الفارغة
     if (c && c.title === 'محادثة جديدة' &&
         c.messages.filter(m => m.role !== 'system').length === 0) {
       delete allChats[id];
+      cleanedCount++;
+      return;
+    }
+    // احذف المحادثات القديمة (بلا ownerDevice)
+    if (c && !c.ownerDevice && !c.user_id) {
+      delete allChats[id];
+      cleanedCount++;
     }
   });
+  
+  // 🧹 نظّف ownChatIds
+  const validIds = new Set(Object.keys(allChats));
+  const ownedIds = JSON.parse(localStorage.getItem('ownChatIds') || '[]');
+  const cleanedOwnedIds = ownedIds.filter(id => validIds.has(id));
+  localStorage.setItem('ownChatIds', JSON.stringify(cleanedOwnedIds));
+  
+  if (cleanedCount > 0) console.log(`🧹 تم تنظيف ${cleanedCount} محادثة قديمة`);
   localStorage.removeItem('lastChatId');
   localStorage.setItem('allChats', JSON.stringify(allChats));
 
