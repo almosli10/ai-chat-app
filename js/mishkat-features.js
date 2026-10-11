@@ -8,6 +8,22 @@
   // FEATURE 2: MOOD SYSTEM
   // ═══════════════════════════════════════════════════════
   (function moodSystem() {
+    // ═══ المزاجات حسب الباقة ═══
+    const FREE_MOODS = ['cheerful', 'academic', 'fast'];
+    const PRO_MOODS  = [...FREE_MOODS, 'calm', 'enthusiastic', 'philosophical', 'mysterious', 'sarcastic'];
+    // البريميوم + VIP: كل المزاجات
+
+    function getAccessibleMoods() {
+      const plan = (window.usageLimits && window.usageLimits.getPlan()) || 'free';
+      if (plan === 'vip' || plan === 'premium') return Object.keys(MOODS);
+      if (plan === 'pro') return PRO_MOODS;
+      return FREE_MOODS;
+    }
+
+    function isMoodLocked(key) {
+      return !getAccessibleMoods().includes(key);
+    }
+
     const MOODS = {
   cheerful:   { icon: '😊', name: 'مرح',      prompt: '\n\n[المزاج: مرح. أجب بأسلوب خفيف وودود مع إيموجي طبيعية بلا إفراط.]' },
   academic:   { icon: '🎓', name: 'أكاديمي',   prompt: '\n\n[المزاج: أكاديمي. أجب بأسلوب رسمي منظم كأستاذ جامعي.]' },
@@ -58,18 +74,32 @@
       p.innerHTML = `
           <div class="mood-panel-title">مزاج مِشكاة (${Object.keys(MOODS).length})</div>
         <div class="mood-grid">
-          ${Object.entries(MOODS).map(([k, m]) => `
-            <button class="mood-btn ${k === window.currentMood ? 'active' : ''}" data-mood="${k}">
-              <span class="mood-icon">${m.icon}</span>
-              <span class="mood-name">${m.name}</span>
-            </button>
-          `).join('')}
+          ${Object.entries(MOODS).map(([k, m]) => {
+            const locked = isMoodLocked(k);
+            return `
+              <button class="mood-btn ${k === window.currentMood ? 'active' : ''}${locked ? ' locked' : ''}" data-mood="${k}" data-locked="${locked ? '1' : '0'}">
+                <span class="mood-icon">${locked ? '🔒' : m.icon}</span>
+                <span class="mood-name">${locked ? 'مقفل' : m.name}</span>
+              </button>
+            `;
+          }).join('')}
         </div>
       `;
       document.body.appendChild(p);
       requestAnimationFrame(() => p.classList.add('show'));
       p.querySelectorAll('.mood-btn').forEach(b => {
-        b.onclick = () => { setMood(b.dataset.mood); p.remove(); };
+        b.onclick = () => {
+          if (b.dataset.locked === '1') {
+            if (typeof window.requirePlan === 'function') {
+              window.requirePlan('fullMoods', 'هذا المزاج');
+            } else {
+              if (typeof toast === 'function') toast('🔒 متاح في الباقة الاحترافية');
+            }
+            return;
+          }
+          setMood(b.dataset.mood);
+          p.remove();
+        };
       });
       setTimeout(() => {
         const close = (e) => {
@@ -104,6 +134,20 @@
     const wait = setInterval(() => {
       if (document.getElementById('mishkat')) { updateIndicator(); clearInterval(wait); }
     }, 300);
+
+    // ═══ CSS للمزاجات المقفلة ═══
+    (function injectMoodLockedCSS() {
+      if (document.getElementById('moods-locked-css')) return;
+      const style = document.createElement('style');
+      style.id = 'moods-locked-css';
+      style.textContent = `
+        .mood-btn.locked { opacity: 0.5; cursor: pointer; }
+        .mood-btn.locked:hover { opacity: 0.75; border-color: rgba(251, 191, 36, 0.5) !important; }
+        .mood-btn.locked .mood-name { font-size: 9px; opacity: 0.7; }
+      `;
+      document.head.appendChild(style);
+    })();
+
     console.log('😊 Mood ready');
   })();
 

@@ -205,6 +205,7 @@
 
   // ═══ اللوحة ═══
   function openPanel() {
+    if (typeof window.requirePlan === 'function' && !window.requirePlan('wallpaper', 'الخلفية اليومية')) return;
     let panel = document.getElementById('wallpaperPanel');
     if (panel) { panel.remove(); return; }
     

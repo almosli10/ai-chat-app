@@ -4,9 +4,9 @@
 
   // ═══ إعدادات الباقات ═══
     const PLAN_LIMITS = {
-    free:    { tokens: 10000,     image: 3,        voice: 5,        agent: 5,        name: 'مجاني',   icon: '🆓' },
-    pro:     { tokens: 50000,     image: 30,       voice: 60,       agent: 100,      name: 'احترافي', icon: '⭐' },
-    premium: { tokens: 110000,    image: 100,      voice: 300,      agent: 500,      name: 'بريميوم', icon: '💎' },
+    free:    { tokens: 10000,     image: 1,        voice: 0,        agent: 5,        name: 'مجاني',   icon: '🆓' },
+    pro:     { tokens: 50000,     image: 5,        voice: 60,       agent: 100,      name: 'احترافي', icon: '⭐' },
+    premium: { tokens: 110000,    image: 15,       voice: 300,      agent: 500,      name: 'بريميوم', icon: '💎' },
     vip:     { tokens: Infinity,  image: Infinity, voice: Infinity, agent: Infinity, name: 'خاص',     icon: '👑' }
   };
 
@@ -459,6 +459,37 @@
     
     console.log('🎯 Usage limits ready');
   }
+
+    // ═══ صلاحيات الميزات حسب الباقة ═══
+  window.featureAccess = {
+    voiceCall:    ['pro', 'premium', 'vip'],
+    canvas:       ['pro', 'premium', 'vip'],
+    wallpaper:    ['pro', 'premium', 'vip'],
+    incognito:    ['pro', 'premium', 'vip'],
+    export:       ['pro', 'premium', 'vip'],
+    share:        ['pro', 'premium', 'vip'],
+    tts:          ['pro', 'premium', 'vip'],
+    fullPersonas: ['pro', 'premium', 'vip'],
+    fullMoods:    ['pro', 'premium', 'vip']
+    // encryption: متاح للجميع
+  };
+
+  window.canUse = function(feature) {
+    const allowed = window.featureAccess[feature] || [];
+    return allowed.includes(currentPlan);
+  };
+
+  window.requirePlan = function(feature, featureName) {
+    if (window.canUse(feature)) return true;
+    
+    const planName = currentPlan === 'free' ? 'الاحترافية' : 'البريميوم';
+    if (typeof toast === 'function') {
+      toast(`🔒 "${featureName}" متاحة في الباقة الـ${planName} فقط`);
+    }
+    // فتح لوحة الترقية تلقائيًا بعد لحظة
+    setTimeout(() => openUsagePanel(), 1200);
+    return false;
+  };
 
   // ═══ الواجهة العامة ═══
   window.usageLimits = {

@@ -70,6 +70,7 @@
   let stopFlag = false;
 
   function speakPro(text, btn) {
+    if (typeof window.requirePlan === 'function' && !window.requirePlan('tts', 'قراءة الردود')) return;
     if (!('speechSynthesis' in window)) { if (typeof toast === 'function') toast('⚠️ TTS غير مدعوم'); return; }
     if (window.speechSynthesis.speaking) {
       stopFlag = true;

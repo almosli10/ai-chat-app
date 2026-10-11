@@ -4,6 +4,23 @@
 (function personasLibrary() {
   'use strict';
 
+  // ═══ الشخصيات المتاحة حسب الباقة ═══
+  const FREE_PERSONAS = ['senior-dev', 'language-tutor', 'novelist', 'hr-specialist', 'life-coach'];
+  const PRO_PERSONAS  = [...FREE_PERSONAS, 'devops', 'security-expert', 'data-scientist', 'ui-designer',
+                         'doctor', 'entrepreneur', 'marketer', 'math-teacher', 'physics-tutor', 'poet'];
+  // البريميوم + VIP: كل الشخصيات
+
+  function getAccessiblePersonas() {
+    const plan = (window.usageLimits && window.usageLimits.getPlan()) || 'free';
+    if (plan === 'vip' || plan === 'premium') return Object.keys(LIBRARY);
+    if (plan === 'pro') return PRO_PERSONAS;
+    return FREE_PERSONAS;
+  }
+
+  function isPersonaLocked(key) {
+    return !getAccessiblePersonas().includes(key);
+  }
+
   const LIBRARY = {
     // ───── البرمجة والتقنية ─────
     'senior-dev': { icon: '👨‍💻', name: 'مطوّر أول', cat: 'تقنية', desc: 'خبرة 15+ سنة', prompt: 'أنت مطور برمجيات أول بخبرة 15+ سنة. تكتب كود نظيفاً، تشرح قراراتك الهندسية، وتحذر من anti-patterns. تفصّل بين الحلول وتقترح الأفضل.' },
@@ -78,15 +95,24 @@
       grid.innerHTML = '';
       Object.entries(LIBRARY).forEach(([key, p]) => {
         if (cat !== 'all' && p.cat !== cat) return;
+        const locked = isPersonaLocked(key);
         const card = document.createElement('div');
-        card.className = 'lib-card';
+        card.className = 'lib-card' + (locked ? ' locked' : '');
         card.innerHTML = `
-          <div class="lib-icon">${p.icon}</div>
+          <div class="lib-icon">${locked ? '🔒' : p.icon}</div>
           <div class="lib-name">${p.name}</div>
           <div class="lib-cat">${p.cat}</div>
-          <div class="lib-desc">${p.desc}</div>
+          <div class="lib-desc">${locked ? 'متاحة في الباقة الاحترافية' : p.desc}</div>
         `;
         card.onclick = () => {
+          if (locked) {
+            if (typeof window.requirePlan === 'function') {
+              window.requirePlan('fullPersonas', 'هذه الشخصية');
+            } else {
+              if (typeof toast === 'function') toast('🔒 متاحة في الباقة الاحترافية');
+            }
+            return;
+          }
           applyLibraryPersona(key);
           modal.remove();
         };
@@ -123,4 +149,21 @@
   window.applyLibraryPersona = applyLibraryPersona;
 
   console.log(`🎭 Personas library ready (${Object.keys(LIBRARY).length})`);
+
+  // ═══ CSS للبطاقات المقفلة ═══
+  (function injectLockedCSS() {
+    if (document.getElementById('personas-locked-css')) return;
+    const style = document.createElement('style');
+    style.id = 'personas-locked-css';
+    style.textContent = `
+      .lib-card.locked { opacity: 0.55; cursor: pointer; position: relative; filter: grayscale(0.4); }
+      .lib-card.locked:hover { opacity: 0.75; border-color: rgba(251, 191, 36, 0.5); }
+      .lib-card.locked::before {
+        content: ''; position: absolute; top: 6px; right: 6px;
+        font-size: 14px;
+      }
+    `;
+    document.head.appendChild(style);
+  })();
+
 })();

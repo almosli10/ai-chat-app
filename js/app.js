@@ -712,6 +712,7 @@ function toggleMic() { if (!recognition) { alert('غير مدعوم'); return; }
 
 // ⚠️ نسخة أساسية — تُستبدل بـ tts-pro.js عند تحميله
 function speakMessage(btn, text) {
+  if (typeof window.requirePlan === 'function' && !window.requirePlan('tts', 'قراءة الردود')) return;
   if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); document.querySelectorAll('.speak-btn.speaking').forEach(b => { b.classList.remove('speaking'); b.textContent = '🔊'; }); if (btn.dataset.ws === '1') { btn.dataset.ws = '0'; return; } }
   const clean = text.replace(/```[\s\S]*?```/g, ' [كود] ').replace(/`([^`]+)`/g, '$1').replace(/[*_#>\[\]()]/g, '');
   const u = new SpeechSynthesisUtterance(clean); u.lang = 'ar-SA';
@@ -1217,6 +1218,7 @@ async function streamResponse() {
 }
 
 function shareCurrentChat() {
+  if (typeof window.requirePlan === 'function' && !window.requirePlan('share', 'مشاركة المحادثة')) return;
   if (!currentChatId) return;
   const c = allChats[currentChatId];
   const min = { title: c.title, messages: c.messages.filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content, displayText: m.displayText, attachmentNames: m.attachmentNames })) };
@@ -1376,8 +1378,12 @@ async function doSync() {
 }
 
 function download(f, c) { const b = new Blob([c], { type: 'text/plain;charset=utf-8' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = f; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(u); }
-function exportAllData() { download(`ai-chat-backup-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify({ version: 1, exportDate: new Date().toISOString(), systemPrompt, chats: allChats, memory: userMemory }, null, 2)); }
+function exportAllData() {
+  if (typeof window.requirePlan === 'function' && !window.requirePlan('export', 'تصدير البيانات')) return;
+  download(`ai-chat-backup-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify({ version: 1, exportDate: new Date().toISOString(), systemPrompt, chats: allChats, memory: userMemory }, null, 2));
+}
 function exportCurrentChat() {
+  if (typeof window.requirePlan === 'function' && !window.requirePlan('export', 'تصدير المحادثة')) return;
   if (!currentChatId) return;
   const c = allChats[currentChatId];
   let md = `# ${c.title}\n\n**تاريخ:** ${new Date(c.timestamp).toLocaleString('ar-EG')}\n\n---\n\n`;
@@ -1529,6 +1535,7 @@ async function generateImage() {
 
 // ═══════ وضع التخفي — Toggle ═══════
 window.toggleIncognito = function() {
+  if (!isIncognito && typeof window.requirePlan === 'function' && !window.requirePlan('incognito', 'وضع التخفي')) return;
   if (isIncognito) {
     // === الإيقاف اليدوي ===
     const snapChatId = incognitoSnapshot?.chatId;
@@ -1635,6 +1642,7 @@ function startVoiceCall() {
     toast('🔒 يرجى تسجيل الدخول أولاً');
     return;
   }
+  if (typeof window.requirePlan === 'function' && !window.requirePlan('voiceCall', 'المكالمة الصوتية')) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
     toast('⚠️ متصفحك لا يدعم المكالمات الصوتية');
@@ -2010,6 +2018,7 @@ async function toggleCanvasMode() {
     toast('🔒 يرجى تسجيل الدخول أولاً');
     return;
   }
+  if (typeof window.requirePlan === 'function' && !window.requirePlan('canvas', 'وضع الرسم')) return;
   const panel = document.getElementById('canvasPanel');
   if (panel.style.display === 'none' || !panel.style.display) {
     await openCanvasMode();
