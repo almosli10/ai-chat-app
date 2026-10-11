@@ -13,6 +13,8 @@
   let currentPlan = 'free';
   let usageCache = { tokens: 0, image: 0, voice: 0, agent: 0 };
   let cacheDate = null;
+  let warned70 = false;
+  let warned90 = false;
 
   // ═══ تحميل خطة المستخدم ═══
   async function loadPlan() {
@@ -68,12 +70,18 @@
         }
       });
       
-      cacheDate = new Date().toDateString();
+      // 🔄 إذا تغير اليوم، أعد تعيين الإشعارات
+      const today = new Date().toDateString();
+      if (cacheDate && cacheDate !== today) {
+        resetWarnings();
+      }
+      cacheDate = today;
       console.log('📊 Usage loaded:', usageCache);
     } catch (e) {
       console.warn('Usage load failed:', e);
     }
     updateUsageBadge();
+    checkUsageWarnings();
   }
 
   // ═══ فحص الحد — سريع (بدون انتظار) ═══
@@ -93,12 +101,59 @@
     };
   }
 
+    // ═══ فحص وإظهار إشعارات اقتراب النفاد ═══
+  function checkUsageWarnings() {
+    const plan = PLAN_LIMITS[currentPlan] || PLAN_LIMITS.free;
+    if (plan.tokens === Infinity) return; // VIP — لا إشعارات
+    
+    const used = usageCache.tokens || 0;
+    const limit = plan.tokens;
+    const percent = (used / limit) * 100;
+    
+    // 70% — تحذير أول
+    if (percent >= 70 && percent < 90 && !warned70) {
+      warned70 = true;
+      if (typeof toast === 'function') {
+        toast('⚠️ استهلكت 70% من رصيدك اليومي', 4000);
+      }
+      const badge = document.getElementById('usageBadge');
+      if (badge) {
+        badge.style.animation = 'pulse 1.5s ease-in-out 3';
+        setTimeout(() => badge.style.animation = '', 4500);
+      }
+    }
+    
+    // 90% — تحذير حاد
+    if (percent >= 90 && percent < 100 && !warned90) {
+      warned90 = true;
+      if (typeof toast === 'function') {
+        toast('🚨 بقي أقل من 10% من رصيدك!', 5000);
+      }
+      const badge = document.getElementById('usageBadge');
+      if (badge) {
+        badge.style.animation = 'pulse 1s ease-in-out 6';
+        setTimeout(() => badge.style.animation = '', 6000);
+      }
+      // اهتزاز الشارة
+      if (navigator.vibrate) {
+        try { navigator.vibrate([100, 50, 100, 50, 100]); } catch (e) {}
+      }
+    }
+  }
+
+  // ═══ إعادة تعيين الإشعارات (يُستدعى عند تجدد اليوم) ═══
+  function resetWarnings() {
+    warned70 = false;
+    warned90 = false;
+  }
+
   // ═══ تسجيل الاستخدام ═══
   async function logUsage(type, amount = 1) {
     if (!window.sbClient || !window.currentUserId) return;
     
     usageCache[type] = (usageCache[type] || 0) + amount;
     updateUsageBadge();
+    checkUsageWarnings();
     
     try {
       await window.sbClient.from('usage_logs').insert({
