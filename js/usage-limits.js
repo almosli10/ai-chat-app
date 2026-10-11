@@ -12,6 +12,7 @@
 
   let currentPlan = 'free';
   let usageCache = { tokens: 0, image: 0, voice: 0, agent: 0 };
+  let bonusTokens = 0;       // 🎁 مكافآت اليوم (توسّع الحد)
   let cacheDate = null;
   let warned70 = false;
   let warned90 = false;
@@ -61,18 +62,16 @@
       if (error) throw error;
       
       usageCache = { tokens: 0, image: 0, voice: 0, agent: 0 };
-      let bonusTotal = 0;
+      bonusTokens = 0;
       (data || []).forEach(r => {
         if (r.type === 'tokens') {
           usageCache.tokens += Number(r.tokens) || 0;
         } else if (r.type === 'bonus') {
-          bonusTotal += Number(r.tokens) || 0;
+          bonusTokens += Number(r.tokens) || 0;  // 🎁 يُضاف للحد
         } else if (usageCache[r.type] !== undefined) {
           usageCache[r.type]++;
         }
       });
-      // 🎁 اخصم المكافآت من الاستهلاك الفعلي
-      usageCache.tokens = Math.max(0, usageCache.tokens - bonusTotal);
       
       // 🔄 إذا تغير اليوم، أعد تعيين الإشعارات
       const today = new Date().toDateString();
@@ -92,7 +91,11 @@
   function checkLimit(type) {
     if (currentPlan === 'vip') return { allowed: true, remaining: Infinity };
     
-    const limit = PLAN_LIMITS[currentPlan]?.[type] || PLAN_LIMITS.free[type];
+    const baseLimit = PLAN_LIMITS[currentPlan]?.[type] || PLAN_LIMITS.free[type];
+    // 🎁 للتوكنات فقط: أضف المكافأة للحد
+    const limit = (type === 'tokens' && baseLimit !== Infinity) 
+      ? baseLimit + bonusTokens 
+      : baseLimit;
     const used = usageCache[type] || 0;
     const remaining = Math.max(0, limit - used);
     
@@ -147,8 +150,8 @@
       // ✅ احفظ في localStorage فورًا (لمنع تكرار من نفس التبويب)
       localStorage.setItem('lastDailyReward', today);
       
-      // حدّث العرض مباشرة
-      usageCache.tokens = Math.max(0, (usageCache.tokens || 0) - BONUS);
+      // 🎁 أضف المكافأة للحد (وليس خصم من الاستهلاك)
+      bonusTokens = (bonusTokens || 0) + BONUS;
       updateUsageBadge();
       
       // إشعارات
@@ -172,7 +175,7 @@
     if (plan.tokens === Infinity) return; // VIP — لا إشعارات
     
     const used = usageCache.tokens || 0;
-    const limit = plan.tokens;
+    const limit = plan.tokens + bonusTokens;  // 🎁 الحد الموسّع
     const percent = (used / limit) * 100;
     
     // 70% — تحذير أول
@@ -332,7 +335,7 @@
     
     const plan = PLAN_LIMITS[currentPlan] || PLAN_LIMITS.free;
     const used = usageCache.tokens || 0;
-    const limit = plan.tokens;
+    const limit = (plan.tokens === Infinity) ? Infinity : plan.tokens + bonusTokens;
     
     // تنسيق مختصر: 50000 → 50K
     const fmt = (n) => {
@@ -475,7 +478,11 @@
     
     const statsHtml = stats.map(s => {
       const used = usageCache[s.key] || 0;
-      const limit = plan[s.key];
+      // 🎁 للتوكنات: أضف المكافأة للحد
+      const baseLimit = plan[s.key];
+      const limit = (s.key === 'tokens' && baseLimit !== Infinity) 
+        ? baseLimit + bonusTokens 
+        : baseLimit;
       const isUnlimited = limit === Infinity;
       const percent = isUnlimited ? 0 : Math.min(100, Math.round((used / limit) * 100));
       const color = percent >= 90 ? '#ef4444' : percent >= 70 ? '#f59e0b' : '#10b981';
@@ -502,7 +509,7 @@
     panel.id = 'usagePanel';
     panel.className = 'usage-panel';
     
-    const headerHtml = '<div class="usage-panel-header"><span>📊 استهلاكك اليومي</span><div style="display:flex; gap:6px; align-items:center;"><button class="usage-stats-btn" onclick="window.usageLimits.openWeeklyStats()" title="إحصائيات الأسبوع">📈</button><button onclick="this.closest(\'.usage-panel\').remove()">✕</button></div></div>';
+    const headerHtml = '<div class="usage-panel-header"><span>📊 استهلاكك اليومي</span><div style="display:flex; gap:6px; align-items:center;"><button class="usage-stats-btn" onclick="window.usageLimits.openWeeklyStats()" title="إحصائيات الأسبوع">📈</button><button class="usage-stats-btn" onclick="window.usageLimits.openUsageHistory()" title="سجل الاستخدام">📜</button><button onclick="this.closest(\'.usage-panel\').remove()">✕</button></div></div>';
     
     const planInfoHtml = [
       '<div class="usage-plan-info">',
@@ -561,6 +568,158 @@
     const tokens = Math.max(1, Math.ceil(chars / 3));
     logUsage('tokens', tokens);
   };
+
+    // ═══ سجل الاستخدام المفصل ═══
+  async function openUsageHistory() {
+    // احذف أي نسخة سابقة
+    const existing = document.getElementById('usageHistoryPanel');
+    if (existing) { existing.remove(); return; }
+    
+    if (!window.sbClient || !window.currentUserId) {
+      if (typeof toast === 'function') toast('🔒 يرجى تسجيل الدخول أولاً');
+      return;
+    }
+    
+    // اعرض النافذة مع حالة تحميل
+    const overlay = document.createElement('div');
+    overlay.id = 'usageHistoryPanel';
+    overlay.className = 'weekly-stats-overlay show';
+    overlay.innerHTML = `
+      <div class="weekly-stats-modal">
+        <div class="weekly-stats-header">
+          <h3>📜 سجل الاستخدام</h3>
+          <button onclick="document.getElementById('usageHistoryPanel').remove()">✕</button>
+        </div>
+        <div id="usageHistoryBody" style="text-align:center; padding:40px 20px; color:rgba(255,255,255,0.5);">
+          <div style="font-size:32px; margin-bottom:12px;">⏳</div>
+          <div>جاري تحميل السجل...</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+      sevenDaysAgo.setHours(0, 0, 0, 0);
+      
+      const { data, error } = await window.sbClient
+        .from('usage_logs')
+        .select('type, tokens, created_at')
+        .eq('user_id', window.currentUserId)
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      const body = document.getElementById('usageHistoryBody');
+      if (!body) return;
+      body.style.padding = '0';
+      body.style.textAlign = 'right';
+      body.style.color = '#fff';
+      
+      if (!data || data.length === 0) {
+        body.innerHTML = `
+          <div class="weekly-empty" style="padding:50px 20px;">
+            <div style="font-size:48px; margin-bottom:12px; opacity:0.4;">📭</div>
+            <div style="font-size:14px;">لا يوجد استخدام خلال آخر 7 أيام</div>
+          </div>
+        `;
+        return;
+      }
+      
+      // رتّب حسب اليوم
+      const groups = {};
+      data.forEach(r => {
+        const d = new Date(r.created_at);
+        const dayKey = d.toDateString();
+        if (!groups[dayKey]) {
+          groups[dayKey] = { date: d, items: [] };
+        }
+        groups[dayKey].items.push(r);
+      });
+      
+      const today = new Date().toDateString();
+      const yesterday = new Date(Date.now() - 86400000).toDateString();
+      
+      const dayLabels = {
+        [today]: '📅 اليوم',
+        [yesterday]: '📅 أمس'
+      };
+      
+      // بناء السجل
+      let html = '<div class="history-list">';
+      
+      Object.entries(groups).forEach(([dayKey, group]) => {
+        const dateLabel = dayLabels[dayKey] || '📅 ' + group.date.toLocaleDateString('ar-EG', { 
+          weekday: 'long', day: 'numeric', month: 'short' 
+        });
+        
+        const dayTotal = group.items.reduce((sum, r) => {
+          if (r.type === 'tokens') return sum + (Number(r.tokens) || 0);
+          if (r.type === 'bonus') return sum - (Number(r.tokens) || 0);
+          return sum;
+        }, 0);
+        
+        html += `<div class="history-day">`;
+        html += `<div class="history-day-header">`;
+        html += `<span>${dateLabel}</span>`;
+        if (dayTotal !== 0) {
+          html += `<span class="history-day-total">${dayTotal > 0 ? dayTotal : dayTotal} توكن</span>`;
+        }
+        html += `</div>`;
+        html += `<div class="history-items">`;
+        
+        group.items.forEach(r => {
+          const time = new Date(r.created_at).toLocaleTimeString('ar-EG', { 
+            hour: '2-digit', minute: '2-digit' 
+          });
+          
+          let icon = '⚡';
+          let label = 'توكن';
+          let value = Number(r.tokens) || 0;
+          let valueClass = 'normal';
+          
+          if (r.type === 'image') { icon = '🖼️'; label = 'صورة'; value = 1; }
+          else if (r.type === 'voice') { icon = '📞'; label = 'دقيقة مكالمة'; value = 1; }
+          else if (r.type === 'agent') { icon = '🤖'; label = 'استخدام وكيل'; value = 1; }
+          else if (r.type === 'bonus') { 
+            icon = '🎁'; label = 'مكافأة'; 
+            value = '+' + value;
+            valueClass = 'bonus';
+          }
+          else if (r.type === 'tokens') { value = '-' + value; valueClass = 'usage'; }
+          
+          html += `
+            <div class="history-item">
+              <span class="history-icon">${icon}</span>
+              <span class="history-label">${label}</span>
+              <span class="history-value ${valueClass}">${value}</span>
+              <span class="history-time">${time}</span>
+            </div>
+          `;
+        });
+        
+        html += `</div></div>`;
+      });
+      
+      html += '</div>';
+      body.innerHTML = html;
+      
+    } catch (err) {
+      console.error('Usage history error:', err);
+      const body = document.getElementById('usageHistoryBody');
+      if (body) {
+        body.innerHTML = `
+          <div style="padding:30px 20px; color:#f87171;">
+            <div style="font-size:36px; margin-bottom:10px;">❌</div>
+            <div>فشل تحميل السجل</div>
+            <div style="font-size:11px; opacity:0.7; margin-top:8px;">${err.message}</div>
+          </div>
+        `;
+      }
+    }
+  }
 
     // ═══ لوحة الإحصائيات الأسبوعية ═══
   async function openWeeklyStats() {
@@ -914,6 +1073,7 @@
     getUsage: () => ({ ...usageCache }),
     openPanel: openUsagePanel,
     openWeeklyStats: openWeeklyStats,
+    openUsageHistory: openUsageHistory,
     startStreaming: startStreamingBadge,
     stopStreaming: stopStreamingBadge,
     _testSetUsage: (tokens) => {
@@ -922,6 +1082,121 @@
       checkUsageWarnings();
     }
   };
+
+    // ═══ CSS لسجل الاستخدام ═══
+  (function injectHistoryCSS() {
+    if (document.getElementById('usage-history-css')) return;
+    const style = document.createElement('style');
+    style.id = 'usage-history-css';
+    style.textContent = `
+      .history-list {
+        max-height: 60vh;
+        overflow-y: auto;
+        padding-left: 4px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(251,191,36,0.4) transparent;
+      }
+      .history-list::-webkit-scrollbar { width: 6px; }
+      .history-list::-webkit-scrollbar-thumb {
+        background: rgba(251,191,36,0.4);
+        border-radius: 3px;
+      }
+      
+      .history-day {
+        margin-bottom: 16px;
+      }
+      .history-day-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(236,72,153,0.08));
+        border: 1px solid rgba(251,191,36,0.2);
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #fbbf24;
+        margin-bottom: 8px;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        backdrop-filter: blur(10px);
+      }
+      .history-day-total {
+        font-size: 11px;
+        background: rgba(251,191,36,0.15);
+        padding: 3px 8px;
+        border-radius: 999px;
+        color: #fef3c7;
+        font-weight: 600;
+      }
+      
+      .history-items {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .history-item {
+        display: grid;
+        grid-template-columns: 26px 1fr auto auto;
+        gap: 10px;
+        align-items: center;
+        padding: 8px 12px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 10px;
+        font-size: 12.5px;
+        transition: all 0.18s;
+      }
+      .history-item:hover {
+        background: rgba(255,255,255,0.06);
+        border-color: rgba(251,191,36,0.25);
+        transform: translateX(-3px);
+      }
+      .history-icon {
+        font-size: 16px;
+        text-align: center;
+      }
+      .history-label {
+        color: rgba(255,255,255,0.75);
+        font-weight: 500;
+      }
+      .history-value {
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        min-width: 55px;
+        text-align: left;
+        direction: ltr;
+        font-size: 12px;
+      }
+      .history-value.usage { color: #fbbf24; }
+      .history-value.bonus { color: #6ee7b7; }
+      .history-value.normal { color: rgba(255,255,255,0.9); }
+      .history-time {
+        color: rgba(255,255,255,0.4);
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+        min-width: 55px;
+        text-align: left;
+        direction: ltr;
+      }
+      
+      @media (max-width: 480px) {
+        .history-item {
+          grid-template-columns: 22px 1fr auto;
+          gap: 8px;
+          padding: 7px 10px;
+          font-size: 11.5px;
+        }
+        .history-time {
+          grid-column: 3;
+          grid-row: 2;
+          font-size: 10px;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  })();
 
     // ═══ CSS للإحصائيات الأسبوعية ═══
   (function injectWeeklyStatsCSS() {
