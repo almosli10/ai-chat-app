@@ -1647,7 +1647,7 @@ async function generateImage() {
 }
 
 // ═══════ وضع التخفي — Toggle ═══════
-window.toggleIncognito = function() {
+window.toggleIncognito = async function() {
   if (!isIncognito && typeof window.requirePlan === 'function' && !window.requirePlan('incognito', 'وضع التخفي')) return;
   if (isIncognito) {
     // === الإيقاف اليدوي ===
@@ -1681,7 +1681,7 @@ window.toggleIncognito = function() {
   }
 };
 
-function activateIncognito() {
+async function activateIncognito() {
   if (!currentChatId || !allChats[currentChatId]) {
     toast('⚠️ لا توجد محادثة نشطة');
     return;
