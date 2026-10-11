@@ -378,3 +378,66 @@
 
 
     console.log('✨ UI/UX Enhancements loaded');
+
+// ═══ CSS للـ Drag & Drop ═══
+(function injectDragCSS() {
+  if (document.getElementById('drag-overlay-css')) return;
+  const style = document.createElement('style');
+  style.id = 'drag-overlay-css';
+  style.textContent = `
+    .drag-overlay {
+      position: fixed; inset: 0; z-index: 99999;
+      background: rgba(10, 5, 25, 0.85);
+      backdrop-filter: blur(14px) saturate(1.4);
+      -webkit-backdrop-filter: blur(14px) saturate(1.4);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      pointer-events: none;
+    }
+    .drag-overlay.show { opacity: 1; }
+    
+    .drag-overlay-inner {
+      text-align: center;
+      color: #fff;
+      font-family: 'IBM Plex Sans Arabic', sans-serif;
+      padding: 40px 30px;
+      border: 3px dashed rgba(251, 191, 36, 0.6);
+      border-radius: 28px;
+      background: linear-gradient(135deg, rgba(251,191,36,0.08), rgba(236,72,153,0.05));
+      animation: dragPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes dragPulse {
+      0%, 100% { transform: scale(1); border-color: rgba(251,191,36,0.6); }
+      50% { transform: scale(1.03); border-color: rgba(236,72,153,0.8); }
+    }
+    
+    .drag-icon {
+      font-size: 64px;
+      margin-bottom: 12px;
+      filter: drop-shadow(0 10px 30px rgba(251,191,36,0.6));
+      animation: dragBounce 1.2s ease-in-out infinite;
+    }
+    @keyframes dragBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    .drag-title {
+      font-size: 22px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fbbf24, #ec4899);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+    
+    .drag-sub {
+      font-size: 14px;
+      color: rgba(255,255,255,0.65);
+    }
+  `;
+  document.head.appendChild(style);
+})();
+

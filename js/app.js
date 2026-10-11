@@ -680,10 +680,63 @@ function openStats() {
 
 function openShortcuts() { document.getElementById('shortcutsModal').classList.add('show'); }
 document.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && e.key === 'n') { e.preventDefault(); createNewChat(); }
-  else if (e.ctrlKey && e.key === '/') { e.preventDefault(); input.focus(); }
-  else if (e.ctrlKey && e.key === 'b') { e.preventDefault(); toggleAgentMode(); }
-  else if (e.key === 'Escape') { ['settingsModal','themesModal','soundsModal','personasModal','shortcutsModal','syncModal','shareModal','statsModal','encryptionModal','notificationsModal','memoryModal'].forEach(id => closeModal(id)); if (searchInput.value) { searchInput.value = ''; renderSidebar(); } closeLightbox(); closeReadingMode(); }
+  // === Ctrl + مفاتيح ===
+  if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key === 'n') { e.preventDefault(); createNewChat(); return; }
+  if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key === '/') { e.preventDefault(); input.focus(); return; }
+  if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'b') { e.preventDefault(); toggleAgentMode(); return; }
+  
+  // === Ctrl + Shift + مفاتيح ===
+  if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'c') {
+    e.preventDefault();
+    const msgs = document.querySelectorAll('.msg.assistant .msg-bubble');
+    if (msgs.length === 0) { toast('⚠️ لا يوجد رد للنسخ'); return; }
+    const last = msgs[msgs.length - 1];
+    navigator.clipboard.writeText(last.innerText || last.textContent).then(() => {
+      toast('📋 تم نسخ آخر رد');
+    });
+    return;
+  }
+  if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'r') {
+    e.preventDefault();
+    regenerateLast();
+    return;
+  }
+  if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 't') {
+    e.preventDefault();
+    const themes = Object.keys(THEMES);
+    const cur = localStorage.getItem('theme') || 'light';
+    const idx = themes.indexOf(cur);
+    const next = themes[(idx + 1) % themes.length];
+    applyTheme(next);
+    toast(`🎨 ${THEMES[next].icon} ${THEMES[next].name}`);
+    return;
+  }
+  
+  // === Alt + رقم → تبديل بين المحادثات ===
+  if (e.altKey && !e.ctrlKey && !e.shiftKey) {
+    const num = parseInt(e.key, 10);
+    if (num >= 1 && num <= 9) {
+      e.preventDefault();
+      const sorted = Object.values(allChats)
+        .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.timestamp - a.timestamp);
+      const target = sorted[num - 1];
+      if (target) {
+        switchChat(target.id);
+        toast(`💬 ${target.title || 'محادثة'}`);
+      } else {
+        toast(`⚠️ لا توجد محادثة رقم ${num}`);
+      }
+      return;
+    }
+  }
+  
+  // === Escape ===
+  if (e.key === 'Escape') {
+    ['settingsModal','themesModal','soundsModal','personasModal','shortcutsModal','syncModal','shareModal','statsModal','encryptionModal','notificationsModal','memoryModal'].forEach(id => closeModal(id));
+    if (searchInput.value) { searchInput.value = ''; renderSidebar(); }
+    closeLightbox();
+    closeReadingMode();
+  }
 });
 
 async function handleFiles(files) {
@@ -875,8 +928,14 @@ function switchChat(id) {
   
   chatInner.style.opacity = '0';
   setTimeout(() => {
-    currentChatId = id; localStorage.setItem('lastChatId', id); markAsRead(id);
-    chatInner.innerHTML = '';
+    
+    // 📝 استرجع المسودة إن وُجدت
+    try {
+      const draft = localStorage.getItem('draft_' + id);
+      input.value = draft || '';
+    } catch (e) {
+      input.value = '';
+    }
     const ns = allChats[id].messages.filter(m => m.role !== 'system');
     if (ns.length === 0) renderWelcome();
     else ns.forEach(msg => { const idx = allChats[id].messages.indexOf(msg); addMessage(msg.role, msg.role === 'user' ? (msg.displayText || msg.content) : msg.content, false, idx, msg.attachmentNames, msg.attachmentsData, msg.rating, msg.reactions, msg.toolLog); });
@@ -1095,6 +1154,10 @@ if (allChats[currentChatId].messages[0]?.role === 'system') {
   const fs = [...attachedFiles]; const an = fs.map(f => f.name);
   const ad = fs.map(f => ({ name: f.name, type: f.type, dataUrl: f.dataUrl || null }));
   const cc = composeMessage(text, fs); const dt = text || '(بدون نص)';
+  
+    // 📝 امسح المسودة (تم الإرسال)
+  try { localStorage.removeItem('draft_' + currentChatId); } catch (e) {}
+  
   input.value = ''; attachedFiles = []; renderAttachmentsPreview();
   const umi = allChats[currentChatId].messages.length;
   allChats[currentChatId].messages.push({ role: "user", content: cc, displayText: dt, attachmentNames: an.length > 0 ? an : null, attachmentsData: ad.length > 0 ? ad : null });
@@ -1293,7 +1356,39 @@ async function streamResponse() {
         toast('⏹️ تم الإيقاف');
       }
     } else {
-      lb.textContent = 'خطأ: ' + err.message;
+      // ❌ فشل الاتصال — اعرض زر إعادة المحاولة
+      lb.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="color:#f87171; font-weight:600;">❌ خطأ: ${escapeHtml(err.message)}</div>
+          <button class="retry-btn" style="
+            padding:8px 16px; 
+            background:linear-gradient(135deg,#fbbf24,#ec4899); 
+            color:#fff; 
+            border:none; 
+            border-radius:10px; 
+            font-family:inherit; 
+            font-size:13px; 
+            font-weight:700; 
+            cursor:pointer; 
+            align-self:flex-start;
+            box-shadow:0 4px 14px rgba(251,191,36,0.4);
+          ">🔄 إعادة المحاولة</button>
+        </div>
+      `;
+      const retryBtn = lb.querySelector('.retry-btn');
+      if (retryBtn) {
+        retryBtn.onclick = () => {
+          // احذف آخر رسالة assistant إن وُجدت
+          const msgs = allChats[currentChatId].messages;
+          if (msgs[msgs.length - 1]?.role === 'assistant') msgs.pop();
+          // احذف الفقاعة
+          const msgEl = lb.closest('.msg');
+          if (msgEl) msgEl.remove();
+          saveAllChats();
+          // أعد المحاولة
+          streamResponse();
+        };
+      }
       playSound('error');
     }
   } finally {
@@ -1687,13 +1782,18 @@ async function activateIncognito() {
     return;
   }
   
-  const ok = confirm(
-    '🕵️ وضع التخفي\n\n' +
+  const ok = await window.mkConfirm(
     '• الرسائل الجديدة في هذه المحادثة لن تُحفظ\n' +
     '• لن تُرفع للسحابة\n' +
     '• عند الإيقاف أو تغيير المحادثة، ستعود المحادثة كما كانت قبل التفعيل\n' +
-    '• كل الرسائل الجديدة تُمحى نهائياً\n\n' +
-    'هل تريد المتابعة؟'
+    '• كل الرسائل الجديدة تُمحى نهائياً',
+    {
+      type: 'warning',
+      title: '🕵️ وضع التخفي',
+      icon: '🕵️',
+      confirmLabel: 'تفعيل',
+      cancelLabel: 'إلغاء'
+    }
   );
   if (!ok) return;
   
@@ -2788,6 +2888,108 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeMoreMenu();
 });
 
+// ═══════ Drag & Drop للملفات ═══════
+(function dragAndDrop() {
+  let dragCounter = 0;
+  
+  function showDragOverlay() {
+    let overlay = document.getElementById('dragOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'dragOverlay';
+      overlay.className = 'drag-overlay';
+      overlay.innerHTML = `
+        <div class="drag-overlay-inner">
+          <div class="drag-icon">📎</div>
+          <div class="drag-title">أسقط الملفات هنا</div>
+          <div class="drag-sub">صور، PDF، نصوص...</div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    }
+    requestAnimationFrame(() => overlay.classList.add('show'));
+  }
+  
+  function hideDragOverlay() {
+    const overlay = document.getElementById('dragOverlay');
+    if (overlay) {
+      overlay.classList.remove('show');
+      setTimeout(() => overlay.remove(), 300);
+    }
+  }
+  
+  // عدّاد لتجنب الوميض عند المرور بأبناء العناصر
+  document.addEventListener('dragenter', (e) => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    dragCounter++;
+    if (dragCounter === 1) showDragOverlay();
+  });
+  
+  document.addEventListener('dragover', (e) => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  
+  document.addEventListener('dragleave', (e) => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      hideDragOverlay();
+    }
+  });
+  
+  document.addEventListener('drop', (e) => {
+    if (!e.dataTransfer.files.length) return;
+    e.preventDefault();
+    dragCounter = 0;
+    hideDragOverlay();
+    
+    // 🚫 لا تقبل الإسقاط في وضع القراءة
+    if (typeof isReadOnly !== 'undefined' && isReadOnly) {
+      if (typeof toast === 'function') toast('⚠️ لا يمكن الإرفاق في وضع القراءة');
+      return;
+    }
+    
+    // ✅ معالجة الملفات
+    if (typeof handleFiles === 'function') {
+      handleFiles(e.dataTransfer.files);
+      if (typeof toast === 'function') toast(`📎 تم إرفاق ${e.dataTransfer.files.length} ملف`);
+    }
+  });
+})();
 
+// ═══════ 📝 Auto-save للمسودات ═══════
+(function draftAutoSave() {
+  let draftTimer = null;
+  
+  const saveDraft = () => {
+    if (!currentChatId) return;
+    const val = input.value;
+    try {
+      if (val.trim()) {
+        localStorage.setItem('draft_' + currentChatId, val);
+      } else {
+        localStorage.removeItem('draft_' + currentChatId);
+      }
+    } catch (e) {}
+  };
+  
+  // حفظ أثناء الكتابة (مع تأخير)
+  input.addEventListener('input', () => {
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(saveDraft, 400);
+  });
+  
+  // حفظ فوري عند مغادرة الصفحة
+  window.addEventListener('beforeunload', saveDraft);
+  
+  // حفظ عند فقدان التركيز
+  input.addEventListener('blur', saveDraft);
+  
+  console.log('📝 Draft auto-save ready');
+})();
 
 init();
