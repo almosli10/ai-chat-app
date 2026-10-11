@@ -607,7 +607,13 @@
     reload: async () => { await loadPlan(); await loadUsage(); },
     getPlan: () => currentPlan,
     getUsage: () => ({ ...usageCache }),
-    openPanel: openUsagePanel
+    openPanel: openUsagePanel,
+    // 🧪 أداة اختبار (يمكن حذفها لاحقًا)
+    _testSetUsage: (tokens) => {
+      usageCache.tokens = tokens;
+      updateUsageBadge();
+      checkUsageWarnings();
+    }
   };
 
     // ═══ CSS لبطاقات الترقية ═══
