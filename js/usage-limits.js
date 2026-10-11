@@ -105,7 +105,7 @@
     };
   }
 
-    // ═══ مكافأة الدخول اليومي (+500 توكن) ═══
+  // ═══ مكافأة الدخول اليومي (+500 توكن) ═══
   async function checkDailyReward() {
     if (!window.sbClient || !window.currentUserId) return;
     
@@ -114,16 +114,37 @@
     
     if (lastReward === today) return; // حصل عليها اليوم بالفعل
     
-    const BONUS = 500;
-    
     try {
-      // سجّل المكافأة في Supabase
+      // 🔍 تحقق من Supabase: هل يوجد bonus اليوم؟
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      
+      const { data: existing, error: checkErr } = await window.sbClient
+        .from('usage_logs')
+        .select('id')
+        .eq('user_id', window.currentUserId)
+        .eq('type', 'bonus')
+        .gte('created_at', todayStart.toISOString())
+        .limit(1);
+      
+      if (checkErr) throw checkErr;
+      
+      if (existing && existing.length > 0) {
+        // ✅ موجود في السيرفر → احفظ في localStorage ولا تمنح مرة أخرى
+        localStorage.setItem('lastDailyReward', today);
+        console.log('🎁 Daily reward already granted today (from server)');
+        return;
+      }
+      
+      // 🎁 امنح المكافأة
+      const BONUS = 500;
       await window.sbClient.from('usage_logs').insert({
         user_id: window.currentUserId,
         type: 'bonus',
         tokens: BONUS
       });
       
+      // ✅ احفظ في localStorage فورًا (لمنع تكرار من نفس التبويب)
       localStorage.setItem('lastDailyReward', today);
       
       // حدّث العرض مباشرة
