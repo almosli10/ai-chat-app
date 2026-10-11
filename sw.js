@@ -2,7 +2,7 @@
 // SERVICE WORKER — استراتيجية caching محسّنة + تحديثات فورية
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'v6.3.0';
+const VERSION = 'v6.4.0';
 const CACHE_STATIC = `ai-chat-static-${VERSION}`;
 const CACHE_RUNTIME = `ai-chat-runtime-${VERSION}`;
 
