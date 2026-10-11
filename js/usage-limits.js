@@ -206,39 +206,93 @@
   }
 
   // ═══ بناء قسم الترقية (منفصل لتجنب تداخل template literals) ═══
-    function buildUpgradeSection() {
+      function buildUpgradeSection() {
+    // VIP: رسالة بلا حدود
     if (currentPlan === 'vip') {
       return '<div style="text-align:center; padding:16px; font-size:12px; opacity:0.7;">👑 أنت في الباقة الخاصة — بلا حدود!</div>';
     }
     
-    const wallet = 'TNatT4u4utHqv8qBUNjWNG4NrJpuk222T';
+    // Premium: أعلى باقة
+    if (currentPlan === 'premium') {
+      return [
+        '<div style="text-align:center; padding:18px 14px; background:linear-gradient(135deg, rgba(236,72,153,0.1), rgba(168,85,247,0.08)); border:1px solid rgba(236,72,153,0.35); border-radius:16px;">',
+        '  <div style="font-size:32px; margin-bottom:8px;">💎</div>',
+        '  <div style="font-size:14px; font-weight:800; color:#ec4899; margin-bottom:6px;">أنت في أعلى باقة</div>',
+        '  <div style="font-size:12px; opacity:0.7; line-height:1.7;">استمتع بكل الميزات والحدود الكاملة ✨</div>',
+        '</div>'
+      ].join('');
+    }
     
-    return [
-      '<div class="usage-upgrade-cta">',
-      '  <div style="font-size:13px; font-weight:700; margin-bottom:12px;">🚀 ترقَّ لباقة أعلى</div>',
-      '  <div class="plans-grid">',
-      '    <button class="plan-card" onclick="window.upgradeToPlan(\'pro\')">',
-      '      <div class="plan-icon">⭐</div>',
-      '      <div class="plan-name">احترافي</div>',
-      '      <div class="plan-price">$10 / شهر</div>',
-      '      <div class="plan-features">50K توكن/يوم<br>30 صورة<br>60 دقيقة مكالمة</div>',
-      '      <div class="plan-cta">اشترك الآن</div>',
-      '    </button>',
-      '    <button class="plan-card featured" onclick="window.upgradeToPlan(\'premium\')">',
-      '      <div class="plan-badge-best">الأفضل</div>',
-      '      <div class="plan-icon">💎</div>',
-      '      <div class="plan-name">بريميوم</div>',
-      '      <div class="plan-price">$18 / شهر</div>',
-      '      <div class="plan-features">110K توكن/يوم<br>100 صورة<br>300 دقيقة مكالمة</div>',
-      '      <div class="plan-cta">اشترك الآن</div>',
-      '    </button>',
-      '  </div>',
-      '  <div style="font-size:11px; opacity:0.6; margin-top:12px; text-align:center; line-height:1.7;">',
-      '    💰 الدفع بـ USDT (TRC20) مباشرة<br>',
-      '    📋 <b>سيتم التحقق يدوياً خلال 24 ساعة</b>',
-      '  </div>',
-      '</div>'
-    ].join('\n');
+    const parts = [];
+    parts.push('<div class="usage-upgrade-cta">');
+    parts.push('  <div style="font-size:14px; font-weight:800; margin-bottom:14px; text-align:center; color:#fbbf24;">🚀 افتح ميزات أكثر مع باقة أعلى</div>');
+    
+    // ===== بطاقة احترافي (تظهر فقط إذا لم يكن المستخدم احترافيًا) =====
+    if (currentPlan !== 'pro') {
+      parts.push('  <div class="plan-full" onclick="window.upgradeToPlan(\'pro\')">');
+      parts.push('    <div class="plan-full-header">');
+      parts.push('      <div class="plan-full-icon">⭐</div>');
+      parts.push('      <div style="flex:1; text-align:right;">');
+      parts.push('        <div class="plan-full-title">احترافي</div>');
+      parts.push('        <div class="plan-full-sub">للاستخدام اليومي</div>');
+      parts.push('      </div>');
+      parts.push('      <div class="plan-full-price">$10<span>/شهر</span></div>');
+      parts.push('    </div>');
+      parts.push('    <div class="plan-full-limits">');
+      parts.push('      <span>⚡ 50K توكن/يوم</span>');
+      parts.push('      <span>🖼️ 5 صور/يوم</span>');
+      parts.push('      <span>📞 60 دقيقة/يوم</span>');
+      parts.push('    </div>');
+      parts.push('    <div class="plan-full-feat-title">✨ سيفتح لك:</div>');
+      parts.push('    <ul class="plan-full-features">');
+      parts.push('      <li>📞 مكالمة صوتية</li>');
+      parts.push('      <li>🎨 وضع الرسم</li>');
+      parts.push('      <li>🖼️ الخلفية اليومية</li>');
+      parts.push('      <li>🕵️ وضع التخفي</li>');
+      parts.push('      <li>🎵 قراءة الردود</li>');
+      parts.push('      <li>📤 تصدير ومشاركة</li>');
+      parts.push('      <li>📚 15 شخصية</li>');
+      parts.push('      <li>😊 8 مزاجات</li>');
+      parts.push('    </ul>');
+      parts.push('    <div class="plan-full-cta">اشترك الآن — $10/شهر</div>');
+      parts.push('  </div>');
+    }
+    
+    // ===== بطاقة بريميوم =====
+    parts.push('  <div class="plan-full featured" onclick="window.upgradeToPlan(\'premium\')">');
+    parts.push('    <div class="plan-full-badge">💎 الأفضل قيمة</div>');
+    parts.push('    <div class="plan-full-header">');
+    parts.push('      <div class="plan-full-icon">💎</div>');
+    parts.push('      <div style="flex:1; text-align:right;">');
+    parts.push('        <div class="plan-full-title">بريميوم</div>');
+    parts.push('        <div class="plan-full-sub">للمستخدم المحترف</div>');
+    parts.push('      </div>');
+    parts.push('      <div class="plan-full-price">$18<span>/شهر</span></div>');
+    parts.push('    </div>');
+    parts.push('    <div class="plan-full-limits">');
+    parts.push('      <span>⚡ 110K توكن/يوم</span>');
+    parts.push('      <span>🖼️ 15 صورة/يوم</span>');
+    parts.push('      <span>📞 300 دقيقة/يوم</span>');
+    parts.push('    </div>');
+    parts.push('    <div class="plan-full-feat-title">✨ كل ميزات الاحترافي وأكثر:</div>');
+    parts.push('    <ul class="plan-full-features">');
+    parts.push('      <li>⚡ توكنات مضاعفة</li>');
+    parts.push('      <li>🖼️ صور مضاعفة</li>');
+    parts.push('      <li>📞 مكالمات أطول</li>');
+    parts.push('      <li>📚 25 شخصية كاملة</li>');
+    parts.push('      <li>😊 13 مزاج كامل</li>');
+    parts.push('      <li>🤖 وكيل مكثّف (500)</li>');
+    parts.push('    </ul>');
+    parts.push('    <div class="plan-full-cta">اشترك الآن — $18/شهر</div>');
+    parts.push('  </div>');
+    
+    parts.push('  <div style="font-size:11px; opacity:0.6; margin-top:14px; text-align:center; line-height:1.7;">');
+    parts.push('    💰 الدفع بـ USDT (TRC20) مباشرة<br>');
+    parts.push('    📋 <strong>سيتم التحقق يدوياً خلال 24 ساعة</strong>');
+    parts.push('  </div>');
+    parts.push('</div>');
+    
+    return parts.join('\n');
   }
 
   // ═══ نافذة الاستهلاك والباقات ═══
@@ -500,6 +554,146 @@
     getUsage: () => ({ ...usageCache }),
     openPanel: openUsagePanel
   };
+
+    // ═══ CSS لبطاقات الترقية ═══
+  (function injectPlanCardsCSS() {
+    if (document.getElementById('plan-cards-css')) return;
+    const style = document.createElement('style');
+    style.id = 'plan-cards-css';
+    style.textContent = `
+      .plan-full {
+        background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+        border: 1.5px solid rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
+        padding: 18px 16px;
+        margin-bottom: 12px;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.34, 1.3, 0.64, 1);
+        position: relative;
+        overflow: hidden;
+      }
+      .plan-full:hover {
+        border-color: #fbbf24;
+        background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(236,72,153,0.05));
+        transform: translateY(-3px);
+        box-shadow: 0 14px 32px -10px rgba(251, 191, 36, 0.45);
+      }
+      .plan-full.featured {
+        border-color: rgba(236, 72, 153, 0.5);
+        background: linear-gradient(135deg, rgba(236,72,153,0.1), rgba(168,85,247,0.06));
+      }
+      .plan-full.featured:hover {
+        border-color: #ec4899;
+        box-shadow: 0 14px 32px -10px rgba(236, 72, 153, 0.55);
+      }
+      .plan-full-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        padding: 4px 10px;
+        background: linear-gradient(135deg, #ec4899, #a855f7);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 800;
+        border-radius: 999px;
+        letter-spacing: 0.3px;
+        box-shadow: 0 4px 12px rgba(236, 72, 153, 0.4);
+      }
+      .plan-full-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+      .plan-full-icon {
+        font-size: 32px;
+        flex-shrink: 0;
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+      }
+      .plan-full-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: #fff;
+        margin-bottom: 2px;
+      }
+      .plan-full-sub {
+        font-size: 11px;
+        color: rgba(255,255,255,0.55);
+      }
+      .plan-full-price {
+        font-size: 22px;
+        font-weight: 800;
+        color: #fbbf24;
+        white-space: nowrap;
+      }
+      .plan-full-price span {
+        font-size: 11px;
+        opacity: 0.7;
+        font-weight: 500;
+        margin-right: 2px;
+      }
+      .plan-full-limits {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      .plan-full-limits span {
+        padding: 5px 10px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        color: rgba(255,255,255,0.9);
+      }
+      .plan-full-feat-title {
+        font-size: 12px;
+        font-weight: 700;
+        color: #fbbf24;
+        margin-bottom: 8px;
+      }
+      .plan-full-features {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 14px 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+      .plan-full-features li {
+        font-size: 11.5px;
+        color: rgba(255,255,255,0.88);
+        padding: 4px 0;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .plan-full-cta {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #fbbf24, #ec4899);
+        color: #fff;
+        text-align: center;
+        font-size: 13.5px;
+        font-weight: 800;
+        border-radius: 12px;
+        box-shadow: 0 6px 18px rgba(251, 191, 36, 0.35);
+      }
+      .plan-full.featured .plan-full-cta {
+        background: linear-gradient(135deg, #ec4899, #a855f7);
+        box-shadow: 0 6px 18px rgba(236, 72, 153, 0.45);
+      }
+      @media (max-width: 480px) {
+        .plan-full-features { grid-template-columns: 1fr; }
+        .plan-full-price { font-size: 18px; }
+        .plan-full-title { font-size: 14px; }
+        .plan-full-icon { font-size: 26px; }
+      }
+    `;
+    document.head.appendChild(style);
+  })();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init, { once: true });
