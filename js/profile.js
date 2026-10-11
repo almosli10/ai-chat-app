@@ -48,17 +48,20 @@ async function updateProfile({ full_name, bio, theme, font }) {
   const supabase = window.sbClient;
   const { data: { user } } = await supabase.auth.getUser();
   
-  // 1. تحديث جدول profiles
+  // 1) حدّث profiles table
   const { error } = await supabase
     .from('profiles')
-    .update({ full_name, bio, theme, font, updated_at: new Date() })
+    .update({ full_name, bio, theme, font, updated_at: new Date().toISOString() })
     .eq('id', user.id);
   if (error) throw error;
 
-  // 2. تحديث بيانات المصادقة (user_metadata) لكي يظهر الاسم في القائمة الجانبية
+  // 2) حدّث user_metadata (احتياطي)
   await supabase.auth.updateUser({
     data: { full_name: full_name }
   });
+
+  // 3) أجبر الجلسة على التحديث
+  await supabase.auth.refreshSession();
 }
 
 async function uploadAvatar(file) {
@@ -192,6 +195,13 @@ function bindProfileEvents(modalEl, onChange) {
       if (typeof applyTheme === 'function') applyTheme(themeVal);
       applyFont(fontVal);
 
+      // ⭐ حدّث بطاقة المستخدم كاملة (تقرأ من profiles)
+      if (window.sbClient) {
+        const { data: { user: freshUser } } = await window.sbClient.auth.getUser();
+        if (freshUser && typeof window.updateUserCard === 'function') {
+          await window.updateUserCard(freshUser);
+        }
+      }
       onChange?.({ saved: true });
     } catch (err) {
       alert('فشل الحفظ: ' + err.message);

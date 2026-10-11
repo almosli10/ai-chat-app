@@ -160,7 +160,7 @@
       window.setCurrentUserId(user.id);
     }
     updateUserUI();
-    updateUserCard(user);
+    await updateUserCard(user);
     hideAuthScreen();
 
     // أعد المزامنة مع user_id
@@ -283,16 +283,32 @@
   };
 
   // ═══════ USER CARD ═══════
-  function updateUserCard(user) {
+  async function updateUserCard(user) {
     const card = document.getElementById('userCard');
     const avatar = document.getElementById('userAvatar');
     const nameEl = document.getElementById('userName');
     const emailEl = document.getElementById('userEmail');
     if (!card || !user) return;
 
-    const meta = user.user_metadata || {};
-    const fullName = meta.full_name || meta.name || user.email?.split('@')[0] || 'مستخدم';
+    const meta = { ...(user.user_metadata || {}) };
     const email = user.email || '';
+
+    // ✅ اقرأ من profiles table — المصدر الموثوق
+    try {
+      const { data: profile } = await window.sbClient
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (profile) {
+        if (profile.full_name) meta.full_name = profile.full_name;
+        if (profile.avatar_url) meta.avatar_url = profile.avatar_url;
+      }
+    } catch (e) {
+      console.warn('profile fetch in card failed:', e);
+    }
+
+    const fullName = meta.full_name || meta.name || email.split('@')[0] || 'مستخدم';
     const avatarUrl = meta.avatar_url || meta.picture || '';
 
     // Avatar
@@ -390,6 +406,10 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => tryInit(), { once: true });
   } else {
+
+  // اجعل الدالة متاحة عالميًا
+  window.updateUserCard = updateUserCard;
+
     tryInit();
   }
 
