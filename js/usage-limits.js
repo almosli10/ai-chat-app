@@ -61,14 +61,18 @@
       if (error) throw error;
       
       usageCache = { tokens: 0, image: 0, voice: 0, agent: 0 };
+      let bonusTotal = 0;
       (data || []).forEach(r => {
-        if (usageCache[r.type] === undefined) return;
         if (r.type === 'tokens') {
           usageCache.tokens += Number(r.tokens) || 0;
-        } else {
+        } else if (r.type === 'bonus') {
+          bonusTotal += Number(r.tokens) || 0;
+        } else if (usageCache[r.type] !== undefined) {
           usageCache[r.type]++;
         }
       });
+      // 🎁 اخصم المكافآت من الاستهلاك الفعلي
+      usageCache.tokens = Math.max(0, usageCache.tokens - bonusTotal);
       
       // 🔄 إذا تغير اليوم، أعد تعيين الإشعارات
       const today = new Date().toDateString();
@@ -99,6 +103,46 @@
       limit,
       plan: currentPlan
     };
+  }
+
+    // ═══ مكافأة الدخول اليومي (+500 توكن) ═══
+  async function checkDailyReward() {
+    if (!window.sbClient || !window.currentUserId) return;
+    
+    const today = new Date().toDateString();
+    const lastReward = localStorage.getItem('lastDailyReward');
+    
+    if (lastReward === today) return; // حصل عليها اليوم بالفعل
+    
+    const BONUS = 500;
+    
+    try {
+      // سجّل المكافأة في Supabase
+      await window.sbClient.from('usage_logs').insert({
+        user_id: window.currentUserId,
+        type: 'bonus',
+        tokens: BONUS
+      });
+      
+      localStorage.setItem('lastDailyReward', today);
+      
+      // حدّث العرض مباشرة
+      usageCache.tokens = Math.max(0, (usageCache.tokens || 0) - BONUS);
+      updateUsageBadge();
+      
+      // إشعارات
+      setTimeout(() => {
+        if (typeof toast === 'function') {
+          toast('🎁 مكافأة دخول يومي: +500 توكن!', 4000);
+        }
+        if (typeof playSound === 'function') playSound('notif');
+        if (typeof fireConfetti === 'function') fireConfetti(30);
+      }, 1500);
+      
+      console.log('🎁 Daily reward granted: +' + BONUS);
+    } catch (e) {
+      console.warn('Daily reward failed:', e);
+    }
   }
 
     // ═══ فحص وإظهار إشعارات اقتراب النفاد ═══
@@ -598,6 +642,7 @@
     await loadPlan();
     await loadUsage();
     hookFunctions();
+    await checkDailyReward();  // 🎁 المكافأة اليومية
     
     setTimeout(() => {
       updateUsageBadge();
@@ -661,6 +706,20 @@
       checkUsageWarnings();
     }
   };
+
+    // ═══ CSS لإشعار المكافأة ═══
+  (function injectBonusCSS() {
+    if (document.getElementById('bonus-css')) return;
+    const style = document.createElement('style');
+    style.id = 'bonus-css';
+    style.textContent = `
+      @keyframes bonusGlow {
+        0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.5); }
+        50% { box-shadow: 0 0 40px rgba(16, 185, 129, 0.9); }
+      }
+    `;
+    document.head.appendChild(style);
+  })();
 
     // ═══ CSS للنبض أثناء البث ═══
   (function injectStreamingCSS() {
