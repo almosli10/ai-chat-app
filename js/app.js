@@ -506,7 +506,21 @@ function closeLightbox() { document.getElementById('lightbox').classList.remove(
 async function deriveKey(passphrase, salt) { const enc = new TextEncoder(); const k = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']); return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, k, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']); }
 async function getSalt() { let s = localStorage.getItem('encSalt'); if (!s) { const sa = crypto.getRandomValues(new Uint8Array(16)); s = btoa(String.fromCharCode(...sa)); localStorage.setItem('encSalt', s); } return new Uint8Array(atob(s).split('').map(c => c.charCodeAt(0))); }
 async function initEncryption() { const p = localStorage.getItem('encPassphrase'); if (!p) { encKey = null; updateEncBadge(); return; } try { const s = await getSalt(); encKey = await deriveKey(p, s); updateEncBadge(); } catch (e) { encKey = null; } }
-function updateEncBadge() { if (encKey) { encBadge.style.display = 'inline-flex'; document.getElementById('disableEncBtn').style.display = 'inline-block'; document.getElementById('encStatusText').innerHTML = '✅ التشفير <b>مفعّل</b>.'; } else { encBadge.style.display = 'none'; document.getElementById('disableEncBtn').style.display = 'none'; document.getElementById('encStatusText').innerHTML = '⭕ التشفير <b>معطّل</b>.'; } }
+function updateEncBadge() {
+  const encBadge = document.getElementById('encBadge');
+  const disableBtn = document.getElementById('disableEncBtn');
+  const statusText = document.getElementById('encStatusText');
+  
+  if (encKey) {
+    if (encBadge) encBadge.style.display = 'inline-flex';
+    if (disableBtn) disableBtn.style.display = 'inline-block';
+    if (statusText) statusText.innerHTML = '✅ التشفير <b>مفعّل</b>.';
+  } else {
+    if (encBadge) encBadge.style.display = 'none';
+    if (disableBtn) disableBtn.style.display = 'none';
+    if (statusText) statusText.innerHTML = '⭕ التشفير <b>معطّل</b>.';
+  }
+}
 function bufToB64(b) { const a = new Uint8Array(b); let s = ''; for (let i = 0; i < a.length; i++) s += String.fromCharCode(a[i]); return btoa(s); }
 function b64ToBuf(b) { const s = atob(b); const a = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a.buffer; }
 async function encryptData(o) { if (!encKey) return o; const iv = crypto.getRandomValues(new Uint8Array(12)); const d = new TextEncoder().encode(JSON.stringify(o)); const c = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, encKey, d); return 'ENC:' + bufToB64(iv.buffer) + ':' + bufToB64(c); }
@@ -793,9 +807,14 @@ function deleteChat(id) {
 }
 function setReadOnly(v) {
   isReadOnly = v;
-  document.getElementById('readonlyBadge').style.display = v ? 'inline-flex' : 'none';
-  document.getElementById('inputRow').style.display = v ? 'none' : 'flex';
-  document.getElementById('inputHint').style.display = v ? 'none' : 'block';
+  const roBadge = document.getElementById('readonlyBadge');
+  const inputRow = document.getElementById('inputRow');
+  const inputHint = document.getElementById('inputHint');
+  
+  if (roBadge) roBadge.style.display = v ? 'inline-flex' : 'none';
+  if (inputRow) inputRow.style.display = v ? 'none' : 'flex';
+  if (inputHint) inputHint.style.display = v ? 'none' : 'block';
+  
   const tb = document.getElementById('templatesBar');
   if (tb) tb.style.display = v ? 'none' : 'flex';
 }
@@ -1354,7 +1373,17 @@ function importData(e) {
   r.readAsText(f);
 }
 
-window.addEventListener('online', () => { offlineBadge.style.display = 'none'; toast('🌐'); pullAllFromCloud(true); });
+window.addEventListener('online', () => { 
+  const ob = document.getElementById('offlineBadge');
+  if (ob) ob.style.display = 'none'; 
+  toast('🌐'); 
+  pullAllFromCloud(true); 
+});
+window.addEventListener('offline', () => { 
+  const ob = document.getElementById('offlineBadge');
+  if (ob) ob.style.display = 'inline-flex'; 
+  toast('📴'); 
+});
 window.addEventListener('offline', () => { offlineBadge.style.display = 'inline-flex'; toast('📴'); });
 if (!navigator.onLine) offlineBadge.style.display = 'inline-flex';
 document.addEventListener('visibilitychange', () => { if (!document.hidden && currentChatId) markAsRead(currentChatId); });
