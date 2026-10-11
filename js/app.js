@@ -1858,27 +1858,40 @@ function splitForTTS(text, maxLen) {
 
 function playEdgeTTSChunk(text, voice, rate, pitch) {
   return new Promise((resolve) => {
-    // استخدم سرعة Google الثابتة
     const url = `/api/tts?text=${encodeURIComponent(text)}&rate=0.9`;
     const audio = new Audio(url);
     
-    // 🎭 تطبيق المشاعر عبر تغيير السرعة والنبرة
     let playbackRate = 1.0;
-    if (rate.includes('+20%')) playbackRate = 1.35;        // حماس شديد
-    else if (rate.includes('+12%')) playbackRate = 1.2;    // فرح
-    else if (rate.includes('+5%')) playbackRate = 1.08;    // سؤال
-    else if (rate.includes('-10%')) playbackRate = 0.8;    // حزن
-    else if (rate.includes('-5%')) playbackRate = 0.9;     // هدوء
+    if (rate.includes('+20%')) playbackRate = 1.35;
+    else if (rate.includes('+12%')) playbackRate = 1.2;
+    else if (rate.includes('+5%')) playbackRate = 1.08;
+    else if (rate.includes('-10%')) playbackRate = 0.8;
+    else if (rate.includes('-5%')) playbackRate = 0.9;
     
     audio.playbackRate = playbackRate;
-    audio.preservesPitch = false; // ← هذا المهم: يغير النبرة مع السرعة
+    audio.preservesPitch = false;
     
     let finished = false;
     const finish = () => {
       if (finished) return;
       finished = true;
+      if (window._currentVoiceAudio?.audio === audio) {
+        window._currentVoiceAudio = null;
+      }
       resolve();
     };
+    
+    // ✅ خزّن مرجع للصوت الحالي + دالة إيقافه
+    window._currentVoiceAudio = {
+      audio: audio,
+      stop: () => {
+        try { audio.pause(); } catch (e) {}
+        try { audio.currentTime = 0; } catch (e) {}
+        try { audio.src = ''; } catch (e) {}
+        finish();
+      }
+    };
+    
     audio.onended = finish;
     audio.onerror = finish;
     audio.play().catch(finish);
@@ -1906,11 +1919,21 @@ function endVoiceCall() {
   voiceCallActive = false;
   voiceCallProcessing = false;
   window.ttsSpeaking = false;
+  
+  // ✅ أوقف أي صوت TTS يعمل حاليًا (المكالمة الصوتية)
+  if (window._currentVoiceAudio) {
+    try { window._currentVoiceAudio.stop(); } catch (e) {}
+    window._currentVoiceAudio = null;
+  }
+  
   if (voiceCallRecognition) {
     try { voiceCallRecognition.stop(); } catch (e) {}
     voiceCallRecognition = null;
   }
+  
+  // احتياطي: أوقف أي speechSynthesis يعمل (لأزرار 🔊)
   try { window.speechSynthesis.cancel(); } catch (e) {}
+  
   document.getElementById('voiceCallOverlay').classList.remove('show');
   toast('📞 تم إنهاء المكالمة');
   playSound('click');
