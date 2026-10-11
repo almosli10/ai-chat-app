@@ -3,15 +3,15 @@
   'use strict';
 
   // ═══ إعدادات الباقات ═══
-  const PLAN_LIMITS = {
-    free:    { chat: 30,   image: 3,   voice: 5,    agent: 5,    name: 'مجاني',   icon: '🆓' },
-    pro:     { chat: 500,  image: 50,  voice: 60,   agent: 100,  name: 'احترافي', icon: '⭐' },
-    premium: { chat: 2000, image: 200, voice: 300,  agent: 500,  name: 'بريميوم', icon: '💎' },
-    vip:     { chat: Infinity, image: Infinity, voice: Infinity, agent: Infinity, name: 'خاص', icon: '👑' }
+    const PLAN_LIMITS = {
+    free:    { tokens: 10000,     image: 3,        voice: 5,        agent: 5,        name: 'مجاني',   icon: '🆓' },
+    pro:     { tokens: 50000,     image: 30,       voice: 60,       agent: 100,      name: 'احترافي', icon: '⭐' },
+    premium: { tokens: 110000,    image: 100,      voice: 300,      agent: 500,      name: 'بريميوم', icon: '💎' },
+    vip:     { tokens: Infinity,  image: Infinity, voice: Infinity, agent: Infinity, name: 'خاص',     icon: '👑' }
   };
 
   let currentPlan = 'free';
-  let usageCache = { chat: 0, image: 0, voice: 0, agent: 0 };
+  let usageCache = { tokens: 0, image: 0, voice: 0, agent: 0 };
   let cacheDate = null;
 
   // ═══ تحميل خطة المستخدم ═══
@@ -52,15 +52,20 @@
     try {
       const { data, error } = await window.sbClient
         .from('usage_logs')
-        .select('type')
+        .select('type, tokens')
         .eq('user_id', window.currentUserId)
         .gte('created_at', today.toISOString());
       
       if (error) throw error;
       
-      usageCache = { chat: 0, image: 0, voice: 0, agent: 0 };
+      usageCache = { tokens: 0, image: 0, voice: 0, agent: 0 };
       (data || []).forEach(r => {
-        if (usageCache[r.type] !== undefined) usageCache[r.type]++;
+        if (usageCache[r.type] === undefined) return;
+        if (r.type === 'tokens') {
+          usageCache.tokens += Number(r.tokens) || 0;
+        } else {
+          usageCache[r.type]++;
+        }
       });
       
       cacheDate = new Date().toDateString();
@@ -89,17 +94,17 @@
   }
 
   // ═══ تسجيل الاستخدام ═══
-  async function logUsage(type, tokens = 0) {
+  async function logUsage(type, amount = 1) {
     if (!window.sbClient || !window.currentUserId) return;
     
-    usageCache[type] = (usageCache[type] || 0) + 1;
+    usageCache[type] = (usageCache[type] || 0) + amount;
     updateUsageBadge();
     
     try {
       await window.sbClient.from('usage_logs').insert({
         user_id: window.currentUserId,
-        type,
-        tokens
+        type: type,
+        tokens: type === 'tokens' ? amount : 0
       });
     } catch (e) {
       console.warn('Usage log failed:', e);
@@ -162,8 +167,15 @@
     }
     
     const plan = PLAN_LIMITS[currentPlan] || PLAN_LIMITS.free;
-    const used = usageCache.chat || 0;
-    const limit = plan.chat;
+    const used = usageCache.tokens || 0;
+    const limit = plan.tokens;
+    
+    // تنسيق مختصر: 50000 → 50K
+    const fmt = (n) => {
+      if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+      return String(n);
+    };
     
     if (limit === Infinity) {
       badge.innerHTML = `<span style="font-size:14px;">👑</span><span>بلا حدود</span>`;
@@ -189,7 +201,7 @@
       badge.style.borderColor = borderColor;
       badge.style.color = textColor;
       badge.style.background = bg;
-      badge.innerHTML = `<span style="font-size:14px;">📊</span><span>${used}/${limit}</span>`;
+      badge.innerHTML = `<span style="font-size:14px;">⚡</span><span>${fmt(used)}/${fmt(limit)}</span>`;
     }
   }
 
@@ -208,16 +220,16 @@
       '    <button class="plan-card" onclick="window.upgradeToPlan(\'pro\')">',
       '      <div class="plan-icon">⭐</div>',
       '      <div class="plan-name">احترافي</div>',
-      '      <div class="plan-price">$5 / شهر</div>',
-      '      <div class="plan-features">500 رسالة<br>50 صورة<br>60 دقيقة مكالمة</div>',
+      '      <div class="plan-price">$10 / شهر</div>',
+      '      <div class="plan-features">50K توكن/يوم<br>30 صورة<br>60 دقيقة مكالمة</div>',
       '      <div class="plan-cta">اشترك الآن</div>',
       '    </button>',
       '    <button class="plan-card featured" onclick="window.upgradeToPlan(\'premium\')">',
       '      <div class="plan-badge-best">الأفضل</div>',
       '      <div class="plan-icon">💎</div>',
       '      <div class="plan-name">بريميوم</div>',
-      '      <div class="plan-price">$15 / شهر</div>',
-      '      <div class="plan-features">2000 رسالة<br>200 صورة<br>300 دقيقة مكالمة</div>',
+      '      <div class="plan-price">$18 / شهر</div>',
+      '      <div class="plan-features">110K توكن/يوم<br>100 صورة<br>300 دقيقة مكالمة</div>',
       '      <div class="plan-cta">اشترك الآن</div>',
       '    </button>',
       '  </div>',
@@ -237,7 +249,7 @@
     const plan = PLAN_LIMITS[currentPlan] || PLAN_LIMITS.free;
     
     const stats = [
-      { key: 'chat',   icon: '💬', name: 'الرسائل' },
+      { key: 'tokens', icon: '⚡', name: 'التوكنات' },
       { key: 'image',  icon: '🖼️', name: 'الصور' },
       { key: 'voice',  icon: '📞', name: 'المكالمات (دقيقة)' },
       { key: 'agent',  icon: '🤖', name: 'الوكيل' }
@@ -259,7 +271,7 @@
         '<div class="usage-stat-row">',
         '  <div class="usage-stat-head">',
         '    <span>' + s.icon + ' ' + s.name + '</span>',
-        '    <span class="usage-stat-num">' + (isUnlimited ? '∞' : (used + ' / ' + limit)) + '</span>',
+        '    <span class="usage-stat-num">' + (isUnlimited ? '∞' : (used.toLocaleString('ar-EG') + ' / ' + limit.toLocaleString('ar-EG'))) + '</span>',
         '  </div>',
         progressHtml,
         '</div>'
@@ -307,8 +319,11 @@
           return;
         }
         
+        // ⚡ للتوكنات: التسجيل الفعلي يصير بعد اكتمال الرد (في app.js)
         const result = orig.apply(this, arguments);
-        setTimeout(() => logUsage(type), 50);
+        if (type !== 'tokens') {
+          setTimeout(() => logUsage(type), 50);
+        }
         return result;
       };
       window[name].__usageHooked = true;
@@ -316,11 +331,18 @@
     };
     
     const hooked = [];
-    if (tryHook('send', 'chat')) hooked.push('send');
+    if (tryHook('send', 'tokens')) hooked.push('send');
     if (tryHook('generateImage', 'image')) hooked.push('generateImage');
     
     console.log('✅ Usage hooks:', hooked.join(', ') || 'waiting...');
   }
+
+  // ⚡ دالة عامة لتسجيل التوكنات (تُستدعى من app.js)
+  window.logTokenUsage = function(chars) {
+    if (!chars || chars <= 0) return;
+    const tokens = Math.max(1, Math.ceil(chars / 3));
+    logUsage('tokens', tokens);
+  };
 
   // ═══ نافذة "انتهى الرصيد" ═══
   function showLimitModal(type, check) {
@@ -328,10 +350,10 @@
     if (modal) modal.remove();
     
     const typeNames = {
-      chat: 'الرسائل',
-      image: 'الصور',
-      voice: 'المكالمات',
-      agent: 'الوكيل'
+      tokens: 'توكن',
+      image: 'صورة',
+      voice: 'دقيقة',
+      agent: 'استخدام'
     };
     
     modal = document.createElement('div');
@@ -365,7 +387,7 @@
     // اسأل عن TX ID
     const txId = prompt(
       `💳 للاشتراك في الباقة الـ${plan === 'pro' ? 'احترافية' : 'بريميوم'}:\n\n` +
-      `1. أرسل ${plan === 'pro' ? '$5' : '$15'} USDT (TRC20) إلى:\n` +
+      `1. أرسل ${plan === 'pro' ? '$10' : '$18'} USDT (TRC20) إلى:\n` +
       `TNatT4u4utHqv8qBUNjWNG4NrJpuk222T\n\n` +
       `2. انسخ TX ID من محفظتك والصقه هنا:`
     );

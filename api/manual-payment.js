@@ -5,8 +5,8 @@ import { createClient } from '@supabase/supabase-js';
 const WALLET_ADDRESS = 'TNatT4u4utHqv8qBUNjWNG4NrJpuk222T';
 
 const PRICES = {
-  pro: 5,
-  premium: 15
+  pro: 10,
+  premium: 18
 };
 
 export default async function handler(req, res) {

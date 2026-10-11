@@ -1079,6 +1079,15 @@ async function runAgentConversation() {
     actions.appendChild(ub); actions.appendChild(db);
     const rbtn = document.createElement('button'); rbtn.className = 'msg-action-btn'; rbtn.textContent = '😊'; rbtn.onclick = () => toggleReactionPicker(div, asstIndex); actions.appendChild(rbtn);
     playSound('receive');
+    
+    // ⚡ سجّل التوكنات
+    if (result.finalText && typeof window.logTokenUsage === 'function') {
+      const msgs = allChats[currentChatId].messages;
+      const userMsg = msgs[msgs.length - 2];
+      const userChars = (userMsg?.content || '').length;
+      window.logTokenUsage(userChars + result.finalText.length);
+    }
+    
     saveAllChats(); pushChatToCloud(allChats[currentChatId]); renderSidebar();
   } else { toast('⚠️ لم يحصل الوكيل على إجابة'); }
 }
@@ -1151,6 +1160,14 @@ async function streamResponse() {
     db.onclick = () => setRating(ai, 'down', ub, db);
     a.appendChild(ub); a.appendChild(db);
     const rbtn = document.createElement('button'); rbtn.className = 'msg-action-btn'; rbtn.textContent = '😊'; rbtn.onclick = () => toggleReactionPicker(p, ai); a.appendChild(rbtn);
+    // ⚡ سجّل التوكنات المستهلكة (تقدير: أحرف/3)
+    if (full && typeof window.logTokenUsage === 'function') {
+      const msgs = allChats[currentChatId].messages;
+      const userMsg = msgs[msgs.length - 2];
+      const userChars = (userMsg?.content || '').length;
+      window.logTokenUsage(userChars + full.length);
+    }
+    
     saveAllChats(); addRegenerateButtonIfNeeded(); renderSidebar(); pushChatToCloud(allChats[currentChatId]);
     if (full.length > 200) {
       const rd = document.createElement('button');
@@ -1751,6 +1768,11 @@ playThinkingSound();
     const ai = chat.messages.length;
     chat.messages.push({ role: 'assistant', content: reply });
     addMessage('assistant', reply, false, ai);
+    // ⚡ سجّل التوكنات (صوت)
+    if (typeof window.logTokenUsage === 'function') {
+      window.logTokenUsage(text.length + reply.length);
+    }
+    
     saveAllChats();
     pushChatToCloud(chat);
     renderSidebar();
