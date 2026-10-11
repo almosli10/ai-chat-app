@@ -209,7 +209,15 @@ function bindProfileEvents(modalEl, onChange) {
   });
 
   $('#pfChangePass').addEventListener('click', async () => {
-    const pw = prompt('كلمة المرور الجديدة (٦ أحرف على الأقل):');
+    const pw = await window.mkPrompt('كلمة المرور الجديدة (6 أحرف على الأقل):', '', {
+      type: 'question',
+      title: 'تغيير كلمة المرور',
+      icon: '🔑',
+      inputType: 'password',
+      placeholder: '••••••••',
+      confirmLabel: 'تغيير',
+      cancelLabel: 'إلغاء'
+    });
     if (!pw || pw.length < 6) return;
     try {
       await changePassword(pw);
@@ -220,8 +228,24 @@ function bindProfileEvents(modalEl, onChange) {
   });
 
   $('#pfDeleteAcc').addEventListener('click', async () => {
-    if (!confirm('⚠️ سيتم حذف كل محادثاتك نهائيًا. متأكد؟')) return;
-    if (prompt('اكتب "حذف" للتأكيد:') !== 'حذف') return;
+    const ok = await window.mkConfirm('سيتم حذف حسابك وكل محادثاتك نهائيًا.\nهذا الإجراء لا يمكن التراجع عنه.', {
+      type: 'danger',
+      title: '⚠️ حذف الحساب',
+      icon: '💀',
+      confirmLabel: 'متابعة',
+      cancelLabel: 'إلغاء'
+    });
+    if (!ok) return;
+    
+    const typed = await window.mkPrompt('اكتب كلمة "حذف" لتأكيد الحذف النهائي:', '', {
+      type: 'danger',
+      title: 'تأكيد نهائي',
+      icon: '🔒',
+      placeholder: 'اكتب: حذف',
+      confirmLabel: 'تأكيد الحذف',
+      cancelLabel: 'إلغاء'
+    });
+    if (typed !== 'حذف') return;
     try {
       await deleteAccount();
       location.reload();

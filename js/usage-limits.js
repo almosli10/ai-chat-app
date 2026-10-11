@@ -1120,12 +1120,21 @@
       return;
     }
 
-    // اسأل عن TX ID
-    const txId = prompt(
-      `💳 للاشتراك في الباقة الـ${plan === 'pro' ? 'احترافية' : 'بريميوم'}:\n\n` +
+    // اسأل عن TX ID عبر نافذة مخصصة
+    const txId = await window.mkPrompt(
+      `للباقة الـ${plan === 'pro' ? 'احترافية' : 'بريميوم'}:\n\n` +
       `1. أرسل ${plan === 'pro' ? '$10' : '$18'} USDT (TRC20) إلى:\n` +
       `TNatT4u4utHqv8qBUNjWNG4NrJpuk222T\n\n` +
-      `2. انسخ TX ID من محفظتك والصقه هنا:`
+      `2. انسخ TX ID والصقه هنا:`,
+      '',
+      {
+        type: 'info',
+        title: '💳 الدفع',
+        icon: '💎',
+        placeholder: 'TX ID هنا...',
+        confirmLabel: 'إرسال الطلب',
+        cancelLabel: 'إلغاء'
+      }
     );
 
     if (!txId || txId.trim().length < 10) {

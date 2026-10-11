@@ -335,7 +335,18 @@ function renderMemoryList() {
     el.appendChild(div);
   });
 }
-function clearMemory() { if (!confirm('مسح كل الذاكرة؟')) return; userMemory = []; saveMemory(); renderMemoryList(); }
+async function clearMemory() {
+  const ok = await window.mkConfirm('سيتم مسح كل المعلومات التي تعلّمها المساعد عنك.', {
+    type: 'danger',
+    title: 'مسح الذاكرة',
+    icon: '🧠',
+    confirmLabel: 'مسح الكل',
+    cancelLabel: 'إلغاء'
+  });
+  if (!ok) return;
+  userMemory = []; saveMemory(); renderMemoryList();
+  if (typeof toast === 'function') toast('🧹 تم مسح الذاكرة');
+}
 function openReadingMode(text) { document.getElementById('readingContent').innerHTML = marked.parse(text); document.getElementById('readingMode').classList.add('show'); }
 function closeReadingMode() { document.getElementById('readingMode').classList.remove('show'); }
 function renderTemplates() {
@@ -527,7 +538,17 @@ async function encryptData(o) { if (!encKey) return o; const iv = crypto.getRand
 async function decryptData(p) { if (typeof p !== 'string' || !p.startsWith('ENC:')) return p; if (!encKey) throw new Error('مشفّر'); const parts = p.split(':'); const iv = new Uint8Array(b64ToBuf(parts[1])); const c = b64ToBuf(parts[2]); const pl = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, encKey, c); return JSON.parse(new TextDecoder().decode(pl)); }
 function openEncryption() { document.getElementById('passphraseInput').value = localStorage.getItem('encPassphrase') || ''; updateEncBadge(); document.getElementById('encryptionModal').classList.add('show'); }
 async function enableEncryption() { const p = document.getElementById('passphraseInput').value.trim(); if (p.length < 6) { toast('⚠️ قصيرة'); return; } localStorage.setItem('encPassphrase', p); await initEncryption(); if (!encKey) { toast('❌ فشل'); return; } closeModal('encryptionModal'); toast('🔐 تم'); }
-function disableEncryption() { if (!confirm('تعطيل؟')) return; localStorage.removeItem('encPassphrase'); encKey = null; updateEncBadge(); closeModal('encryptionModal'); toast('⭕ تم'); }
+async function disableEncryption() {
+  const ok = await window.mkConfirm('تعطيل التشفير؟\nالمحادثات الجديدة سترفع غير مشفّرة.', {
+    type: 'warning',
+    title: 'تعطيل التشفير',
+    icon: '🔓',
+    confirmLabel: 'تعطيل',
+    cancelLabel: 'إلغاء'
+  });
+  if (!ok) return;
+  localStorage.removeItem('encPassphrase'); encKey = null; updateEncBadge(); closeModal('encryptionModal'); toast('⭕ تم');
+}
 
 function updateNotifUI() {
   const perm = ('Notification' in window) ? Notification.permission : 'unsupported'; const box = document.getElementById('notifInfoBox');
@@ -799,8 +820,15 @@ function createNewChat() {
   currentChatId = id; saveAllChats(); setReadOnly(false); switchChat(id); input.focus(); playSound('click');
   if (window.innerWidth <= 900) { const sb = document.getElementById('sidebar'); if (sb.classList.contains('open')) toggleSidebar(); }
 }
-function deleteChat(id) {
-  if (!confirm('حذف؟')) return;
+async function deleteChat(id) {
+  const ok = await window.mkConfirm('سيتم حذف هذه المحادثة نهائيًا. لا يمكن التراجع.', {
+    type: 'danger',
+    title: 'حذف المحادثة',
+    icon: '🗑️',
+    confirmLabel: 'حذف نهائي',
+    cancelLabel: 'إلغاء'
+  });
+  if (!ok) return;
   delete allChats[id]; unreadChats.delete(id);
   
   // 🧹 امسح من ownChatIds
@@ -953,8 +981,15 @@ function renderReactionBadges(c, mi, rx) {
   Object.entries(rx).forEach(([e, cnt]) => { const b = document.createElement('span'); b.className = 'reaction-badge' + (mine === e ? ' mine' : ''); b.innerHTML = `${e} <span class="count">${cnt}</span>`; b.onclick = () => addReaction(mi, e); c.appendChild(b); });
 }
 
-function deleteSingleMessage(mi) {
-  if (!confirm('حذف الرسالة؟')) return;
+async function deleteSingleMessage(mi) {
+  const ok = await window.mkConfirm('سيتم حذف هذه الرسالة نهائيًا.', {
+    type: 'danger',
+    title: 'حذف الرسالة',
+    icon: '🗑️',
+    confirmLabel: 'حذف',
+    cancelLabel: 'إلغاء'
+  });
+  if (!ok) return;
   allChats[currentChatId].messages.splice(mi, 1); saveAllChats(); pushChatToCloud(allChats[currentChatId]);
   chatInner.innerHTML = '';
   const ns = allChats[currentChatId].messages.filter(m => m.role !== 'system');
@@ -968,9 +1003,16 @@ function setRating(mi, r, ub, db) {
   ub.classList.toggle('active-up', m.rating === 'up'); db.classList.toggle('active-down', m.rating === 'down');
   saveAllChats(); pushChatToCloud(allChats[currentChatId]);
 }
-function editMessage(mi) {
+async function editMessage(mi) {
   const c = allChats[currentChatId]; const m = c.messages[mi]; if (!m || m.role !== 'user') return;
-  const nt = prompt('عدّل:', m.displayText || m.content); if (nt === null || !nt.trim()) return;
+  const nt = await window.mkPrompt('عدّل الرسالة:', m.displayText || m.content, {
+    type: 'question',
+    title: 'تعديل الرسالة',
+    icon: '✏️',
+    confirmLabel: 'حفظ',
+    cancelLabel: 'إلغاء'
+  });
+  if (nt === null || !nt.trim()) return;
   c.messages = c.messages.slice(0, mi); saveAllChats();
   chatInner.innerHTML = '';
   const ns = c.messages.filter(x => x.role !== 'system');
@@ -1613,10 +1655,16 @@ window.toggleIncognito = function() {
     const snapshotCount = incognitoSnapshot ? 
       (allChats[incognitoSnapshot.chatId]?.messages.length - incognitoSnapshot.messages.length) : 0;
     
-    const ok = confirm(
-      '🕵️ إيقاف وضع التخفي؟\n\n' +
-      (snapshotCount > 0 ? `سيتم محو ${snapshotCount} رسالة أُرسلت في وضع التخفي.\n` : '') +
-      'سيعود سجل المحادثة كما كان قبل التفعيل.'
+    const ok = await window.mkConfirm(
+      (snapshotCount > 0 ? `سيتم محو ${snapshotCount} رسالة أُرسلت في وضع التخفي.\n\n` : '') +
+      'سيعود سجل المحادثة كما كان قبل التفعيل.',
+      {
+        type: 'warning',
+        title: 'إيقاف وضع التخفي',
+        icon: '🕵️',
+        confirmLabel: 'إيقاف',
+        cancelLabel: 'إلغاء'
+      }
     );
     if (!ok) return;
     
@@ -2297,9 +2345,16 @@ function undoCanvas() {
   if (typeof playSound === 'function') playSound('click');
 }
 
-function clearCanvas() {
+async function clearCanvas() {
   if (!fabricCanvas) return;
-  if (!confirm('مسح اللوحة بالكامل؟')) return;
+  const ok = await window.mkConfirm('سيتم مسح كل الرسومات في اللوحة.', {
+    type: 'danger',
+    title: 'مسح اللوحة',
+    icon: '🗑️',
+    confirmLabel: 'مسح',
+    cancelLabel: 'إلغاء'
+  });
+  if (!ok) return;
   fabricCanvas.clear();
   fabricCanvas.setBackgroundColor('#ffffff', () => fabricCanvas.renderAll());
   canvasHistory = [];

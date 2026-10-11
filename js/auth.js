@@ -276,7 +276,14 @@
 
   // تسجيل الخروج
   window.handleLogout = async function () {
-    if (!confirm('هل تريد تسجيل الخروج؟')) return;
+    const ok = await window.mkConfirm('هل تريد تسجيل الخروج؟', {
+      type: 'question',
+      title: 'تسجيل الخروج',
+      icon: '👋',
+      confirmLabel: 'نعم، خروج',
+      cancelLabel: 'إلغاء'
+    });
+    if (!ok) return;
     await signOut();
     if (typeof toast === 'function') toast('👋 تم تسجيل الخروج');
     setTimeout(() => window.location.reload(), 800);
