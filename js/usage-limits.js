@@ -108,6 +108,170 @@
     };
   }
 
+    // ═══ اقتراح الترقية الذكي ═══
+  const SUGGESTIONS_KEY = 'mishkat_upgrade_suggestions';
+  const LOCKED_USES_KEY = 'mishkat_locked_feature_uses';
+  const SUGGESTION_COOLDOWN = 7 * 24 * 60 * 60 * 1000; // 7 أيام
+  
+  function getSuggestionState() {
+    try {
+      return JSON.parse(localStorage.getItem(SUGGESTIONS_KEY) || '{}');
+    } catch (e) { return {}; }
+  }
+  
+  function saveSuggestionState(state) {
+    try { localStorage.setItem(SUGGESTIONS_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+  
+  // تسجيل محاولة استخدام ميزة مقفلة
+  window.usageLimits_recordLockedUse = function(featureName) {
+    if (currentPlan !== 'free') return; // المدفوعون لا يحتاجون اقتراحات
+    try {
+      const data = JSON.parse(localStorage.getItem(LOCKED_USES_KEY) || '{}');
+      data[featureName] = (data[featureName] || 0) + 1;
+      data._lastUpdate = Date.now();
+      localStorage.setItem(LOCKED_USES_KEY, JSON.stringify(data));
+    } catch (e) {}
+  };
+  
+  // فحص إذا كان يجب عرض اقتراح
+  function shouldShowSuggestion() {
+    if (currentPlan !== 'free') return null; // فقط للمجاني
+    if (typeof toast !== 'function') return null;
+    
+    const state = getSuggestionState();
+    const now = Date.now();
+    
+    // 1) تحقق من Cooldown (7 أيام)
+    if (state.lastShown && (now - state.lastShown) < SUGGESTION_COOLDOWN) {
+      return null;
+    }
+    
+    // 2) اقتراح "ميزة مقفلة مستخدمة 3+ مرات"
+    try {
+      const lockedUses = JSON.parse(localStorage.getItem(LOCKED_USES_KEY) || '{}');
+      for (const [feature, count] of Object.entries(lockedUses)) {
+        if (feature.startsWith('_')) continue;
+        if (count >= 3 && (!state.shownFeatures || !state.shownFeatures.includes(feature))) {
+          return {
+            type: 'locked-feature',
+            feature,
+            icon: '🔓',
+            title: `عجبتك "${feature}"؟`,
+            body: `افتحها مع الباقة الاحترافية — $10 فقط!`,
+            actionLabel: 'اشترك الآن'
+          };
+        }
+      }
+    } catch (e) {}
+    
+    // 3) اقتراح "مستخدم ثقيل"
+    const history = state.history || [];
+    const today = new Date().toDateString();
+    
+    if (history.length >= 2) {
+      // احسب آخر 3 أيام
+      const lastThree = [...history.slice(-3), { date: today, percent: (usageCache.tokens / (PLAN_LIMITS.free.tokens + bonusTokens)) * 100 }];
+      const heavyDays = lastThree.filter(d => d.percent >= 70).length;
+      
+      if (heavyDays >= 3) {
+        return {
+          type: 'heavy-user',
+          icon: '📈',
+          title: 'لاحظنا استخدامك المكثّف!',
+          body: 'آخر 3 أيام اقتربت من حدّك. جرّب الاحترافي — 5 أضعاف الرصيد بـ $10/شهر.',
+          actionLabel: 'اكتشف الباقات'
+        };
+      }
+    }
+    
+    // 4) اقتراح "قرب 90%"
+    const currentPercent = (usageCache.tokens / (PLAN_LIMITS.free.tokens + bonusTokens)) * 100;
+    if (currentPercent >= 90 && !state.shownNearLimit) {
+      return {
+        type: 'near-limit',
+        icon: '⚡',
+        title: 'اقتربت من الحد اليومي',
+        body: 'ترقية للاحترافي = 5 أضعاف الرصيد!',
+        actionLabel: 'اكتشف',
+        markShown: 'shownNearLimit'
+      };
+    }
+    
+    return null;
+  }
+  
+  // عرض الاقتراح
+  function showUpgradeSuggestion(sug) {
+    const toast = document.createElement('div');
+    toast.className = 'upgrade-suggestion';
+    toast.id = 'upgradeSuggestion';
+    toast.innerHTML = `
+      <div class="usg-icon">${sug.icon}</div>
+      <div class="usg-body">
+        <div class="usg-title">${sug.title}</div>
+        <div class="usg-text">${sug.body}</div>
+        <div class="usg-actions">
+          <button class="usg-go">${sug.actionLabel}</button>
+          <button class="usg-later">لاحقًا</button>
+        </div>
+      </div>
+      <button class="usg-x" aria-label="إغلاق">✕</button>
+    `;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    
+    // حفظ حالة العرض
+    const state = getSuggestionState();
+    state.lastShown = Date.now();
+    state.shownFeatures = state.shownFeatures || [];
+    if (sug.type === 'locked-feature' && !state.shownFeatures.includes(sug.feature)) {
+      state.shownFeatures.push(sug.feature);
+    }
+    if (sug.markShown) state[sug.markShown] = true;
+    saveSuggestionState(state);
+    
+    // الأحداث
+    toast.querySelector('.usg-go').onclick = () => {
+      dismissSuggestion(toast);
+      if (sug.type === 'heavy-user') {
+        // افتح لوحة الاستهلاك مباشرة
+        setTimeout(() => openUsagePanel(), 300);
+      } else {
+        // اذهب لصفحة الترقية مباشرة
+        setTimeout(() => openUsagePanel(), 300);
+      }
+    };
+    toast.querySelector('.usg-later').onclick = () => dismissSuggestion(toast);
+    toast.querySelector('.usg-x').onclick = () => dismissSuggestion(toast);
+  }
+  
+  function dismissSuggestion(el) {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 400);
+  }
+  
+  // تحديث سجل الأيام (يُستدعى في init)
+  function updateHistory() {
+    const state = getSuggestionState();
+    state.history = state.history || [];
+    
+    const today = new Date().toDateString();
+    const limit = PLAN_LIMITS.free.tokens + bonusTokens;
+    const percent = (usageCache.tokens / limit) * 100;
+    
+    // احذف سجلات اليوم السابق
+    state.history = state.history.filter(h => h.date !== today);
+    
+    // أضف سجل اليوم
+    state.history.push({ date: today, percent });
+    
+    // احتفظ بآخر 7 أيام فقط
+    if (state.history.length > 7) state.history = state.history.slice(-7);
+    
+    saveSuggestionState(state);
+  }
+
   // ═══ مكافأة الدخول اليومي (+500 توكن) ═══
   async function checkDailyReward() {
     if (!window.sbClient || !window.currentUserId) return;
@@ -1030,6 +1194,13 @@
       await loadUsage();
     }, 5 * 60 * 1000);
     
+    // 💡 حدّث السجل وافحص الاقتراحات (بعد 5 دقائق من الاستخدام)
+    updateHistory();
+    setTimeout(() => {
+      const sug = shouldShowSuggestion();
+      if (sug) showUpgradeSuggestion(sug);
+    }, 5 * 60 * 1000);
+    
     console.log('🎯 Usage limits ready');
   }
 
@@ -1059,6 +1230,10 @@
     if (typeof toast === 'function') {
       toast(`🔒 "${featureName}" متاحة في الباقة الـ${planName} فقط`);
     }
+    // 💡 سجّل محاولة الوصول لميزة مقفلة (للاقتراح الذكي لاحقًا)
+    if (typeof window.usageLimits_recordLockedUse === 'function') {
+      window.usageLimits_recordLockedUse(featureName);
+    }
     // فتح لوحة الترقية تلقائيًا بعد لحظة
     setTimeout(() => openUsagePanel(), 1200);
     return false;
@@ -1076,12 +1251,152 @@
     openUsageHistory: openUsageHistory,
     startStreaming: startStreamingBadge,
     stopStreaming: stopStreamingBadge,
+    recordLockedUse: window.usageLimits_recordLockedUse,
     _testSetUsage: (tokens) => {
       usageCache.tokens = tokens;
       updateUsageBadge();
       checkUsageWarnings();
     }
   };
+
+    // ═══ CSS لاقتراح الترقية ═══
+  (function injectSuggestionCSS() {
+    if (document.getElementById('upgrade-suggestion-css')) return;
+    const style = document.createElement('style');
+    style.id = 'upgrade-suggestion-css';
+    style.textContent = `
+      .upgrade-suggestion {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        max-width: 380px;
+        width: calc(100% - 40px);
+        background: linear-gradient(135deg, rgba(23,16,43,0.98), rgba(15,23,42,0.98));
+        border: 1px solid rgba(251,191,36,0.4);
+        border-radius: 20px;
+        padding: 16px;
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        box-shadow: 0 24px 60px -14px rgba(0,0,0,0.75),
+                    0 0 40px -10px rgba(251,191,36,0.35);
+        backdrop-filter: blur(20px) saturate(1.5);
+        -webkit-backdrop-filter: blur(20px) saturate(1.5);
+        z-index: 100000;
+        transform: translateY(140%);
+        opacity: 0;
+        transition: all 0.5s cubic-bezier(0.34, 1.3, 0.64, 1);
+        direction: rtl;
+        font-family: 'IBM Plex Sans Arabic', sans-serif;
+      }
+      .upgrade-suggestion.show {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      
+      .usg-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #fbbf24, #ec4899);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        flex-shrink: 0;
+        box-shadow: 0 6px 20px rgba(251,191,36,0.5);
+        animation: usgPulse 2s ease-in-out infinite;
+      }
+      @keyframes usgPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.06); }
+      }
+      
+      .usg-body {
+        flex: 1;
+        min-width: 0;
+        color: #fff;
+      }
+      .usg-title {
+        font-size: 14px;
+        font-weight: 800;
+        margin-bottom: 4px;
+        color: #fbbf24;
+      }
+      .usg-text {
+        font-size: 12.5px;
+        color: rgba(255,255,255,0.75);
+        line-height: 1.6;
+        margin-bottom: 10px;
+      }
+      .usg-actions {
+        display: flex;
+        gap: 6px;
+      }
+      .usg-go {
+        flex: 1;
+        padding: 9px 14px;
+        background: linear-gradient(135deg, #fbbf24, #ec4899);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 12.5px;
+        font-weight: 700;
+        font-family: inherit;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(251,191,36,0.4);
+        transition: all 0.2s;
+      }
+      .usg-go:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 22px rgba(251,191,36,0.55);
+      }
+      .usg-later {
+        padding: 9px 14px;
+        background: rgba(255,255,255,0.06);
+        color: rgba(255,255,255,0.8);
+        border: none;
+        border-radius: 10px;
+        font-size: 12.5px;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .usg-later:hover {
+        background: rgba(255,255,255,0.12);
+      }
+      .usg-x {
+        background: transparent;
+        border: none;
+        color: rgba(255,255,255,0.4);
+        cursor: pointer;
+        font-size: 14px;
+        padding: 4px 6px;
+        border-radius: 6px;
+        font-family: inherit;
+        align-self: flex-start;
+        transition: all 0.2s;
+      }
+      .usg-x:hover {
+        color: #fff;
+        background: rgba(255,255,255,0.1);
+      }
+      
+      @media (max-width: 600px) {
+        .upgrade-suggestion {
+          left: 16px;
+          right: 16px;
+          bottom: 16px;
+          max-width: none;
+          padding: 14px;
+        }
+        .usg-icon { width: 40px; height: 40px; font-size: 20px; }
+        .usg-title { font-size: 13px; }
+        .usg-text { font-size: 11.5px; }
+      }
+    `;
+    document.head.appendChild(style);
+  })();
 
     // ═══ CSS لسجل الاستخدام ═══
   (function injectHistoryCSS() {
