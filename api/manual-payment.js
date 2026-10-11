@@ -75,8 +75,14 @@ export default async function handler(req, res) {
     });
 
     if (dbError) {
+      console.error('DB insert error:', dbError);
+      return res.status(500).json({ 
+        error: 'Database error',
+        details: dbError.message 
+      });
+    }
 
-    // 📧 إرسال إشعار بالبريد (في الخلفية، بدون انتظار)
+    // ✅ إرسال إشعار بالبريد بعد نجاح الحفظ (في الخلفية، بدون انتظار)
     const emailTemplate = buildNewPaymentEmail({
       plan,
       amount: PRICES[plan],
@@ -85,13 +91,6 @@ export default async function handler(req, res) {
       orderId
     });
     sendAdminEmail(emailTemplate).catch(e => console.warn('Email failed:', e));
-
-      console.error('DB insert error:', dbError);
-      return res.status(500).json({ 
-        error: 'Database error',
-        details: dbError.message 
-      });
-    }
 
     return res.status(200).json({
       success: true,

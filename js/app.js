@@ -710,6 +710,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
 }
 function toggleMic() { if (!recognition) { alert('غير مدعوم'); return; } if (isRecording) recognition.stop(); else { try { recognition.start(); isRecording = true; micBtn.classList.add('recording'); } catch (e) {} } }
 
+// ⚠️ نسخة أساسية — تُستبدل بـ tts-pro.js عند تحميله
 function speakMessage(btn, text) {
   if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); document.querySelectorAll('.speak-btn.speaking').forEach(b => { b.classList.remove('speaking'); b.textContent = '🔊'; }); if (btn.dataset.ws === '1') { btn.dataset.ws = '0'; return; } }
   const clean = text.replace(/```[\s\S]*?```/g, ' [كود] ').replace(/`([^`]+)`/g, '$1').replace(/[*_#>\[\]()]/g, '');
@@ -720,6 +721,7 @@ function speakMessage(btn, text) {
   btn.classList.add('speaking'); btn.textContent = '⏹️'; btn.dataset.ws = '1';
   window.speechSynthesis.speak(u);
 }
+speakMessage.__isBasic = true;
 
 function renderSidebar() {
   chatList.innerHTML = '';

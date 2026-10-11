@@ -119,7 +119,10 @@
       if (r > 0) return setTimeout(() => hook(r - 1), 300);
       return;
     }
+    // ✅ لا تستبدل النسخة الاحترافية إذا كانت مثبتة مسبقًا
+    if (window.speakMessage.__isPro) return;
     window.speakMessage = speakPro;
+    window.speakMessage.__isPro = true;
     console.log('🎵 TTS Pro ready');
   };
   hook();

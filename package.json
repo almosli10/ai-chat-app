@@ -5,8 +5,6 @@
   "description": "مساعد الذكاء الاصطناعي الاحترافي",
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
-    "fib-payment-sdk": "^1.0.3",
-    "web-push": "^3.6.7",
-    "ws": "^8.22.0"
+    "web-push": "^3.6.7"
   }
 }
