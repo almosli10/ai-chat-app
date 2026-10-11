@@ -1252,15 +1252,10 @@
     startStreaming: startStreamingBadge,
     stopStreaming: stopStreamingBadge,
     recordLockedUse: window.usageLimits_recordLockedUse,
-    // 🧪 أداة اختبار (يمكن حذفها لاحقًا)
-    _testSuggestion: () => {
+    // ⚙️ للصيانة (اختياري)
+    resetSuggestionState: () => {
       localStorage.removeItem('mishkat_upgrade_suggestions');
-      const sug = shouldShowSuggestion();
-      if (sug) {
-        showUpgradeSuggestion(sug);
-        return '✅ الاقتراح ظهر';
-      }
-      return '❌ لا يوجد اقتراح حالياً';
+      localStorage.removeItem('mishkat_locked_feature_uses');
     },
     _testSetUsage: (tokens) => {
       usageCache.tokens = tokens;
