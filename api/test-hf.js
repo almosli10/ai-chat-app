@@ -1,125 +1,91 @@
-// api/test-hf.js — نسخة تشخيصية مفصّلة
+// api/test-hf.js — اختبار النطاق الجديد مع نموذج TTS عربي
 export default async function handler(req, res) {
   const HF_TOKEN = process.env.HF_TOKEN;
-  
-  const result = {
-    timestamp: new Date().toISOString(),
-    tokenExists: !!HF_TOKEN,
-    tokenPrefix: HF_TOKEN ? HF_TOKEN.substring(0, 8) + '...' : null,
-    tokenLength: HF_TOKEN ? HF_TOKEN.length : 0,
-    tests: {}
-  };
 
   if (!HF_TOKEN) {
-    return res.status(500).json({
-      ...result,
-      ok: false,
-      error: 'HF_TOKEN not found in env'
-    });
+    return res.status(500).json({ ok: false, error: 'HF_TOKEN not found' });
   }
 
-  // ═══ Test 1: الاتصال بـ huggingface.co بشكل عام ═══
-  try {
-    const r = await fetch('https://huggingface.co/', { 
-      method: 'HEAD',
-      signal: AbortSignal.timeout(8000)
-    });
-    result.tests.connectivity = { ok: true, status: r.status };
-  } catch (e) {
-    result.tests.connectivity = { 
-      ok: false, 
-      error: e.message,
-      cause: e.cause ? String(e.cause) : null,
-      code: e.cause?.code || e.code || null
-    };
-  }
+  const result = { tests: {} };
 
-  // ═══ Test 2: whoami-v2 ═══
-  try {
-    const r = await fetch('https://huggingface.co/api/whoami-v2', {
-      headers: { 'Authorization': `Bearer ${HF_TOKEN}` },
-      signal: AbortSignal.timeout(8000)
-    });
-    const text = await r.text();
-    result.tests.whoami = {
-      ok: r.ok,
-      status: r.status,
-      bodyPreview: text.substring(0, 200)
-    };
-  } catch (e) {
-    result.tests.whoami = { 
-      ok: false, 
-      error: e.message,
-      cause: e.cause ? String(e.cause) : null,
-      code: e.cause?.code || e.code || null
-    };
-  }
-
-  // ═══ Test 3: Inference API (نموذج بسيط) ═══
+  // ═══ Test 1: النطاق الجديد مع نموذج TTS عربي ═══
   try {
     const r = await fetch(
-      'https://api-inference.huggingface.co/models/gpt2',
+      'https://router.huggingface.co/hf-inference/models/facebook/mms-tts-ara',
       {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${HF_TOKEN}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ inputs: 'Hello' }),
-        signal: AbortSignal.timeout(15000)
+        body: JSON.stringify({ inputs: 'مرحباً، هذا اختبار للصوت العربي.' }),
+        signal: AbortSignal.timeout(30000)
       }
     );
-    const text = await r.text();
-    result.tests.inference = {
-      ok: r.ok,
-      status: r.status,
-      bodyPreview: text.substring(0, 200)
-    };
+    const contentType = r.headers.get('content-type') || '';
+    if (r.ok && contentType.includes('audio')) {
+      const buf = await r.arrayBuffer();
+      result.tests.mms_tts_ara = {
+        ok: true,
+        status: r.status,
+        contentType,
+        audioSize: buf.byteLength,
+        message: '✅ نجح! هذا النموذج يعمل'
+      };
+    } else {
+      const text = await r.text();
+      result.tests.mms_tts_ara = {
+        ok: false,
+        status: r.status,
+        contentType,
+        bodyPreview: text.substring(0, 300)
+      };
+    }
   } catch (e) {
-    result.tests.inference = { 
-      ok: false, 
-      error: e.message,
-      cause: e.cause ? String(e.cause) : null,
-      code: e.cause?.code || e.code || null
-    };
+    result.tests.mms_tts_ara = { ok: false, error: e.message };
   }
 
-  // ═══ Test 4: Router API الجديد (قد يكون الأنسب) ═══
+  // ═══ Test 2: نموذج XTTS-v2 عبر النطاق الجديد ═══
   try {
     const r = await fetch(
-      'https://router.huggingface.co/hf-inference/models/gpt2',
+      'https://router.huggingface.co/hf-inference/models/coqui/XTTS-v2',
       {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${HF_TOKEN}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ inputs: 'Hello' }),
-        signal: AbortSignal.timeout(15000)
+        body: JSON.stringify({
+          inputs: 'مرحباً',
+          parameters: { language: 'ar' }
+        }),
+        signal: AbortSignal.timeout(30000)
       }
     );
-    const text = await r.text();
-    result.tests.router = {
-      ok: r.ok,
-      status: r.status,
-      bodyPreview: text.substring(0, 200)
-    };
+    const contentType = r.headers.get('content-type') || '';
+    if (r.ok && contentType.includes('audio')) {
+      const buf = await r.arrayBuffer();
+      result.tests.xtts_v2 = {
+        ok: true,
+        status: r.status,
+        audioSize: buf.byteLength,
+        message: '✅ XTTS-v2 يعمل'
+      };
+    } else {
+      const text = await r.text();
+      result.tests.xtts_v2 = {
+        ok: false,
+        status: r.status,
+        bodyPreview: text.substring(0, 300)
+      };
+    }
   } catch (e) {
-    result.tests.router = { 
-      ok: false, 
-      error: e.message,
-      cause: e.cause ? String(e.cause) : null,
-      code: e.cause?.code || e.code || null
-    };
+    result.tests.xtts_v2 = { ok: false, error: e.message };
   }
 
-  // ═══ الخلاصة ═══
-  result.ok = result.tests.whoami?.ok || false;
   result.summary = {
-    connectivity: result.tests.connectivity?.ok ? '✅' : '❌',
-    whoami: result.tests.whoami?.ok ? '✅' : '❌',
-    inference: result.tests.inference?.ok ? '✅' : '❌',
-    router: result.tests.router?.ok ? '✅' : '❌',
+    mms_tts_ara: result.tests.mms_tts_ara?.ok ? '✅' : '❌',
+    xtts_v2: result.tests.xtts_v2?.ok ? '✅' : '❌',
   };
 
   return res.status(200).json(result);
