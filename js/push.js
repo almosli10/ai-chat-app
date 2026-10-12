@@ -41,15 +41,46 @@
   }
 
   async function saveSubscription(sub) {
-    if (!window.sbClient) return;
+    if (!window.sbClient) {
+      console.warn('⚠️ sbClient not ready');
+      return false;
+    }
+    
+    // 🔍 احصل على user_id الحالي
+    let userId = null;
     try {
-      await window.sbClient.from('push_subscriptions').upsert({
+      const { data: { user } } = await window.sbClient.auth.getUser();
+      userId = user?.id || null;
+    } catch (e) {
+      console.warn('getUser failed:', e);
+    }
+    
+    if (!userId) {
+      console.warn('⚠️ No user logged in — cannot save subscription');
+      return false;
+    }
+    
+    try {
+      // ✅ استخدم upsert مع user_id
+      const { error } = await window.sbClient.from('push_subscriptions').upsert({
         endpoint: sub.endpoint,
         device_id: (typeof deviceId !== 'undefined' ? deviceId : 'unknown'),
+        user_id: userId,
         subscription: sub,
         created_at: new Date().toISOString()
       }, { onConflict: 'endpoint' });
-    } catch (e) { console.warn('Save sub failed', e); }
+      
+      if (error) {
+        console.error('❌ Supabase upsert error:', error);
+        return false;
+      }
+      
+      console.log('✅ Subscription saved to Supabase');
+      return true;
+    } catch (e) {
+      console.error('❌ Save sub exception:', e);
+      return false;
+    }
   }
 
   async function unsubscribeUser() {
@@ -68,13 +99,28 @@
 
   // اختبار إشعار من السيرفر
   async function testPush() {
-    if (!('Notification' in window)) return;
+    if (!('Notification' in window)) {
+      if (typeof toast === 'function') toast('⚠️ غير مدعوم');
+      return;
+    }
     if (Notification.permission !== 'granted') {
       const p = await Notification.requestPermission();
-      if (p !== 'granted') { if (typeof toast === 'function') toast('⚠️ يرفض'); return; }
+      if (p !== 'granted') { 
+        if (typeof toast === 'function') toast('⚠️ رفض الإذن'); 
+        return; 
+      }
     }
+    
+    if (typeof toast === 'function') toast('⏳ جاري الاشتراك...');
+    
     const res = await subscribeUser();
-    if (!res.ok) { if (typeof toast === 'function') toast('❌ ' + res.error); return; }
+    if (!res.ok) { 
+      if (typeof toast === 'function') toast('❌ ' + res.error); 
+      return; 
+    }
+    
+    if (typeof toast === 'function') toast('⏳ جاري الإرسال...');
+    
     try {
       const r = await fetch('/api/push', {
         method: 'POST',
@@ -86,9 +132,22 @@
           url: '/'
         })
       });
-      if (r.ok) { if (typeof toast === 'function') toast('✅ تم إرسال الإشعار'); }
-      else { if (typeof toast === 'function') toast('❌ فشل الإرسال'); }
-    } catch (e) { if (typeof toast === 'function') toast('❌ فشل الاتصال'); }
+      
+      const data = await r.json();
+      
+      // ✅ افحص عدد الإشعارات المُرسلة فعليًا
+      if (data.sent > 0) {
+        if (typeof toast === 'function') toast(`✅ تم إرسال ${data.sent} إشعار`);
+      } else if (data.total === 0) {
+        if (typeof toast === 'function') toast('❌ لا يوجد اشتراك محفوظ في السيرفر');
+        console.warn('Push subscriptions empty!');
+      } else {
+        if (typeof toast === 'function') toast(`⚠️ فشل الإرسال (${data.failed || 0}/${data.total})`);
+      }
+    } catch (e) { 
+      if (typeof toast === 'function') toast('❌ فشل الاتصال');
+      console.error(e);
+    }
   }
 
     // 🔔 إرسال إشعار لنفس المستخدم (عبر كل أجهزته)
