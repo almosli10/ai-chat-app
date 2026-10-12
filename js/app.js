@@ -60,7 +60,12 @@ const THEMES = {
   'warm-brown': { name: 'بني دافئ', icon: '☕', preview: 'linear-gradient(135deg, #fef6e7, #fde68a)' },
   'midnight-purple': { name: 'بنفسجي منتصف الليل', icon: '💜', preview: 'linear-gradient(135deg, #0d0819, #a855f7)' },
   'rose-gold': { name: 'ذهبي وردي', icon: '🌹', preview: 'linear-gradient(135deg, #fff8f5, #d4956b)' },
-  'ocean-deep': { name: 'محيط عميق', icon: '🌊', preview: 'linear-gradient(135deg, #031520, #22d3ee)' }
+  'ocean-deep': { name: 'محيط عميق', icon: '🌊', preview: 'linear-gradient(135deg, #031520, #22d3ee)' },
+  'cyberpunk': { name: 'سايبربانك', icon: '🌆', preview: 'linear-gradient(135deg, #0a0014, #ff00aa)' },
+  'dracula': { name: 'دراكولا', icon: '🧛', preview: 'linear-gradient(135deg, #282a36, #bd93f9)' },
+  'nord': { name: 'نورد', icon: '❄️', preview: 'linear-gradient(135deg, #2e3440, #88c0d0)' },
+  'solarized': { name: 'سولارايزد', icon: '☀️', preview: 'linear-gradient(135deg, #fdf6e3, #268bd2)' },
+  'monokai': { name: 'مونوكاي', icon: '🍇', preview: 'linear-gradient(135deg, #272822, #a6e22e)' }
 };
 const ACCENTS = [
   { name: 'بنفسجي', value: '#6366f1', value2: '#8b5cf6' },

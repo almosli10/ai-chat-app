@@ -133,11 +133,20 @@ function renderProfileModal(profile) {
       <div class="pf-row">
         <label>الثيم
           <select id="pfTheme">
-            <option value="dark" ${currentTheme === 'dark' ? 'selected' : ''}>داكن</option>
-            <option value="light" ${currentTheme === 'light' ? 'selected' : ''}>فاتح</option>
-            <option value="blue-night" ${currentTheme === 'blue-night' ? 'selected' : ''}>أزرق ليلي</option>
-            <option value="midnight-purple" ${currentTheme === 'midnight-purple' ? 'selected' : ''}>بنفسجي منتصف الليل</option>
-            <option value="ocean-deep" ${currentTheme === 'ocean-deep' ? 'selected' : ''}>محيط عميق</option>
+            <option value="light" ${currentTheme === 'light' ? 'selected' : ''}>☀️ فاتح</option>
+            <option value="dark" ${currentTheme === 'dark' ? 'selected' : ''}>🌙 داكن</option>
+            <option value="blue-night" ${currentTheme === 'blue-night' ? 'selected' : ''}>🌌 أزرق ليلي</option>
+            <option value="pink" ${currentTheme === 'pink' ? 'selected' : ''}>🌸 وردي</option>
+            <option value="royal-green" ${currentTheme === 'royal-green' ? 'selected' : ''}>👑 أخضر ملكي</option>
+            <option value="warm-brown" ${currentTheme === 'warm-brown' ? 'selected' : ''}>☕ بني دافئ</option>
+            <option value="midnight-purple" ${currentTheme === 'midnight-purple' ? 'selected' : ''}>💜 بنفسجي منتصف الليل</option>
+            <option value="rose-gold" ${currentTheme === 'rose-gold' ? 'selected' : ''}>🌹 ذهبي وردي</option>
+            <option value="ocean-deep" ${currentTheme === 'ocean-deep' ? 'selected' : ''}>🌊 محيط عميق</option>
+            <option value="cyberpunk" ${currentTheme === 'cyberpunk' ? 'selected' : ''}>🌆 سايبربانك</option>
+            <option value="dracula" ${currentTheme === 'dracula' ? 'selected' : ''}>🧛 دراكولا</option>
+            <option value="nord" ${currentTheme === 'nord' ? 'selected' : ''}>❄️ نورد</option>
+            <option value="solarized" ${currentTheme === 'solarized' ? 'selected' : ''}>☀️ سولارايزد</option>
+            <option value="monokai" ${currentTheme === 'monokai' ? 'selected' : ''}>🍇 مونوكاي</option>
           </select>
         </label>
         <label>الخط
