@@ -2,7 +2,7 @@
 // SERVICE WORKER — استراتيجية caching محسّنة + تحديثات فورية
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'v6.7.1';
+const VERSION = 'v6.7.2';
 const CACHE_STATIC = `ai-chat-static-${VERSION}`;
 const CACHE_RUNTIME = `ai-chat-runtime-${VERSION}`;
 
@@ -46,20 +46,33 @@ self.addEventListener('activate', (e) => {
 
 // ═══════ Push Event ═══════
 self.addEventListener('push', (e) => {
-  let data = { title: '🏮 مِشكاة', body: 'لديك إشعار جديد' };
-  try { if (e.data) data = { ...data, ...e.data.json() }; } catch (err) {}
+  let data = { title: '🏮 مِشكاة', body: 'لديك إشعار جديد', url: '/' };
+  try { 
+    if (e.data) {
+      const parsed = e.data.json();
+      data = { ...data, ...parsed };
+    }
+  } catch (err) {
+    // إذا فشل JSON parse — جرّب النص
+    try { data.body = e.data.text(); } catch (e2) {}
+  }
+  
+  const options = {
+    body: data.body,
+    dir: 'rtl',
+    lang: 'ar',
+    vibrate: [100, 50, 100],
+    data: { url: data.url || '/' },
+    tag: data.tag || ('mishkat-' + Date.now()),
+    renotify: true,
+    requireInteraction: false,
+    silent: false,
+    // ✅ أيقونة SVG inline (مضمونة الوجود)
+    icon: 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#1a0f33"/><ellipse cx="50" cy="68" rx="28" ry="25" fill="#f59e0b"/><ellipse cx="40" cy="68" rx="6" ry="7" fill="#fffbeb"/><circle cx="40" cy="68" r="3.5" fill="#1c1917"/><ellipse cx="60" cy="68" rx="6" ry="7" fill="#fffbeb"/><circle cx="60" cy="68" r="3.5" fill="#1c1917"/><path d="M44 82 Q50 85 56 82" stroke="#78350f" stroke-width="2" fill="none" stroke-linecap="round"/></svg>')
+  };
+  
   e.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      dir: 'rtl',
-      lang: 'ar',
-      vibrate: [100, 50, 100],
-      data: { url: data.url || '/' },
-      tag: 'mishkat-' + Date.now(),
-      renotify: true
-    })
+    self.registration.showNotification(data.title, options)
   );
 });
 
