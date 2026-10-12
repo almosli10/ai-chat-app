@@ -3151,6 +3151,165 @@ window.saveSettings = saveSettings;
   console.log('♿ ARIA labels applied');
 })();
 
+// ═══════ 🎯 Drag-to-Dismiss للـ Bottom Sheet ═══════
+(function bottomSheetDrag() {
+  if (!('ontouchstart' in window)) return;
+  if (window.innerWidth > 768) return;
+  
+  const DRAG_THRESHOLD = 100; // يجب سحب 100px لإغلاق
+  const MAX_DRAG = window.innerHeight * 0.5;
+  
+  let activeSheet = null;
+  let startY = 0;
+  let startTime = 0;
+  let currentY = 0;
+  let isDragging = false;
+  let dragHandleBound = false;
+  
+  // 🎯 ربط السحب بنافذة معينة
+  function bindDrag(sheet, overlay) {
+    if (sheet.__dragBound) return;
+    sheet.__dragBound = true;
+    
+    sheet.addEventListener('touchstart', (e) => {
+      // تجاهل السحب من داخل الحقول أو الأزرار
+      if (e.target.closest('input, textarea, button, a, select, .mk-dialog-input, .modal-buttons')) return;
+      
+      // تجاهل السحب من داخل حقل قابل للتمرير
+      const scrollable = e.target.closest('[style*="overflow"]');
+      if (scrollable && scrollable.scrollTop > 0) return;
+      
+      // فقط من المنطقة العلوية (المقبض + القليل)
+      const rect = sheet.getBoundingClientRect();
+      const touchY = e.touches[0].clientY;
+      const offsetFromTop = touchY - rect.top;
+      
+      // السماح بالسحب فقط من أول 80px
+      if (offsetFromTop > 80) return;
+      
+      startY = touchY;
+      startTime = Date.now();
+      currentY = 0;
+      isDragging = true;
+      activeSheet = { sheet, overlay };
+      sheet.classList.add('dragging');
+    }, { passive: true });
+    
+    sheet.addEventListener('touchmove', (e) => {
+      if (!isDragging || !activeSheet || activeSheet.sheet !== sheet) return;
+      
+      const touchY = e.touches[0].clientY;
+      const deltaY = touchY - startY;
+      
+      // فقط السحب للأسفل
+      if (deltaY < 0) return;
+      
+      currentY = Math.min(deltaY, MAX_DRAG);
+      sheet.style.transform = `translateY(${currentY}px)`;
+      
+      // شفافية الخلفية بناءً على السحب
+      if (overlay) {
+        const opacity = Math.max(0.2, 1 - (currentY / MAX_DRAG) * 0.8);
+        overlay.style.background = `rgba(0, 0, 0, ${0.7 * opacity})`;
+      }
+      
+      e.preventDefault();
+    }, { passive: false });
+    
+    const endDrag = () => {
+      if (!isDragging || !activeSheet || activeSheet.sheet !== sheet) return;
+      
+      const duration = Date.now() - startTime;
+      const velocity = currentY / duration; // px/ms
+      const { sheet: activeSheetEl, overlay: activeOverlay } = activeSheet;
+      
+      // إغلاق إذا:
+      // 1) السحب تجاوز الحد
+      // 2) أو السحب كان سريعًا (flick)
+      const shouldClose = currentY > DRAG_THRESHOLD || velocity > 0.8;
+      
+      sheet.classList.remove('dragging');
+      sheet.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1)';
+      
+      if (shouldClose) {
+        sheet.style.transform = `translateY(100%)`;
+        if (overlay) overlay.style.background = 'rgba(0, 0, 0, 0)';
+        
+        setTimeout(() => {
+          // ابحث عن زر الإغلاق واضغط عليه
+          const closeBtn = sheet.querySelector('[data-close], .cancel, .mk-dialog-btn.cancel, button[onclick*="remove"], button[onclick*="close"]');
+          
+          if (closeBtn) {
+            closeBtn.click();
+          } else {
+            // إغلاق يدوي
+            const parent = sheet.closest('.modal-overlay, .mk-dialog-overlay, .weekly-stats-overlay');
+            if (parent) {
+              parent.classList.remove('show');
+              setTimeout(() => parent.remove(), 300);
+            }
+          }
+        }, 250);
+      } else {
+        // ارجع للمكان الطبيعي
+        sheet.style.transform = 'translateY(0)';
+        if (overlay) overlay.style.background = 'rgba(0, 0, 0, 0.7)';
+        setTimeout(() => {
+          sheet.style.transition = '';
+          sheet.style.transform = '';
+        }, 300);
+      }
+      
+      isDragging = false;
+      activeSheet = null;
+      currentY = 0;
+    };
+    
+    sheet.addEventListener('touchend', endDrag, { passive: true });
+    sheet.addEventListener('touchcancel', endDrag, { passive: true });
+  }
+  
+  // 🎯 مراقبة ظهور النوافذ وربط السحب بها
+  function scanSheets() {
+    if (window.innerWidth > 768) return;
+    
+    const selectors = [
+      '.modal-overlay .modal',
+      '.mk-dialog',
+      '.weekly-stats-modal',
+      '.usage-panel'
+    ];
+    
+    selectors.forEach(sel => {
+      document.querySelectorAll(sel).forEach(sheet => {
+        if (sheet.__dragBound) return;
+        
+        // ابحث عن الـ overlay
+        const overlay = sheet.closest('.modal-overlay, .mk-dialog-overlay, .weekly-stats-overlay') 
+                       || (sheet.classList.contains('usage-panel') ? document.body : null);
+        
+        // ربط فقط إذا كانت مرئية
+        const style = window.getComputedStyle(sheet);
+        if (style.display === 'none' || style.opacity === '0') return;
+        
+        bindDrag(sheet, overlay);
+      });
+    });
+  }
+  
+  // مراقبة الـ DOM
+  const observer = new MutationObserver(scanSheets);
+  observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+  
+  // فحص أولي
+  setTimeout(scanSheets, 500);
+  
+  // فحص دوري
+  setInterval(scanSheets, 1500);
+  
+  console.log('🎯 Bottom sheet drag-to-dismiss ready');
+})();
+
 // ═══════ 📝 Auto-save للمسودات ═══════
 (function draftAutoSave() {
   let draftTimer = null;

@@ -5377,6 +5377,274 @@ body[data-theme="light"] .more-menu-item:hover {
   }
 }
 
+/* ═══════════════════════════════════════════════════════
+   BOTTOM SHEET — نوافذ منزلقة من الأسفل على الموبايل
+   ═══════════════════════════════════════════════════════ */
 
+@media (max-width: 768px) {
+  /* حاوية النافذة — تصبح من الأسفل */
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+  
+  /* النافذة نفسها — Bottom Sheet */
+  .modal-overlay .modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 88vh !important;
+    border-radius: 28px 28px 0 0 !important;
+    padding: 32px 20px 24px !important;
+    margin: 0 !important;
+    transform: translateY(100%) !important;
+    opacity: 1 !important;
+    animation: bottomSheetIn 0.4s cubic-bezier(0.34, 1.3, 0.64, 1) forwards !important;
+    overflow-y: auto !important;
+    position: relative !important;
+    /* مساحة إضافية للسحب */
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+    box-shadow: 0 -20px 60px -10px rgba(0, 0, 0, 0.7), 
+                inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    border: none !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  /* مقبض السحب (Drag Handle) */
+  .modal-overlay .modal::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 12px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 40px !important;
+    height: 4px !important;
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-radius: 999px !important;
+    pointer-events: none !important;
+  }
+  
+  /* للنوافذ الفاتحة — مقبض داكن */
+  body[data-theme="light"] .modal-overlay .modal::before,
+  body[data-theme="rose-gold"] .modal-overlay .modal::before,
+  body[data-theme="pink"] .modal-overlay .modal::before,
+  body[data-theme="royal-green"] .modal-overlay .modal::before,
+  body[data-theme="warm-brown"] .modal-overlay .modal::before,
+  body[data-theme="solarized"] .modal-overlay .modal::before {
+    background: rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  /* حالة السحب النشط */
+  .modal-overlay .modal.dragging {
+    transition: none !important;
+    animation: none !important;
+    cursor: grabbing;
+    user-select: none;
+  }
+  
+  /* عندما يُفتح — الحركة */
+  .modal-overlay.show .modal {
+    animation: bottomSheetIn 0.4s cubic-bezier(0.34, 1.3, 0.64, 1) forwards !important;
+  }
+  
+  /* أنيميشن الـ Sheet */
+  @keyframes bottomSheetIn {
+    from {
+      transform: translateY(100%);
+      opacity: 0.5;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  /* خلفية أغمق قليلاً */
+  .modal-overlay {
+    background: rgba(0, 0, 0, 0.7) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+  
+  /* عناوين النوافذ — تحسين */
+  .modal h3 {
+    font-size: 17px !important;
+    margin-bottom: 14px !important;
+    padding-top: 8px !important;
+    text-align: center !important;
+  }
+  
+  /* الأزرار في الأسفل */
+  .modal-buttons {
+    flex-direction: column-reverse !important;
+    gap: 8px !important;
+    margin-top: 18px !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    background: linear-gradient(to top, var(--bg-secondary) 60%, transparent) !important;
+    padding-top: 12px !important;
+    margin-bottom: -8px !important;
+  }
+  
+  body[data-theme="dark"] .modal-buttons,
+  body[data-theme="blue-night"] .modal-buttons,
+  body[data-theme="midnight-purple"] .modal-buttons,
+  body[data-theme="ocean-deep"] .modal-buttons,
+  body[data-theme="cyberpunk"] .modal-buttons,
+  body[data-theme="dracula"] .modal-buttons,
+  body[data-theme="nord"] .modal-buttons,
+  body[data-theme="monokai"] .modal-buttons {
+    background: linear-gradient(to top, #1a0f33 60%, transparent) !important;
+  }
+  
+  /* النوافذ المخصصة (dialogs.js) — Bottom Sheet أيضاً */
+  .mk-dialog-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  
+  .mk-dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 28px 28px 0 0 !important;
+    padding: 34px 22px 26px !important;
+    transform: translateY(100%) !important;
+    opacity: 1 !important;
+    animation: bottomSheetIn 0.4s cubic-bezier(0.34, 1.3, 0.64, 1) forwards !important;
+    position: relative !important;
+    padding-bottom: calc(26px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  
+  .mk-dialog::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 12px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 40px !important;
+    height: 4px !important;
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-radius: 999px !important;
+    pointer-events: none !important;
+  }
+  
+  .mk-dialog-overlay.show .mk-dialog {
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+  }
+  
+  /* أيقونة النافذة — أصغر */
+  .mk-dialog-icon {
+    width: 52px !important;
+    height: 52px !important;
+    font-size: 26px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  /* الأزرار — أفقية أو عمودية */
+  .mk-dialog-actions {
+    flex-direction: column-reverse !important;
+    gap: 8px !important;
+    margin-top: 18px !important;
+  }
+  
+  .mk-dialog-btn {
+    padding: 14px 18px !important;
+    font-size: 15px !important;
+  }
+  
+  /* لوحة الإحصائيات والإستهلاك — Bottom Sheet */
+  .weekly-stats-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  
+  .weekly-stats-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 28px 28px 0 0 !important;
+    padding: 32px 18px 20px !important;
+    max-height: 90vh !important;
+    transform: translateY(100%) !important;
+    opacity: 1 !important;
+    animation: bottomSheetIn 0.4s cubic-bezier(0.34, 1.3, 0.64, 1) forwards !important;
+    position: relative !important;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  
+  .weekly-stats-modal::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 12px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 40px !important;
+    height: 4px !important;
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-radius: 999px !important;
+  }
+  
+  .weekly-stats-overlay.show .weekly-stats-modal {
+    transform: translateY(0) !important;
+  }
+  
+  /* لوحة الاستهلاك — Bottom Sheet */
+  .usage-panel {
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    transform: translateY(100%) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 88vh !important;
+    border-radius: 28px 28px 0 0 !important;
+    padding: 32px 18px 20px !important;
+    animation: bottomSheetIn 0.4s cubic-bezier(0.34, 1.3, 0.64, 1) forwards !important;
+    position: fixed !important;
+    overflow-y: auto !important;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  
+  .usage-panel::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 12px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 40px !important;
+    height: 4px !important;
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-radius: 999px !important;
+  }
+}
+
+/* شاشات صغيرة جداً */
+@media (max-width: 400px) {
+  .modal-overlay .modal {
+    padding: 30px 16px 20px !important;
+  }
+  
+  .mk-dialog {
+    padding: 32px 18px 22px !important;
+  }
+  
+  .weekly-stats-modal {
+    padding: 30px 14px 18px !important;
+  }
+  
+  .usage-panel {
+    padding: 30px 14px 18px !important;
+  }
+  
+  /* مقبض صغير */
+  .modal-overlay .modal::before,
+  .mk-dialog::before,
+  .weekly-stats-modal::before,
+  .usage-panel::before {
+    width: 32px !important;
+    height: 3px !important;
+  }
+}
 
     @media (hover: none) { .cursor-glow { display: none; } }
