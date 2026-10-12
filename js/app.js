@@ -628,7 +628,11 @@ function openDevicesModal() {
 }
 window.openDevicesModal = openDevicesModal;
 
-function openSettings() { document.getElementById('systemPromptInput').value = systemPrompt; document.getElementById('settingsModal').classList.add('show'); }
+async function openSettings() {
+  if (typeof window.requirePlan === 'function' && !window.requirePlan('aiSettings', 'إعدادات الذكاء الاصطناعي')) return;
+  document.getElementById('systemPromptInput').value = systemPrompt;
+  document.getElementById('settingsModal').classList.add('show');
+}
 
 const PERSONAS = {
   programmer: { icon: '💻', name: 'مبرمج', desc: 'كود نظيف', prompt: 'أنت مهندس برمجيات خبير.' },
@@ -2989,6 +2993,36 @@ document.addEventListener('keydown', (e) => {
     }
   });
 })();
+
+// ═══════ 💾 حفظ إعدادات الذكاء الاصطناعي ═══════
+async function saveSettings() {
+  const input = document.getElementById('systemPromptInput');
+  if (!input) return;
+  
+  const newPrompt = input.value.trim();
+  if (!newPrompt) {
+    if (typeof toast === 'function') toast('⚠️ لا يمكن حفظ برومبت فارغ');
+    return;
+  }
+  
+  // 💾 احفظ في localStorage
+  systemPrompt = newPrompt;
+  localStorage.setItem('systemPrompt', newPrompt);
+  
+  // 🔄 حدّث البرومبت في المحادثة الحالية
+  if (currentChatId && allChats[currentChatId] && allChats[currentChatId].messages[0]?.role === 'system') {
+    allChats[currentChatId].messages[0].content = newPrompt;
+    if (typeof saveAllChats === 'function') saveAllChats();
+  }
+  
+  // 🎉 تأكيد + إغلاق
+  if (typeof closeModal === 'function') closeModal('settingsModal');
+  if (typeof toast === 'function') toast('✅ تم حفظ الإعدادات');
+  if (typeof playSound === 'function') playSound('notif');
+}
+
+// اجعلها متاحة عالميًا (لأن HTML يستدعيها)
+window.saveSettings = saveSettings;
 
 // ═══════ 📝 Auto-save للمسودات ═══════
 (function draftAutoSave() {

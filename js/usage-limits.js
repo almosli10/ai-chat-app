@@ -1223,7 +1223,8 @@
     share:        ['pro', 'premium', 'vip'],
     tts:          ['pro', 'premium', 'vip'],
     fullPersonas: ['pro', 'premium', 'vip'],
-    fullMoods:    ['pro', 'premium', 'vip']
+    fullMoods:    ['pro', 'premium', 'vip'],
+    aiSettings:   ['premium', 'vip']
     // encryption: متاح للجميع
   };
 
