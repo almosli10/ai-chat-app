@@ -2185,7 +2185,7 @@ function splitForTTS(text, maxLen) {
 
 function playEdgeTTSChunk(text, voice, rate, pitch) {
   return new Promise((resolve) => {
-    const url = `/api/tts?text=${encodeURIComponent(text)}&rate=0.9`;
+    const url = `/api/tts?text=${encodeURIComponent(text)}&userId=${currentUserId || ''}&rate=0.9`;
     const audio = new Audio(url);
     
     let playbackRate = 1.0;
@@ -3641,6 +3641,239 @@ window.saveSettings = saveSettings;
   }, { passive: true });
   
   console.log('📱 Swipe gestures ready');
+})();
+
+// ═══════ 🎙️ تسجيل الصوت المخصص ورفعه إلى Fish Audio ═══════
+(function voiceCloningRecorder() {
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
+  let recordingStartTime = 0;
+  let recordingTimer = null;
+  let recordingStream = null;
+
+  // انتظر حتى يظهر الـ DOM
+  function waitForElements(retries = 30) {
+    const recordBtn = document.getElementById('recordVoiceBtn');
+    const stopBtn = document.getElementById('stopVoiceBtn');
+    const statusEl = document.getElementById('voiceStatus');
+    const timeEl = document.getElementById('recordingTime');
+    const indicator = document.getElementById('recordingIndicator');
+    const stateBadge = document.getElementById('voiceStateBadge');
+
+    if (!recordBtn || !stopBtn || !statusEl) {
+      if (retries > 0) return setTimeout(() => waitForElements(retries - 1), 300);
+      console.warn('⚠️ Voice recorder elements not found');
+      return;
+    }
+
+    // ═══ فحص حالة الصوت عند الفتح ═══
+    async function checkExistingVoice() {
+      if (!window.sbClient || !window.currentUserId) return;
+      try {
+        const { data } = await window.sbClient
+          .from('profiles')
+          .select('voice_id')
+          .eq('id', window.currentUserId)
+          .maybeSingle();
+
+        if (data?.voice_id) {
+          stateBadge.textContent = '✅ مسجل';
+          stateBadge.style.background = 'rgba(16,185,129,0.25)';
+          stateBadge.style.color = '#6ee7b7';
+          statusEl.textContent = '✅ صوتك مخصص للمكالمات';
+          statusEl.style.color = '#6ee7b7';
+        }
+      } catch (e) {}
+    }
+
+    // فحص عند فتح نافذة الإعدادات
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('button[onclick*="openSettings"]')) {
+        setTimeout(checkExistingVoice, 500);
+      }
+    }, true);
+
+    // ═══ بدء التسجيل ═══
+    recordBtn.addEventListener('click', async () => {
+      try {
+        recordingStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 44100
+          }
+        });
+
+        // اختر أفضل صيغة مدعومة
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/mp4';
+
+        mediaRecorder = new MediaRecorder(recordingStream, { mimeType });
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: mimeType });
+          if (recordingStream) {
+            recordingStream.getTracks().forEach(t => t.stop());
+            recordingStream = null;
+          }
+          await uploadVoiceSample(audioBlob, mimeType);
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        recordingStartTime = Date.now();
+
+        // UI
+        recordBtn.style.display = 'none';
+        stopBtn.style.display = 'block';
+        indicator.style.display = 'flex';
+        statusEl.textContent = '🔴 جاري التسجيل... تحدث بوضوح لمدة 10-30 ثانية';
+        statusEl.style.color = '#fca5a5';
+        stateBadge.textContent = '🔴 يسجل';
+        stateBadge.style.background = 'rgba(239,68,68,0.25)';
+        stateBadge.style.color = '#fca5a5';
+
+        // Timer
+        recordingTimer = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+          const mins = Math.floor(elapsed / 60);
+          const secs = elapsed % 60;
+          timeEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+          // تحذير بعد 30 ثانية
+          if (elapsed >= 30) {
+            statusEl.textContent = '⚠️ وصلت للحد الأقصى — سيُوقف تلقائيًا';
+            if (elapsed >= 32) stopRecording();
+          }
+        }, 500);
+
+        // اهتزاز خفيف
+        if (navigator.vibrate) navigator.vibrate(50);
+
+      } catch (err) {
+        console.error('Recording start error:', err);
+        statusEl.textContent = '❌ ' + (err.name === 'NotAllowedError' 
+          ? 'تم رفض إذن الميكروفون' 
+          : err.message);
+        statusEl.style.color = '#f87171';
+      }
+    });
+
+    // ═══ إيقاف التسجيل ═══
+    function stopRecording() {
+      if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
+        clearInterval(recordingTimer);
+
+        stopBtn.style.display = 'none';
+        recordBtn.style.display = 'block';
+        indicator.style.display = 'none';
+        timeEl.textContent = '0:00';
+      }
+    }
+
+    stopBtn.addEventListener('click', stopRecording);
+
+    // ═══ رفع الصوت إلى Supabase ثم Fish Audio ═══
+    async function uploadVoiceSample(audioBlob, mimeType) {
+      if (!window.sbClient || !window.currentUserId) {
+        statusEl.textContent = '❌ يجب تسجيل الدخول أولاً';
+        statusEl.style.color = '#f87171';
+        return;
+      }
+
+      // فحص الحجم (10 ثواني على الأقل ≈ 20KB)
+      if (audioBlob.size < 15000) {
+        statusEl.textContent = '⚠️ الصوت قصير جدًا. سجل 10-30 ثانية.';
+        statusEl.style.color = '#fbbf24';
+        stateBadge.textContent = 'غير مسجل';
+        stateBadge.style.background = 'rgba(0,0,0,0.3)';
+        stateBadge.style.color = '#94a3b8';
+        return;
+      }
+
+      try {
+        statusEl.textContent = '⏳ جاري رفع الصوت إلى السيرفر...';
+        statusEl.style.color = '#fbbf24';
+
+        // 1) احصل على المستخدم
+        const { data: { user } } = await window.sbClient.auth.getUser();
+        if (!user) throw new Error('No authenticated user');
+
+        // 2) ارفع الملف إلى Supabase Storage
+        const ext = mimeType.includes('webm') ? 'webm' : 'mp4';
+        const fileName = `${user.id}/voice-sample-${Date.now()}.${ext}`;
+        
+        const { error: upErr } = await window.sbClient.storage
+          .from('avatars')
+          .upload(fileName, audioBlob, { 
+            upsert: true, 
+            contentType: mimeType,
+            cacheControl: '3600'
+          });
+
+        if (upErr) throw new Error('Storage: ' + upErr.message);
+
+        // 3) احصل على الرابط العام
+        const { data: { publicUrl } } = window.sbClient.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+
+        statusEl.textContent = '⏳ جاري إنشاء صوتك المخصص (قد يستغرق دقيقة)...';
+
+        // 4) أرسل إلى API لاستنساخ الصوت
+        const res = await fetch(
+          `/api/clone-voice?userId=${encodeURIComponent(user.id)}&audioUrl=${encodeURIComponent(publicUrl)}`,
+          { method: 'POST' }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Voice cloning failed');
+        }
+
+        // 5) نجاح
+        statusEl.textContent = '✅ تم إنشاء صوتك بنجاح! سيُستخدم في المكالمات.';
+        statusEl.style.color = '#6ee7b7';
+        stateBadge.textContent = '✅ مسجل';
+        stateBadge.style.background = 'rgba(16,185,129,0.25)';
+        stateBadge.style.color = '#6ee7b7';
+
+        if (typeof toast === 'function') toast('🎙️ تم استنساخ صوتك بنجاح!');
+        if (typeof playSound === 'function') playSound('notif');
+        if (typeof fireConfetti === 'function') fireConfetti(40);
+        if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+
+      } catch (err) {
+        console.error('Voice upload error:', err);
+        statusEl.textContent = '❌ ' + err.message;
+        statusEl.style.color = '#f87171';
+        stateBadge.textContent = 'غير مسجل';
+        stateBadge.style.background = 'rgba(0,0,0,0.3)';
+        stateBadge.style.color = '#94a3b8';
+      }
+    }
+
+    console.log('🎙️ Voice recorder ready');
+  }
+
+  // ابدأ الفحص
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => waitForElements());
+  } else {
+    waitForElements();
+  }
 })();
 
 init();
