@@ -3086,4 +3086,293 @@ window.saveSettings = saveSettings;
   console.log('📝 Draft auto-save ready');
 })();
 
+// ═══════ 📱 Swipe Gestures للموبايل ═══════
+(function swipeGestures() {
+  // تجاهل على الأجهزة غير اللمسية
+  if (!('ontouchstart' in window)) return;
+  if (window.innerWidth > 900) return; // سطح المكتب
+  
+  const SWIPE_THRESHOLD = 70;   // الحد الأدنى للسحب (بكسل)
+  const MAX_VERTICAL = 40;       // الحد الأقصى للحركة العمودية (لتجنب التمرير)
+  const ANIMATION_DURATION = 200;
+  
+  let startX = 0;
+  let startY = 0;
+  let currentTarget = null;
+  let currentMsg = null;
+  let isSwiping = false;
+  let startTime = 0;
+  
+  // 🎨 CSS للحركة
+  (function injectSwipeCSS() {
+    if (document.getElementById('swipe-gestures-css')) return;
+    const style = document.createElement('style');
+    style.id = 'swipe-gestures-css';
+    style.textContent = `
+      .msg.swiping {
+        transition: none !important;
+        will-change: transform;
+      }
+      .msg.swipe-animating {
+        transition: transform ${ANIMATION_DURATION}ms cubic-bezier(0.34, 1.3, 0.64, 1) !important;
+      }
+      .swipe-indicator {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.15s ease, transform 0.2s cubic-bezier(0.34, 1.3, 0.64, 1);
+        z-index: 5;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      }
+      .swipe-indicator.right {
+        left: 12px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff;
+        transform: translateY(-50%) scale(0.5);
+      }
+      .swipe-indicator.left {
+        right: 12px;
+        background: linear-gradient(135deg, #10b981, #06b6d4);
+        color: #fff;
+        transform: translateY(-50%) scale(0.5);
+      }
+      .swipe-indicator.active {
+        opacity: 1;
+        transform: translateY(-50%) scale(1);
+      }
+      .swipe-indicator.triggered {
+        transform: translateY(-50%) scale(1.15);
+      }
+      
+      /* منع تحريك الرسائل على الحاسوب */
+      @media (min-width: 901px) {
+        .msg { transform: none !important; }
+      }
+      
+      /* منع تحديد النص أثناء السحب */
+      .msg.swiping * {
+        user-select: none !important;
+        -webkit-user-select: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  })();
+  
+  // دالة إنشاء المؤشر
+  function createIndicator(msgEl, direction) {
+    let ind = msgEl.querySelector('.swipe-indicator.' + direction);
+    if (ind) return ind;
+    
+    ind = document.createElement('div');
+    ind.className = 'swipe-indicator ' + direction;
+    ind.textContent = direction === 'right' ? '📋' : '💬';
+    msgEl.style.position = 'relative';
+    msgEl.appendChild(ind);
+    return ind;
+  }
+  
+  // إعادة تعيين الرسالة
+  function resetMsg(msgEl, animate = true) {
+    if (!msgEl) return;
+    
+    if (animate) {
+      msgEl.classList.add('swipe-animating');
+      msgEl.classList.remove('swiping');
+    }
+    
+    msgEl.style.transform = '';
+    
+    // اخفاء المؤشرات
+    msgEl.querySelectorAll('.swipe-indicator').forEach(ind => {
+      ind.classList.remove('active', 'triggered');
+      setTimeout(() => ind.remove(), 300);
+    });
+    
+    if (animate) {
+      setTimeout(() => {
+        msgEl.classList.remove('swipe-animating');
+      }, ANIMATION_DURATION);
+    }
+  }
+  
+  // 🎯 بدء اللمس
+  document.addEventListener('touchstart', (e) => {
+    const msg = e.target.closest('.msg');
+    if (!msg) return;
+    
+    // تجاهل الرسائل قيد البث
+    if (msg.classList.contains('streaming')) return;
+    
+    // تجاهل النقر على الأزرار داخل الرسالة
+    if (e.target.closest('button, a, img, pre')) return;
+    
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    currentTarget = e.target;
+    currentMsg = msg;
+    isSwiping = false;
+    startTime = Date.now();
+  }, { passive: true });
+  
+  // 🎯 أثناء اللمس
+  document.addEventListener('touchmove', (e) => {
+    if (!currentMsg) return;
+    
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    
+    // إذا كانت الحركة العمودية أكبر → المستخدم يمرر، تجاهل
+    if (!isSwiping && Math.abs(deltaY) > MAX_VERTICAL) {
+      currentMsg = null;
+      currentTarget = null;
+      return;
+    }
+    
+    // بدء السحب الأفقي
+    if (!isSwiping && Math.abs(deltaX) > 10) {
+      isSwiping = true;
+      currentMsg.classList.add('swiping');
+    }
+    
+    if (!isSwiping) return;
+    
+    // منع التمرير أثناء السحب الأفقي
+    e.preventDefault();
+    
+    // حد أقصى للسحب
+    const maxSwipe = 100;
+    const clampedDeltaX = Math.max(-maxSwipe, Math.min(maxSwipe, deltaX));
+    
+    // تطبيق الحركة
+    currentMsg.style.transform = `translateX(${clampedDeltaX}px)`;
+    
+    // إظهار المؤشر المناسب
+    if (clampedDeltaX > 15) {
+      // سحب يمين → نسخ
+      const ind = createIndicator(currentMsg, 'right');
+      ind.classList.add('active');
+      if (clampedDeltaX >= SWIPE_THRESHOLD) {
+        ind.classList.add('triggered');
+      } else {
+        ind.classList.remove('triggered');
+      }
+      // اخفاء مؤشر اليسار
+      const leftInd = currentMsg.querySelector('.swipe-indicator.left');
+      if (leftInd) {
+        leftInd.classList.remove('active', 'triggered');
+      }
+    } else if (clampedDeltaX < -15) {
+      // سحب يسار → رد
+      const ind = createIndicator(currentMsg, 'left');
+      ind.classList.add('active');
+      if (clampedDeltaX <= -SWIPE_THRESHOLD) {
+        ind.classList.add('triggered');
+      } else {
+        ind.classList.remove('triggered');
+      }
+      // اخفاء مؤشر اليمين
+      const rightInd = currentMsg.querySelector('.swipe-indicator.right');
+      if (rightInd) {
+        rightInd.classList.remove('active', 'triggered');
+      }
+    } else {
+      // في المنطقة المحايدة
+      currentMsg.querySelectorAll('.swipe-indicator').forEach(ind => {
+        ind.classList.remove('active', 'triggered');
+      });
+    }
+  }, { passive: false });
+  
+  // 🎯 نهاية اللمس
+  document.addEventListener('touchend', (e) => {
+    if (!currentMsg) return;
+    
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    const duration = Date.now() - startTime;
+    
+    // نسخ المرجع قبل إعادة التعيين
+    const msgEl = currentMsg;
+    const wasSwiping = isSwiping;
+    
+    // إعادة تعيين الحالة
+    currentMsg = null;
+    currentTarget = null;
+    isSwiping = false;
+    
+    if (!wasSwiping) return;
+    
+    // فحص إذا تجاوز الحد
+    if (Math.abs(deltaX) >= SWIPE_THRESHOLD && Math.abs(deltaY) < MAX_VERTICAL) {
+      if (deltaX > 0) {
+        // سحب يمين → نسخ
+        const bubble = msgEl.querySelector('.msg-bubble');
+        if (bubble) {
+          const text = bubble.innerText || bubble.textContent || '';
+          navigator.clipboard.writeText(text).then(() => {
+            if (typeof toast === 'function') toast('📋 تم نسخ الرسالة');
+            if (typeof playSound === 'function') playSound('click');
+            if (navigator.vibrate) {
+              try { navigator.vibrate(30); } catch (e) {}
+            }
+          }).catch(() => {
+            if (typeof toast === 'function') toast('⚠️ تعذّر النسخ');
+          });
+        }
+      } else {
+        // سحب يسار → رد
+        const bubble = msgEl.querySelector('.msg-bubble');
+        if (bubble) {
+          const text = bubble.innerText || bubble.textContent || '';
+          const input = document.getElementById('msg');
+          if (input) {
+            // إذا كان الحقل يحتوي على نص → أضف سطرًا جديدًا
+            if (input.value.trim()) {
+              input.value += '\n\n> ' + text.split('\n').join('\n> ');
+            } else {
+              input.value = '> ' + text.split('\n').join('\n> ') + '\n\n';
+            }
+            input.focus();
+            // ضع المؤشر في النهاية
+            input.setSelectionRange(input.value.length, input.value.length);
+            
+            if (typeof toast === 'function') toast('💬 تم الاقتباس');
+            if (typeof playSound === 'function') playSound('click');
+            if (navigator.vibrate) {
+              try { navigator.vibrate(30); } catch (e) {}
+            }
+          }
+        }
+      }
+    }
+    
+    // إعادة الرسالة لمكانها مع حركة
+    resetMsg(msgEl, true);
+  }, { passive: true });
+  
+  // 🎯 إلغاء اللمس
+  document.addEventListener('touchcancel', () => {
+    if (currentMsg) {
+      resetMsg(currentMsg, true);
+    }
+    currentMsg = null;
+    currentTarget = null;
+    isSwiping = false;
+  }, { passive: true });
+  
+  console.log('📱 Swipe gestures ready');
+})();
+
 init();
