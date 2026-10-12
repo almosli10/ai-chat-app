@@ -1,84 +1,39 @@
-// api/tts.js — Fish Audio + Google TTS Fallback
-import { createClient } from '@supabase/supabase-js';
-
+// api/tts.js — Edge TTS (مجاني) + Google TTS fallback
 export default async function handler(req, res) {
-  const { text, userId } = req.query;
-  
+  const { text } = req.query;
+
   if (!text) return res.status(400).json({ error: 'text required' });
 
-  const clean = String(text).substring(0, 200).trim();
+  const clean = String(text).substring(0, 500).trim();
   if (!clean) return res.status(400).json({ error: 'text empty' });
 
-  // ═══════════════════════════════════════════
-  // 1) حاول استخدام Fish Audio (صوت المستخدم)
-  // ═══════════════════════════════════════════
-  const FISH_API_KEY = process.env.FISH_AUDIO_API_KEY;
-  
-  if (FISH_API_KEY && userId) {
-    try {
-      // اجلب voice_id الخاص بالمستخدم
-      let voiceId = null;
-      const SUPABASE_URL = process.env.SUPABASE_URL;
-      const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE || process.env.SUPABASE_SERVICE_ROLE_KEY;
-      
-      if (SUPABASE_URL && SERVICE_KEY) {
-        const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('voice_id')
-          .eq('id', userId)
-          .maybeSingle();
-        
-        if (profile?.voice_id) voiceId = profile.voice_id;
-      }
+  // ═══ 1) Edge TTS (Microsoft) — مجاني وجودة عالية ═══
+  try {
+    const hfSpaceUrl = `https://innoai-edge-tts.hf.space/api/tts?text=${encodeURIComponent(clean)}&voice=ar-EG-SalmaNeural`;
+    const response = await fetch(hfSpaceUrl, {
+      method: 'GET',
+      signal: AbortSignal.timeout(25000)
+    });
 
-      if (voiceId) {
-        const body = {
-          text: clean,
-          format: 'mp3',
-          mp3_bitrate: 128,
-          latency: 'normal',
-          reference_id: voiceId
-        };
-
-        const fishRes = await fetch('https://api.fish.audio/v1/tts', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${FISH_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        });
-
-        if (fishRes.ok) {
-          const audioBuffer = Buffer.from(await fishRes.arrayBuffer());
-          console.log('🎙️ Fish Audio: Success');
-          res.setHeader('Content-Type', 'audio/mpeg');
-          res.setHeader('Cache-Control', 'public, max-age=3600');
-          return res.send(audioBuffer);
-        } else {
-          const errText = await fishRes.text();
-          console.warn('⚠️ Fish Audio failed:', fishRes.status, errText.substring(0, 200));
-          // سقط للـ fallback (Google)
-        }
-      }
-    } catch (fishErr) {
-      console.warn('⚠️ Fish Audio exception:', fishErr.message);
-      // سقط للـ fallback (Google)
+    if (response.ok) {
+      const buffer = Buffer.from(await response.arrayBuffer());
+      console.log('🎙️ Edge TTS: Success');
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.send(buffer);
     }
+    console.warn('⚠️ Edge TTS failed:', response.status);
+  } catch (e) {
+    console.warn('⚠️ Edge TTS exception:', e.message);
   }
 
-  // ═══════════════════════════════════════════
-  // 2) Fallback: Google Translate TTS (مجاني، يعمل دائمًا)
-  // ═══════════════════════════════════════════
+  // ═══ 2) Fallback: Google Translate TTS ═══
   try {
     const googleUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(clean)}&tl=ar&client=tw-ob&ttsspeed=0.9`;
-    
     const response = await fetch(googleUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Referer': 'https://translate.google.com/',
-        'Accept': '*/*'
       }
     });
 
@@ -92,7 +47,6 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Cache-Control', 'public, max-age=3600');
     res.send(buffer);
-
   } catch (error) {
     console.error('TTS error:', error);
     res.status(500).json({ error: error.message });
