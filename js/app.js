@@ -1335,6 +1335,19 @@ async function streamResponse() {
     }
     
     saveAllChats(); addRegenerateButtonIfNeeded(); renderSidebar(); pushChatToCloud(allChats[currentChatId]);
+    
+    // 🔔 إشعار Push إذا كان المستخدم بعيدًا عن التبويب
+    if (document.hidden && full && full.length > 50) {
+      const preview = full.substring(0, 100).replace(/[#*`]/g, '').trim();
+      if (typeof window.notifySelf === 'function') {
+        window.notifySelf({
+          title: '🏮 رد جديد من مِشكاة',
+          body: preview + (full.length > 100 ? '...' : ''),
+          url: '/',
+          tag: 'ai-reply-' + Date.now()
+        }).catch(() => {});
+      }
+    }
     if (full.length > 200) {
       const rd = document.createElement('button');
       rd.className = 'read-btn';

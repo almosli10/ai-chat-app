@@ -91,10 +91,101 @@
     } catch (e) { if (typeof toast === 'function') toast('❌ فشل الاتصال'); }
   }
 
+    // 🔔 إرسال إشعار لنفس المستخدم (عبر كل أجهزته)
+  async function notifySelf(options = {}) {
+    if (!window.sbClient) return { ok: false, error: 'Supabase not ready' };
+    
+    try {
+      const { data: { user } } = await window.sbClient.auth.getUser();
+      if (!user) return { ok: false, error: 'No user' };
+      
+      const res = await fetch('/api/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          title: options.title || '🏮 مِشكاة',
+          body: options.body || '',
+          url: options.url || '/',
+          tag: options.tag
+        })
+      });
+      
+      if (!res.ok) throw new Error('Push failed: ' + res.status);
+      return await res.json();
+    } catch (e) {
+      console.warn('notifySelf failed:', e);
+      return { ok: false, error: e.message };
+    }
+  }
+
+    // 🔔 زر "تفعيل Push" من داخل النافذة
+  window.pushSubscribeNow = async function() {
+    if (typeof toast === 'function') toast('⏳ جاري التفعيل...');
+    const res = await subscribeUser();
+    if (res.ok) {
+      if (typeof toast === 'function') toast('✅ تم تفعيل إشعارات Push!');
+      checkPushStatus();
+    } else {
+      if (typeof toast === 'function') toast('❌ ' + (res.error || 'فشل التفعيل'));
+    }
+  };
+  
+  // 🔍 فحص حالة Push
+  async function checkPushStatus() {
+    const box = document.getElementById('pushStatusBox');
+    if (!box) return;
+    
+    if (!('Notification' in window)) {
+      box.innerHTML = '⛔ غير مدعوم في متصفحك';
+      box.style.color = '#f87171';
+      return;
+    }
+    
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      box.innerHTML = '⛔ Push غير مدعوم';
+      box.style.color = '#f87171';
+      return;
+    }
+    
+    if (Notification.permission === 'denied') {
+      box.innerHTML = '❌ الإذن مرفوض. فعّله من إعدادات المتصفح';
+      box.style.color = '#f87171';
+      return;
+    }
+    
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      
+      if (sub) {
+        box.innerHTML = '✅ مشترك في الإشعارات';
+        box.style.color = '#6ee7b7';
+        box.style.background = 'rgba(16,185,129,0.15)';
+      } else {
+        box.innerHTML = '⚠️ غير مشترك — اضغط "تفعيل Push"';
+        box.style.color = '#fbbf24';
+        box.style.background = 'rgba(245,158,11,0.15)';
+      }
+    } catch (e) {
+      box.innerHTML = '⚠️ خطأ: ' + e.message;
+      box.style.color = '#fbbf24';
+    }
+  }
+  
+  window.checkPushStatus = checkPushStatus;
+  
+  // فحص تلقائي عند فتح نافذة الإشعارات
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('button[onclick*="openNotifications"]')) {
+      setTimeout(checkPushStatus, 400);
+    }
+  }, true);
+
   window.pushSubscribe = subscribeUser;
   window.pushUnsubscribe = unsubscribeUser;
   window.pushTest = testPush;
-
+  window.notifySelf = notifySelf;
   // تلقائياً عند التحميل: إذا كان مسموح من قبل، أعد التسجيل
   if ('Notification' in window && Notification.permission === 'granted') {
     setTimeout(() => subscribeUser().catch(() => {}), 5000);

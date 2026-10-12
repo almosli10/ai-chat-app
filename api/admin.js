@@ -190,6 +190,24 @@ export default async function handler(req, res) {
       });
       sendAdminEmail(emailTemplate).catch(e => console.warn('Email failed:', e));
 
+      // 🔔 إرسال إشعار Push للمستخدم
+      try {
+        const planName = payment.plan === 'pro' ? 'الاحترافية ⭐' : 'البريميوم 💎';
+        await fetch(`${req.headers.origin || 'https://ai-chat-app-two-lime.vercel.app'}/api/push`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: payment.user_id,
+            title: '🎉 تم تفعيل باقتك!',
+            body: `تم تأكيد دفعك وتفعيل الباقة ${planName}`,
+            url: '/',
+            tag: 'payment-confirmed-' + paymentId
+          })
+        });
+      } catch (pushErr) {
+        console.warn('Push notify failed:', pushErr);
+      }
+
       return res.json({ success: true, message: `تم ترقية المستخدم إلى ${payment.plan}` });
     }
 
