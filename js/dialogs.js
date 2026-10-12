@@ -206,17 +206,40 @@
       ).join('');
       
       overlay.innerHTML = `
-        <div class="mk-dialog">
-          <div class="mk-dialog-icon ${type}">${iconEmoji}</div>
-          ${title ? `<div class="mk-dialog-title">${title}</div>` : ''}
-          ${message ? `<div class="mk-dialog-message">${message}</div>` : ''}
+        <div class="mk-dialog" role="dialog" aria-modal="true" 
+             ${title ? `aria-labelledby="mkDialogTitle_${Date.now()}"` : ''}
+             aria-describedby="mkDialogMsg">
+          <div class="mk-dialog-icon ${type}" aria-hidden="true">${iconEmoji}</div>
+          ${title ? `<div class="mk-dialog-title" id="mkDialogTitle_${Date.now()}">${title}</div>` : ''}
+          ${message ? `<div class="mk-dialog-message" id="mkDialogMsg">${message}</div>` : ''}
           ${inputHTML}
           <div class="mk-dialog-actions">${buttonsHTML}</div>
         </div>
       `;
       
+      // 🎯 احفظ العنصر الذي كان مفتوحًا (لإعادة التركيز إليه)
+      const previousActive = document.activeElement;
+      
       document.body.appendChild(overlay);
       requestAnimationFrame(() => overlay.classList.add('show'));
+      
+      // 🎯 Focus Trap — يمنع Tab من الخروج من النافذة
+      const focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+      const trapHandler = (e) => {
+        if (e.key !== 'Tab') return;
+        const focusable = overlay.querySelectorAll(focusableSelector);
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      };
+      overlay.addEventListener('keydown', trapHandler);
       
       const inputEl = overlay.querySelector('.mk-dialog-input');
       if (inputEl) {
@@ -227,8 +250,15 @@
       }
       
       function close(result) {
+        overlay.removeEventListener('keydown', trapHandler);
         overlay.classList.remove('show');
-        setTimeout(() => overlay.remove(), 250);
+        setTimeout(() => {
+          overlay.remove();
+          // 🎯 أعِد التركيز للعنصر الأصلي
+          if (previousActive && typeof previousActive.focus === 'function' && document.body.contains(previousActive)) {
+            previousActive.focus();
+          }
+        }, 250);
         resolve(result);
       }
       

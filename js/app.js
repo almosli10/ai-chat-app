@@ -3055,6 +3055,97 @@ async function saveSettings() {
 // اجعلها متاحة عالميًا (لأن HTML يستدعيها)
 window.saveSettings = saveSettings;
 
+// ═══════ ♿ ARIA Labels للوصولية ═══════
+(function applyAriaLabels() {
+  const labels = {
+    // Top actions
+    'agentBtn': 'تفعيل وضع الوكيل للبحث في الإنترنت',
+    'moreMenuBtn': 'فتح قائمة الميزات',
+    'menuBtn': 'فتح القائمة الجانبية',
+    'notifBtn': 'إعدادات الإشعارات',
+    
+    // Input area
+    'sendBtn': 'إرسال الرسالة',
+    'micBtn': 'تسجيل صوتي',
+    'imgGenBtn': 'توليد صورة من النص',
+    'fileInput': 'إرفاق ملف',
+    
+    // Sidebar
+    'searchInput': 'بحث في المحادثات',
+    'importInput': 'استيراد بيانات المشروع',
+    'userMenuBtn': 'فتح قائمة الحساب',
+    'logoutBtn': 'تسجيل الخروج من الحساب',
+    
+    // Chat actions
+    'chatTitleDisplay': 'عنوان المحادثة الحالية',
+    'shareUrlInput': 'رابط مشاركة المحادثة',
+    'passphraseInput': 'عبارة مرور التشفير',
+    'systemPromptInput': 'شخصية المساعد (System Prompt)',
+    'rejectReason': 'سبب رفض الطلب',
+    'personaPromptInput': 'وصف الشخصية المخصصة',
+    'canvasPrompt': 'وصف الرسم المطلوب',
+    'canvasColor': 'لون القلم',
+    'canvasSize': 'حجم القلم'
+  };
+  
+  Object.entries(labels).forEach(([id, label]) => {
+    const el = document.getElementById(id);
+    if (el && !el.hasAttribute('aria-label')) {
+      el.setAttribute('aria-label', label);
+    }
+  });
+  
+  // أزرار بدون id — نستخدم querySelector
+  const quickLabels = [
+    ['.new-chat-btn', 'إنشاء محادثة جديدة'],
+    ['.quick-settings-btn', 'فتح الإعدادات والقائمة السريعة'],
+    ['.sidebar-overlay', 'إغلاق القائمة الجانبية'],
+    ['.reading-mode-close', 'إغلاق وضع القراءة'],
+    ['.lightbox', 'إغلاق عارض الصور'],
+    ['.image-viewer-close', 'إغلاق عارض الصورة']
+  ];
+  
+  quickLabels.forEach(([sel, label]) => {
+    const el = document.querySelector(sel);
+    if (el && !el.hasAttribute('aria-label')) {
+      el.setAttribute('aria-label', label);
+      el.setAttribute('role', 'button');
+    }
+  });
+  
+  // تحديث ديناميكي للأزرار التي تُنشأ لاحقًا
+  const observer = new MutationObserver(() => {
+    // أزرار الرسائل
+    document.querySelectorAll('.msg-action-btn:not([aria-label])').forEach(btn => {
+      const txt = btn.textContent.trim();
+      const map = {
+        '🔊': 'قراءة الرد بصوت عالٍ',
+        '📋': 'نسخ النص',
+        '👍': 'إعجاب',
+        '👎': 'عدم إعجاب',
+        '😊': 'إضافة تفاعل',
+        '✏️': 'تعديل الرسالة',
+        '🗑️': 'حذف الرسالة',
+        '🔄': 'إعادة توليد الرد',
+        '📖': 'فتح في وضع القراءة',
+        '📸': 'مشاركة كصورة'
+      };
+      if (map[txt]) btn.setAttribute('aria-label', map[txt]);
+    });
+    
+    // أزرار القوائم
+    document.querySelectorAll('.chat-action-btn:not([aria-label])').forEach(btn => {
+      const cls = btn.className;
+      if (cls.includes('pin-btn')) btn.setAttribute('aria-label', btn.title || 'تثبيت/إلغاء تثبيت المحادثة');
+      if (cls.includes('delete-btn')) btn.setAttribute('aria-label', 'حذف المحادثة');
+    });
+  });
+  
+  observer.observe(document.body, { childList: true, subtree: true });
+  
+  console.log('♿ ARIA labels applied');
+})();
+
 // ═══════ 📝 Auto-save للمسودات ═══════
 (function draftAutoSave() {
   let draftTimer = null;

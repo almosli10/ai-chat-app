@@ -750,11 +750,36 @@ body[data-theme="ocean-deep"] .input-hint {
       box-shadow: 0 2px 0 var(--border-medium), inset 0 1px 0 rgba(255,255,255,0.06);
       border-bottom-width: 2px !important;
     }
-    button:focus-visible, input:focus-visible, textarea:focus-visible {
-      outline: 2px solid var(--accent) !important;
-      outline-offset: 3px !important;
-      box-shadow: 0 0 0 6px var(--accent-soft) !important;
-    }
+    button:focus-visible, 
+input:focus-visible, 
+textarea:focus-visible,
+[role="button"]:focus-visible,
+.chat-item:focus-visible {
+  outline: 3px solid var(--accent) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 6px var(--accent-soft), 0 4px 16px rgba(0,0,0,0.15) !important;
+  border-radius: inherit;
+  transition: outline-offset 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* تحسين مظهر التركيز في الثيمات الداكنة */
+body[data-theme="dark"] button:focus-visible,
+body[data-theme="dark"] input:focus-visible,
+body[data-theme="midnight-purple"] button:focus-visible,
+body[data-theme="midnight-purple"] input:focus-visible,
+body[data-theme="blue-night"] button:focus-visible,
+body[data-theme="blue-night"] input:focus-visible,
+body[data-theme="ocean-deep"] button:focus-visible,
+body[data-theme="ocean-deep"] input:focus-visible {
+  outline-color: #fbbf24 !important;
+  box-shadow: 0 0 0 6px rgba(251,191,36,0.2), 0 4px 16px rgba(0,0,0,0.4) !important;
+}
+
+/* إخفاء الـ Focus Outline عند النقر بالفأرة (يبقى للـ keyboard فقط) */
+*:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
 
     /* ═══════════════════════════════════════════════════════
        VISUAL PACK — SVG icons + Particles + Polish
