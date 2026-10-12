@@ -175,7 +175,7 @@ function bindProfileEvents(modalEl, onChange) {
       $('#avatarPreview').src = url;
       onChange?.({ avatar_url: url });
     } catch (err) {
-      alert('فشل رفع الصورة: ' + err.message);
+      	window.mkAlert('فشل رفع الصورة:\n' + err.message, { type: 'danger', icon: '🖼️' });
     }
   });
 
@@ -204,7 +204,7 @@ function bindProfileEvents(modalEl, onChange) {
       }
       onChange?.({ saved: true });
     } catch (err) {
-      alert('فشل الحفظ: ' + err.message);
+      window.mkAlert('فشل الحفظ:\n' + err.message, { type: 'danger', icon: '💾' });
     }
   });
 
@@ -221,9 +221,9 @@ function bindProfileEvents(modalEl, onChange) {
     if (!pw || pw.length < 6) return;
     try {
       await changePassword(pw);
-      alert('✅ تم تغيير كلمة المرور');
+      window.mkAlert('تم تغيير كلمة المرور بنجاح', { type: 'success', icon: '✅' });
     } catch (err) {
-      alert('فشل تغيير كلمة المرور: ' + err.message);
+      window.mkAlert('فشل:\n' + err.message, { type: 'danger', icon: '🔑' });
     }
   });
 
@@ -250,7 +250,7 @@ function bindProfileEvents(modalEl, onChange) {
       await deleteAccount();
       location.reload();
     } catch (err) {
-      alert('فشل حذف الحساب: ' + err.message);
+      window.mkAlert('فشل حذف الحساب:\n' + err.message, { type: 'danger', icon: '💀' });
     }
   });
 
@@ -259,9 +259,9 @@ function bindProfileEvents(modalEl, onChange) {
 
 // ═══════ ربط الدالة بنافذة المتصفح ═══════
 window.openProfileModal = async function() {
-  if (!window.sbClient) return alert('جاري الاتصال بالسيرفر... حاول مرة أخرى بعد ثانية.');
+  if (!window.sbClient) return window.mkAlert('جاري الاتصال بالسيرفر...\nحاول مرة أخرى بعد ثانية.', { type: 'info', icon: '⏳' });
   const profile = await loadProfile();
-  if (!profile) return alert('يجب تسجيل الدخول أولاً');
+  if (!profile) return window.mkAlert('يجب تسجيل الدخول أولاً', { type: 'warning', icon: '🔒' });
   
   const modal = document.createElement('div');
   modal.id = 'profileModalWrapper';
@@ -298,7 +298,7 @@ window.openProfileModal = async function() {
       if (nameEl && nameInput) nameEl.textContent = nameInput.value.trim();
       
       if (typeof toast === 'function') toast('✅ تم حفظ التغييرات وتطبيقها');
-      else alert('✅ تم حفظ التغييرات وتطبيقها');
+      else window.mkAlert('تم حفظ التغييرات', { type: 'success', icon: '✅' });
     }
   });
 };

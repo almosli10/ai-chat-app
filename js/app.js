@@ -745,7 +745,7 @@ async function handleFiles(files) {
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) { const t = await extractPdfText(file); attachedFiles.push({ name: file.name, content: t.substring(0, MAX_FILE_CHARS), type: 'pdf' }); }
       else if (file.type.startsWith('image/')) { const d = await compressImage(file); attachedFiles.push({ name: file.name, content: '[صورة]', type: 'image', dataUrl: d }); }
       else { const t = await file.text(); attachedFiles.push({ name: file.name, content: t.substring(0, MAX_FILE_CHARS), type: 'text' }); }
-    } catch (err) { alert('خطأ: ' + file.name); }
+    } catch (err) { toast('⚠️ خطأ في: ' + file.name); }
   }
   fileInput.value = ''; renderAttachmentsPreview(); playSound('click');
 }
@@ -779,10 +779,10 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SR(); recognition.lang = 'ar-SA'; recognition.continuous = false; recognition.interimResults = false;
   recognition.onresult = (e) => { input.value += (input.value ? ' ' : '') + e.results[0][0].transcript; };
-  recognition.onerror = (e) => { if (e.error === 'not-allowed') alert('سماح الميكروفون'); };
+  recognition.onerror = (e) => { if (e.error === 'not-allowed') toast('🎤 سماح الميكروفون مطلوب'); };
   recognition.onend = () => { isRecording = false; micBtn.classList.remove('recording'); };
 }
-function toggleMic() { if (!recognition) { alert('غير مدعوم'); return; } if (isRecording) recognition.stop(); else { try { recognition.start(); isRecording = true; micBtn.classList.add('recording'); } catch (e) {} } }
+function toggleMic() { if (!recognition) { toast('⚠️ الإدخال الصوتي غير مدعوم'); return; } if (isRecording) recognition.stop(); else { try { recognition.start(); isRecording = true; micBtn.classList.add('recording'); } catch (e) {} } }
 
 // ⚠️ نسخة أساسية — تُستبدل بـ tts-pro.js عند تحميله
 function speakMessage(btn, text) {
@@ -928,6 +928,8 @@ function switchChat(id) {
   
   chatInner.style.opacity = '0';
   setTimeout(() => {
+    currentChatId = id; localStorage.setItem('lastChatId', id); markAsRead(id);
+    chatInner.innerHTML = '';
     
     // 📝 استرجع المسودة إن وُجدت
     try {
@@ -936,6 +938,7 @@ function switchChat(id) {
     } catch (e) {
       input.value = '';
     }
+    
     const ns = allChats[id].messages.filter(m => m.role !== 'system');
     if (ns.length === 0) renderWelcome();
     else ns.forEach(msg => { const idx = allChats[id].messages.indexOf(msg); addMessage(msg.role, msg.role === 'user' ? (msg.displayText || msg.content) : msg.content, false, idx, msg.attachmentNames, msg.attachmentsData, msg.rating, msg.reactions, msg.toolLog); });
@@ -1429,7 +1432,7 @@ function loadSharedChatIfPresent() {
     b.innerHTML = `<span style="font-weight:600;">👁️ محادثة مشتركة</span><button style="background:white; color:#f59e0b; border:none; padding:8px 18px; border-radius:10px; cursor:pointer; font-weight:700; font-family:inherit;">استيراد</button>`;
     b.querySelector('button').onclick = () => { const nid = Date.now().toString(); allChats[nid] = { id: nid, title: '📥 ' + (sh.title || 'مستوردة'), timestamp: Date.now(), pinned: false, messages: [{ role: "system", content: systemPrompt }, ...sh.messages] }; saveAllChats(); history.replaceState({}, '', location.pathname); b.remove(); setReadOnly(false); switchChat(nid); toast('📥'); };
     chatInner.prepend(b); return true;
-  } catch (e) { alert('فشل: ' + e.message); history.replaceState({}, '', location.pathname); return false; }
+  } catch (e) { window.mkAlert('فشل تحميل المحادثة:\n' + e.message, { type: 'danger', icon: '🔗' }); history.replaceState({}, '', location.pathname); return false; }
 }
 
 function initSupabase() {
@@ -1581,10 +1584,32 @@ function exportCurrentChat() {
   const st = c.title.replace(/[^\w\u0600-\u06FF\s-]/g, '').trim().substring(0, 40) || 'chat';
   download(`${st}.md`, md);
 }
-function importData(e) {
+async function importData(e) {
   const f = e.target.files[0]; if (!f) return;
   const r = new FileReader();
-  r.onload = ev => { try { const d = JSON.parse(ev.target.result); if (!d.chats) throw new Error('غير صالح'); if (!confirm(`${Object.keys(d.chats).length}`)) return; Object.assign(allChats, d.chats); if (d.systemPrompt) { systemPrompt = d.systemPrompt; localStorage.setItem('systemPrompt', systemPrompt); } if (d.memory && Array.isArray(d.memory)) { userMemory = d.memory; saveMemory(); } localStorage.setItem('allChats', JSON.stringify(allChats)); renderSidebar(); alert('✅'); } catch (er) { alert('فشل: ' + er.message); } e.target.value = ''; };
+  r.onload = async ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if (!d.chats) throw new Error('ملف غير صالح');
+      
+      const count = Object.keys(d.chats).length;
+      const ok = await window.mkConfirm(
+        `سيتم استيراد ${count} محادثة.\nهل تريد المتابعة؟`,
+        { type: 'question', icon: '📥', title: 'استيراد البيانات', confirmLabel: 'استيراد', cancelLabel: 'إلغاء' }
+      );
+      if (!ok) return;
+      
+      Object.assign(allChats, d.chats);
+      if (d.systemPrompt) { systemPrompt = d.systemPrompt; localStorage.setItem('systemPrompt', systemPrompt); }
+      if (d.memory && Array.isArray(d.memory)) { userMemory = d.memory; saveMemory(); }
+      localStorage.setItem('allChats', JSON.stringify(allChats));
+      renderSidebar();
+      if (typeof toast === 'function') toast('✅ تم الاستيراد بنجاح');
+    } catch (er) {
+      window.mkAlert('فشل الاستيراد:\n' + er.message, { type: 'danger', icon: '📥' });
+    }
+    e.target.value = '';
+  };
   r.readAsText(f);
 }
 
@@ -2378,14 +2403,18 @@ function setupShapeDrawing(tool, color, size) {
         fill: 'transparent', stroke: color, strokeWidth: size, selectable: false
       });
     } else if (tool === 'text') {
-      const text = prompt('اكتب النص:');
-      if (text) {
-        const t = new fabric.IText(text, {
-          left: startX, top: startY, fill: color, fontSize: size * 6
-        });
-        fabricCanvas.add(t);
-        saveCanvasState();
-      }
+      window.mkPrompt('اكتب النص:', '', {
+        type: 'question', icon: '🅰️', title: 'إضافة نص',
+        confirmLabel: 'إضافة', cancelLabel: 'إلغاء'
+      }).then(text => {
+        if (text && text.trim()) {
+          const t = new fabric.IText(text, {
+            left: startX, top: startY, fill: color, fontSize: size * 6
+          });
+          fabricCanvas.add(t);
+          saveCanvasState();
+        }
+      });
       isDown = false;
       return;
     }
