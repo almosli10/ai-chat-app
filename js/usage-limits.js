@@ -752,7 +752,10 @@
       <div class="weekly-stats-modal">
         <div class="weekly-stats-header">
           <h3>📜 سجل الاستخدام</h3>
-          <button onclick="document.getElementById('usageHistoryPanel').remove()">✕</button>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button class="usage-stats-btn" onclick="window.usageLimits.exportUsageHistoryCSV()" title="تصدير CSV">📥</button>
+            <button onclick="document.getElementById('usageHistoryPanel').remove()">✕</button>
+          </div>
         </div>
         <div id="usageHistoryBody" style="text-align:center; padding:40px 20px; color:rgba(255,255,255,0.5);">
           <div style="font-size:32px; margin-bottom:12px;">⏳</div>
@@ -904,7 +907,10 @@
       <div class="weekly-stats-modal">
         <div class="weekly-stats-header">
           <h3>📊 إحصائيات الأسبوع</h3>
-          <button onclick="document.getElementById('weeklyStatsPanel').remove()">✕</button>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button class="usage-stats-btn" onclick="window.usageLimits.exportWeeklyStatsCSV()" title="تصدير CSV">📥</button>
+            <button onclick="document.getElementById('weeklyStatsPanel').remove()">✕</button>
+          </div>
         </div>
         <div id="weeklyStatsBody" style="text-align:center; padding:40px 20px; color:rgba(255,255,255,0.5);">
           <div style="font-size:32px; margin-bottom:12px;">⏳</div>
@@ -1077,6 +1083,195 @@
           </div>
         `;
       }
+    }
+  }
+
+    // ═══ 📥 تصدير سجل الاستخدام CSV ═══
+  async function exportUsageHistoryCSV() {
+    if (!window.sbClient || !window.currentUserId) {
+      if (typeof toast === 'function') toast('🔒 يرجى تسجيل الدخول أولاً');
+      return;
+    }
+    if (typeof window.downloadCSV !== 'function') {
+      if (typeof toast === 'function') toast('⚠️ دالة التصدير غير متوفرة');
+      return;
+    }
+    
+    if (typeof toast === 'function') toast('⏳ جاري تحضير الملف...');
+    
+    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+      sevenDaysAgo.setHours(0, 0, 0, 0);
+      
+      const { data, error } = await window.sbClient
+        .from('usage_logs')
+        .select('type, tokens, created_at')
+        .eq('user_id', window.currentUserId)
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        if (typeof toast === 'function') toast('📭 لا يوجد بيانات للتصدير');
+        return;
+      }
+      
+      // بناء الصفوف
+      const rows = [
+        ['التاريخ', 'الوقت', 'النوع', 'الكمية', 'الوحدة']
+      ];
+      
+      const typeLabels = {
+        tokens: 'توكن',
+        bonus: 'مكافأة',
+        image: 'صورة',
+        voice: 'مكالمة (دقيقة)',
+        agent: 'وكيل'
+      };
+      
+      data.forEach(r => {
+        const d = new Date(r.created_at);
+        const date = d.toLocaleDateString('ar-EG', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        const time = d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        
+        let value = Number(r.tokens) || 0;
+        let unit = '';
+        
+        if (r.type === 'bonus') {
+          value = '+' + value;
+          unit = 'توكن';
+        } else if (r.type === 'tokens') {
+          value = '-' + value;
+          unit = 'توكن';
+        } else if (r.type === 'image') {
+          value = 1;
+          unit = 'صورة';
+        } else if (r.type === 'voice') {
+          value = 1;
+          unit = 'دقيقة';
+        } else if (r.type === 'agent') {
+          value = 1;
+          unit = 'استخدام';
+        }
+        
+        rows.push([date, time, typeLabels[r.type] || r.type, value, unit]);
+      });
+      
+      // احفظ الملف
+      const filename = `mishkat-usage-${new Date().toISOString().slice(0,10)}.csv`;
+      const ok = window.downloadCSV(filename, rows);
+      
+      if (ok && typeof toast === 'function') {
+        toast(`✅ تم تصدير ${data.length} سجل`);
+      } else if (typeof toast === 'function') {
+        toast('❌ فشل التصدير');
+      }
+    } catch (err) {
+      console.error('CSV export error:', err);
+      if (typeof toast === 'function') toast('❌ ' + err.message);
+    }
+  }
+
+  // ═══ 📥 تصدير الإحصائيات الأسبوعية CSV ═══
+  async function exportWeeklyStatsCSV() {
+    if (!window.sbClient || !window.currentUserId) {
+      if (typeof toast === 'function') toast('🔒 يرجى تسجيل الدخول أولاً');
+      return;
+    }
+    if (typeof window.downloadCSV !== 'function') {
+      if (typeof toast === 'function') toast('⚠️ دالة التصدير غير متوفرة');
+      return;
+    }
+    
+    if (typeof toast === 'function') toast('⏳ جاري تحضير الملف...');
+    
+    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+      sevenDaysAgo.setHours(0, 0, 0, 0);
+      
+      const { data, error } = await window.sbClient
+        .from('usage_logs')
+        .select('type, tokens, created_at')
+        .eq('user_id', window.currentUserId)
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      
+      // نظّم حسب اليوم
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        d.setHours(0, 0, 0, 0);
+        days.push({
+          date: d,
+          dateStr: d.toLocaleDateString('ar-EG', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+          label: d.toLocaleDateString('ar-EG', { weekday: 'long' }),
+          tokens: 0,
+          images: 0,
+          voice: 0,
+          agent: 0,
+          bonus: 0
+        });
+      }
+      
+      (data || []).forEach(r => {
+        const rowDate = new Date(r.created_at);
+        rowDate.setHours(0, 0, 0, 0);
+        const day = days.find(d => d.date.getTime() === rowDate.getTime());
+        if (!day) return;
+        
+        if (r.type === 'tokens') day.tokens += Number(r.tokens) || 0;
+        else if (r.type === 'bonus') day.bonus += Number(r.tokens) || 0;
+        else if (r.type === 'image') day.images++;
+        else if (r.type === 'voice') day.voice++;
+        else if (r.type === 'agent') day.agent++;
+      });
+      
+      // بناء الصفوف
+      const rows = [
+        ['التاريخ', 'اليوم', 'التوكنات', 'المكافآت', 'الصور', 'المكالمات (دقيقة)', 'استخدام الوكيل']
+      ];
+      
+      let totalTokens = 0, totalBonus = 0, totalImages = 0, totalVoice = 0, totalAgent = 0;
+      
+      days.forEach(d => {
+        rows.push([
+          d.dateStr,
+          d.label,
+          d.tokens,
+          d.bonus,
+          d.images,
+          d.voice,
+          d.agent
+        ]);
+        totalTokens += d.tokens;
+        totalBonus += d.bonus;
+        totalImages += d.images;
+        totalVoice += d.voice;
+        totalAgent += d.agent;
+      });
+      
+      // صف الإجمالي
+      rows.push([]);
+      rows.push(['الإجمالي', '', totalTokens, totalBonus, totalImages, totalVoice, totalAgent]);
+      
+      // احفظ الملف
+      const filename = `mishkat-weekly-${new Date().toISOString().slice(0,10)}.csv`;
+      const ok = window.downloadCSV(filename, rows);
+      
+      if (ok && typeof toast === 'function') {
+        toast(`✅ تم تصدير الأسبوع`);
+      } else if (typeof toast === 'function') {
+        toast('❌ فشل التصدير');
+      }
+    } catch (err) {
+      console.error('CSV export error:', err);
+      if (typeof toast === 'function') toast('❌ ' + err.message);
     }
   }
 
@@ -1259,6 +1454,8 @@
     openPanel: openUsagePanel,
     openWeeklyStats: openWeeklyStats,
     openUsageHistory: openUsageHistory,
+    exportUsageHistoryCSV: exportUsageHistoryCSV,
+    exportWeeklyStatsCSV: exportWeeklyStatsCSV,
     startStreaming: startStreamingBadge,
     stopStreaming: stopStreamingBadge,
     recordLockedUse: window.usageLimits_recordLockedUse,

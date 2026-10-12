@@ -1575,6 +1575,37 @@ async function doSync() {
 }
 
 function download(f, c) { const b = new Blob([c], { type: 'text/plain;charset=utf-8' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = f; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(u); }
+// ═══════ 📥 تصدير CSV (يدعم العربية) ═══════
+function downloadCSV(filename, rows) {
+  try {
+    const csv = rows.map(row => 
+      row.map(cell => {
+        const str = String(cell ?? '');
+        // إذا يحتوي على فاصلة أو علامة تنصيص أو سطر جديد → ضعه بين علامتي تنصيص
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+      }).join(',')
+    ).join('\n');
+
+    // \uFEFF = BOM لضمان قراءة Excel للعربية
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return true;
+  } catch (e) {
+    console.error('CSV download failed:', e);
+    return false;
+  }
+}
+window.downloadCSV = downloadCSV;
 function exportAllData() {
   if (typeof window.requirePlan === 'function' && !window.requirePlan('export', 'تصدير البيانات')) return;
   download(`ai-chat-backup-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify({ version: 1, exportDate: new Date().toISOString(), systemPrompt, chats: allChats, memory: userMemory }, null, 2));
