@@ -3910,17 +3910,34 @@ async function continueLastResponse() {
 
   const originalContent = lastAsstMsg.content;
 
-  // ═══ رسالة المتابعة ═══
-  const continuePrompt = `أكمل ردك السابق من حيث توقف بالضبط.
+  // ═══ 🎯 تقنية "Seed" — نرسل آخر 400 حرف فقط ═══
+  const endingSeed = originalContent.slice(-400).trim();
 
-قواعد صارمة:
-- لا تكرر أي جزء مما قلته سابقاً.
-- ابدأ مباشرة من حيث انقطع الرد (حتى لو كان في منتصف جملة أو دالة أو كود).
-- استمر بنفس الأسلوب والسياق واللغة.
-- لا تكتب أي مقدمة أو تعليق مثل "بالتأكيد" أو "سأكمل" — ابدأ مباشرة.
-- إذا كان الرد مكتملاً أصلاً، اكتب فقط: [الرد مكتمل]`;
+  // احفظ نسخة من الرسائل (بدون آخر assistant) للاستخدام في الطلب
+  const messagesForContinue = msgs.slice(0, lastAsstIdx);
 
-  msgs.push({ role: 'user', content: continuePrompt, displayText: '🔄 متابعة' });
+  // أضف رسالة "البذرة" — تحتوي فقط على نهاية الرد
+  const continuePrompt = `هذا آخر جزء من النص الذي كنت تكتبه:
+
+"""
+${endingSeed}
+"""
+
+🎯 مهمتك: أكمل من بعد النص أعلاه بالضبط.
+
+قواعد حاسمة:
+❌ ممنوع تماماً تكرار أي كلمة من النص أعلاه.
+❌ ممنوع كتابة مقدمة مثل "بالتأكيد" أو "حسناً" أو "سأكمل".
+❌ ممنوع وصف ما ستفعله.
+✅ ابدأ مباشرة من الحرف التالي بعد النص.
+✅ حافظ على نفس الأسلوب والسياق.
+✅ إذا انقطع في منتصف جملة، أكملها من نفس النقطة.`;
+
+  messagesForContinue.push({ 
+    role: 'user', 
+    content: continuePrompt, 
+    displayText: '🔄 متابعة' 
+  });
 
   // ═══ ابدأ البث ═══
   streamRunning = true;
@@ -3947,7 +3964,7 @@ async function continueLastResponse() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: msgs.map(m => ({ role: m.role, content: m.content })),
+        messages: messagesForContinue.map(m => ({ role: m.role, content: m.content })),
         stream: true
       }),
       signal: streamAbortController.signal
