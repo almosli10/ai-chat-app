@@ -3910,34 +3910,17 @@ async function continueLastResponse() {
 
   const originalContent = lastAsstMsg.content;
 
-  // ═══ 🎯 تقنية "Seed" — نرسل آخر 400 حرف فقط ═══
-  const endingSeed = originalContent.slice(-400).trim();
+  // ═══ 🎯 Assistant Prefill — تقنية الإكمال المثالية ═══
+  // نأخذ آخر جزء من الرد (300 حرف) ونجعله آخر assistant message
+  // النموذج سيُكمل من تلك النقطة تلقائياً بدون تكرار
+  const PREFILL_LENGTH = 300;
+  const endingSeed = originalContent.slice(-PREFILL_LENGTH);
 
-  // احفظ نسخة من الرسائل (بدون آخر assistant) للاستخدام في الطلب
-  const messagesForContinue = msgs.slice(0, lastAsstIdx);
-
-  // أضف رسالة "البذرة" — تحتوي فقط على نهاية الرد
-  const continuePrompt = `هذا آخر جزء من النص الذي كنت تكتبه:
-
-"""
-${endingSeed}
-"""
-
-🎯 مهمتك: أكمل من بعد النص أعلاه بالضبط.
-
-قواعد حاسمة:
-❌ ممنوع تماماً تكرار أي كلمة من النص أعلاه.
-❌ ممنوع كتابة مقدمة مثل "بالتأكيد" أو "حسناً" أو "سأكمل".
-❌ ممنوع وصف ما ستفعله.
-✅ ابدأ مباشرة من الحرف التالي بعد النص.
-✅ حافظ على نفس الأسلوب والسياق.
-✅ إذا انقطع في منتصف جملة، أكملها من نفس النقطة.`;
-
-  messagesForContinue.push({ 
-    role: 'user', 
-    content: continuePrompt, 
-    displayText: '🔄 متابعة' 
-  });
+  // ابْنِ الرسائل: كل الرسائل بدون آخر assistant + assistant prefill
+  const messagesForContinue = [
+    ...msgs.slice(0, lastAsstIdx).map(m => ({ role: m.role, content: m.content })),
+    { role: 'assistant', content: endingSeed }
+  ];
 
   // ═══ ابدأ البث ═══
   streamRunning = true;
@@ -3964,7 +3947,7 @@ ${endingSeed}
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: messagesForContinue.map(m => ({ role: m.role, content: m.content })),
+        messages: messagesForContinue,
         stream: true
       }),
       signal: streamAbortController.signal
