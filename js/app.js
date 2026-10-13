@@ -448,7 +448,7 @@ async function streamOnce() {
   try {
     const messages = allChats[currentChatId].messages.map(m => ({ role: m.role, content: m.content }));
     const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, stream: true }), signal: agentAbortController?.signal });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) { let errorDetail = 'HTTP ' + res.status; try { const errData = await res.clone().json(); errorDetail = errData.details || errData.error || errData.message || errorDetail; if (errData.hint) errorDetail += ' — ' + errData.hint; } catch (e) {} throw new Error(errorDetail); }
     const reader = res.body.getReader(); const decoder = new TextDecoder(); let buffer = ''; let firstChunk = true;
     while (true) {
       const { done, value } = await reader.read(); if (done) break;
@@ -1272,7 +1272,7 @@ async function streamResponse() {
       }),
       signal: streamAbortController.signal
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) { let errorDetail = 'HTTP ' + res.status; try { const errData = await res.clone().json(); errorDetail = errData.details || errData.error || errData.message || errorDetail; if (errData.hint) errorDetail += ' — ' + errData.hint; } catch (e) {} throw new Error(errorDetail); }
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -2066,7 +2066,7 @@ playThinkingSound();
         stream: false
       })
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) { let errorDetail = 'HTTP ' + res.status; try { const errData = await res.clone().json(); errorDetail = errData.details || errData.error || errData.message || errorDetail; if (errData.hint) errorDetail += ' — ' + errData.hint; } catch (e) {} throw new Error(errorDetail); }
     const data = await res.json();
     const reply = data.choices?.[0]?.message?.content || 'لم أستطع الرد';
     
@@ -2613,7 +2613,7 @@ async function askMishkatToDraw() {
         stream: false
       })
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) { let errorDetail = 'HTTP ' + res.status; try { const errData = await res.clone().json(); errorDetail = errData.details || errData.error || errData.message || errorDetail; if (errData.hint) errorDetail += ' — ' + errData.hint; } catch (e) {} throw new Error(errorDetail); }
     const data = await res.json();
     let raw = data.choices?.[0]?.message?.content || '';
     // إزالة markdown إذا وُجد
