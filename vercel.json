@@ -1,0 +1,25 @@
+{
+  "functions": {
+    "api/chat.js": {
+      "maxDuration": 60
+    },
+    "api/image.js": {
+      "maxDuration": 60
+    },
+    "api/tts.js": {
+      "maxDuration": 30
+    },
+    "api/clone-voice.js": {
+      "maxDuration": 60
+    },
+    "api/push.js": {
+      "maxDuration": 30
+    },
+    "api/admin.js": {
+      "maxDuration": 30
+    },
+    "api/manual-payment.js": {
+      "maxDuration": 30
+    }
+  }
+}

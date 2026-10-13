@@ -49,10 +49,11 @@ export default async function handler(req, res) {
         'Authorization': 'Bearer ' + API_KEY
       },
       body: JSON.stringify({
-        model: 'notrack-uncensored',
-        messages: trimmedMessages,
-        stream: stream
-      })
+  model: 'notrack-uncensored',
+  messages: trimmedMessages,
+  stream: stream,
+  max_tokens: 4096
+})
     });
 
     if (!response.ok) {
