@@ -1096,6 +1096,9 @@ function addRegenerateButtonIfNeeded() {
   const msgs = chatInner.querySelectorAll('.msg.assistant'); if (msgs.length === 0) return;
   const last = msgs[msgs.length - 1]; const a = last.querySelector('.msg-actions'); if (!a) return;
   const b = document.createElement('button'); b.className = 'msg-action-btn regenerate-btn'; b.textContent = '🔄'; b.onclick = regenerateLast; a.appendChild(b);
+  
+  // ✅ أضف زر المتابعة
+  addContinueButton();
 }
 async function regenerateLast() {
   const ms = allChats[currentChatId].messages; let i = -1;
@@ -3875,5 +3878,208 @@ window.saveSettings = saveSettings;
     waitForElements();
   }
 })();
+
+// ═══════ 🔄 متابعة الرد المقطوع ═══════
+async function continueLastResponse() {
+  if (isReadOnly) { toast('⚠️ لا يمكن المتابعة في وضع القراءة'); return; }
+  if (streamRunning || agentRunning) { toast('⏳ انتظر انتهاء الرد الحالي'); return; }
+
+  const msgs = allChats[currentChatId]?.messages;
+  if (!msgs || msgs.length < 2) { toast('⚠️ لا يوجد رد للمتابعة'); return; }
+
+  // ابحث عن آخر رسالة assistant
+  let lastAsstIdx = -1;
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].role === 'assistant') { lastAsstIdx = i; break; }
+  }
+  if (lastAsstIdx === -1) { toast('⚠️ لا يوجد رد للمتابعة'); return; }
+
+  const lastAsstMsg = msgs[lastAsstIdx];
+  if (!lastAsstMsg?.content) { toast('⚠️ الرد فارغ'); return; }
+
+  // ابحث عن الفقاعة في DOM
+  const allBubbles = chatInner.querySelectorAll('.msg.assistant');
+  const lastMsgDiv = allBubbles[allBubbles.length - 1];
+  if (!lastMsgDiv) { toast('⚠️ لم أجد الرد'); return; }
+  const bubbleEl = lastMsgDiv.querySelector('.msg-bubble');
+  if (!bubbleEl) return;
+
+  // احذف زر المتابعة من الفقاعة أثناء المتابعة
+  const existingBtn = bubbleEl.parentElement.querySelector('.continue-btn-wrap');
+  if (existingBtn) existingBtn.remove();
+
+  const originalContent = lastAsstMsg.content;
+
+  // ═══ رسالة المتابعة ═══
+  const continuePrompt = `أكمل ردك السابق من حيث توقف بالضبط.
+
+قواعد صارمة:
+- لا تكرر أي جزء مما قلته سابقاً.
+- ابدأ مباشرة من حيث انقطع الرد (حتى لو كان في منتصف جملة أو دالة أو كود).
+- استمر بنفس الأسلوب والسياق واللغة.
+- لا تكتب أي مقدمة أو تعليق مثل "بالتأكيد" أو "سأكمل" — ابدأ مباشرة.
+- إذا كان الرد مكتملاً أصلاً، اكتب فقط: [الرد مكتمل]`;
+
+  msgs.push({ role: 'user', content: continuePrompt, displayText: '🔄 متابعة' });
+
+  // ═══ ابدأ البث ═══
+  streamRunning = true;
+  streamAbortController = new AbortController();
+  sendBtn.disabled = false;
+  sendBtn.classList.add('stop');
+  sendBtn.textContent = '⏹';
+  sendBtn.onclick = sendOrStop;
+  if (window.usageLimits?.startStreaming) window.usageLimits.startStreaming();
+
+  // مؤشر كتابة في نهاية الفقاعة
+  const typingEl = document.createElement('div');
+  typingEl.className = 'typing-indicator';
+  typingEl.style.cssText = 'margin-top:10px;display:inline-flex;gap:5px;';
+  typingEl.innerHTML = '<span></span><span></span><span></span>';
+  bubbleEl.appendChild(typingEl);
+
+  let full = '';
+  let aborted = false;
+  let lastBadgeUpdate = 0;
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: msgs.map(m => ({ role: m.role, content: m.content })),
+        stream: true
+      }),
+      signal: streamAbortController.signal
+    });
+
+    if (!res.ok) {
+      let errorDetail = 'HTTP ' + res.status;
+      try {
+        const errData = await res.clone().json();
+        errorDetail = errData.details || errData.error || errData.message || errorDetail;
+      } catch (e) {}
+      throw new Error(errorDetail);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let firstChunk = true;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+          try {
+            const data = JSON.parse(line.substring(6));
+            const content = data.choices[0]?.delta?.content || '';
+            if (content) {
+              if (firstChunk) { typingEl.remove(); firstChunk = false; }
+              full += content;
+              bubbleEl.innerHTML = marked.parse(originalContent + full);
+              chatContainer.scrollTop = chatContainer.scrollHeight;
+              const now = Date.now();
+              if (now - lastBadgeUpdate > 500) {
+                lastBadgeUpdate = now;
+                if (window.usageLimits_updateStreaming) {
+                  window.usageLimits_updateStreaming(full.length);
+                }
+              }
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
+    // ✅ احفظ الرد المدموج
+    const combined = originalContent + full;
+    lastAsstMsg.content = combined;
+    bubbleEl.innerHTML = marked.parse(combined);
+    addCopyButtons(bubbleEl);
+    saveAllChats();
+    pushChatToCloud(allChats[currentChatId]);
+    playSound('receive');
+
+    // سجّل التوكنات
+    if (typeof window.logTokenUsage === 'function') {
+      window.logTokenUsage(continuePrompt.length + full.length);
+    }
+
+    // أعد إضافة زر المتابعة
+    addContinueButton();
+
+  } catch (err) {
+    typingEl.remove();
+    if (err.name === 'AbortError') {
+      aborted = true;
+      if (full && full.trim()) {
+        lastAsstMsg.content = originalContent + full + '\n\n*⏹️ (متوقف)*';
+        bubbleEl.innerHTML = marked.parse(lastAsstMsg.content);
+        saveAllChats();
+        pushChatToCloud(allChats[currentChatId]);
+      } else {
+        // لم يُنتَج شيء → احذف رسالة المتابعة
+        msgs.pop();
+      }
+      toast('⏹️ تم الإيقاف');
+    } else {
+      // استرجع الحالة الأصلية
+      bubbleEl.innerHTML = marked.parse(originalContent);
+      msgs.pop();
+      if (window.usageLimits?.stopStreaming) window.usageLimits.stopStreaming();
+      playSound('error');
+      toast('❌ ' + err.message);
+    }
+  } finally {
+    streamRunning = false;
+    streamAbortController = null;
+    sendBtn.classList.remove('stop');
+    sendBtn.textContent = '➤';
+    sendBtn.disabled = false;
+    sendBtn.onclick = sendOrStop;
+    input.focus();
+    if (window.usageLimits?.stopStreaming) window.usageLimits.stopStreaming();
+    if (!aborted) addContinueButton();
+  }
+}
+window.continueLastResponse = continueLastResponse;
+
+// ═══════ زر المتابعة في آخر رسالة ═══════
+function addContinueButton() {
+  // احذف أي زر سابق
+  document.querySelectorAll('.continue-btn-wrap').forEach(b => b.remove());
+  if (streamRunning || agentRunning) return;
+
+  const allAsst = chatInner.querySelectorAll('.msg.assistant');
+  if (allAsst.length === 0) return;
+
+  const lastAsst = allAsst[allAsst.length - 1];
+  // لا تظهر زر لو الرسالة قيد البث
+  if (lastAsst.dataset.evoNoXp === '1') return;
+
+  const body = lastAsst.querySelector('.msg-body');
+  if (!body) return;
+  // تحقق أنه ليس فارغاً
+  const bubble = lastAsst.querySelector('.msg-bubble');
+  if (!bubble || !bubble.textContent.trim()) return;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'continue-btn-wrap';
+  wrap.innerHTML = `
+    <button class="continue-btn" onclick="continueLastResponse()" title="أكمل الرد من حيث توقف">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+      <span>متابعة الرد</span>
+    </button>
+  `;
+  body.appendChild(wrap);
+}
+window.addContinueButton = addContinueButton;
 
 init();
